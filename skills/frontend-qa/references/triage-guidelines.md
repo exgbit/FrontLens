@@ -1,0 +1,87 @@
+# FrontLens triage guidelines
+
+Use this reference after every QA run before reporting findings. The raw report is evidence, not the final truth. Calibrate issues against the page model, screenshots, network timeline, and source code when available. When a source root is provided or known, also read `source-code-correlation.md` and make source-aware triage mandatory.
+
+## Mandatory post-run triage
+
+Create a concise triage table with these buckets:
+
+- **Real frontend fix**: reproducible UI/state/accessibility/interaction defect in app code.
+- **Backend/API fix**: API status/schema/latency/contract issue not caused by the scanner.
+- **Deployment/security config**: headers, TLS, server fingerprint, CDN/nginx/cache config.
+- **Product decision**: optional capability such as export, pagination, SEO, or manual refresh.
+- **Tool limitation / false positive**: scanner heuristic mismatch, synthetic traffic, unsupported page type.
+
+Report raw score separately from adjusted risk. If many findings are skipped, synthetic, or deployment-only, say the score is low-confidence and prioritize the triaged fix list instead of repeating every issue.
+
+Also add a **root-cause grouping** before the final fix list:
+
+- Group multiple raw issue IDs that point to the same implementation defect, such as 500/401/403/404/timeout all rendering the same false empty state.
+- Count work by root cause, not by raw issue IDs or `fixTasks[]` length. `fixTasks[]` is machine-oriented and may intentionally contain per-scenario tasks.
+- If a generated suggestion does not match the issue category or evidence, mark it as template noise and replace it with a source/evidence-specific fix.
+
+## Common false positives and downgrades
+
+1. **Synthetic network profiles**
+   - Requests from P2 offline/slow-3g or exception simulation may show `ERR_INTERNET_DISCONNECTED`, timeouts, or repeated page loads.
+   - Do not call these backend failures unless the same API fails in the normal initial page load or a user journey.
+   - If SPA HTML never boots in offline mode, classify offline feedback findings as tool limitation, not app missing feedback.
+
+2. **Repeated requests caused by scan phases**
+   - Responsive, P2, matrix, exception, and journey modules intentionally reload the page.
+   - Repeated document/static/API requests across reload phases are not duplicate-fetch bugs.
+   - Treat as real only when the same API fires in a burst during one page state or one user action.
+
+3. **Table/list heuristic mismatch**
+   - Do not require pagination, export, table empty states, or table row counts for card grids, master-detail layouts, kanban/cards, trees, dashboards, or credential/security pages.
+   - If `pageModel.tables[]` points at a `div` with card/grid class and no real table headers/rows, treat table issues as false positives.
+   - Export/download is product-specific and can be a security anti-pattern on sensitive pages.
+
+4. **Sensitive data keyword matches**
+   - URL paths like `/credentials`, `/auth`, or redacted path segments are not leaks by themselves.
+   - Require evidence in URL query, request/response body, Console, DOM, or storage with real sensitive keys/values such as `access_token`, `refresh_token`, `password`, `client_secret`, `api_key`, or cookies.
+
+5. **Security headers and HTTPS**
+   - CSP, `nosniff`, `frame-ancestors`/`X-Frame-Options`, `Referrer-Policy`, HTTPS, HSTS, and `Server` fingerprint are usually deployment/gateway tasks.
+   - For localhost/private VPN/staging, mark as pre-production deployment risk unless the user asked for production readiness.
+   - For sensitive admin/credential pages, still keep HTTPS + CSP + nosniff + clickjacking protection as release blockers.
+
+6. **Vite dev server artifacts**
+   - If the target loads `@vite/client`, `/src/*.vue`, `/src/*.ts`, `/src/styles/*.css`, `/node_modules/.vite/`, or Vite HMR WebSocket, the page is running in dev-source mode.
+   - Do not count dev-mode request count, transfer size, `node_modules/.vite/deps/*` chunk size, source-module debug/path matches, or HMR WebSocket as production performance/security/realtime defects.
+   - Use dev-mode module graph only as source evidence for static route imports or eager feature imports; validate real bundle/coverage conclusions on `build + preview` or deployed assets.
+   - Do not let the downgrade hide a real source problem. If the module graph or source shows unrelated route views/heavy feature dependencies are eagerly imported, keep a separate source-discovered code-splitting issue.
+
+7. **Skipped interactions**
+   - Skipped tests mean no safe target was found or the action was disabled by safety policy.
+   - Do not convert skipped interactions to defects. Mention coverage gaps only when the user asked for journey coverage.
+   - If all or most IT-* checks are skipped, explicitly state that search/forms/drawers/table actions were not covered by automation; do not imply the interaction layer is fully verified.
+
+## Source-code cross-check pattern
+
+When the repository or source files are available, verify high-impact findings against implementation before finalizing issue status. Do not retain a frontend-code defect solely from browser heuristics when source evidence contradicts it.
+
+- Error handling: does the composable/store keep an `error` state, and does the view render it with retry?
+- Loading/empty distinction: can users distinguish loading, empty, permission denied, and failed API states?
+- Shared error-handling pattern: if the same composable/http/store pattern is reused by sibling pages, mention it as an adjacent-risk sweep, but do not file it as a defect for the current page without source evidence.
+- Accessibility: do icon-only buttons have `aria-label` or visible text? Are tap targets large enough on mobile?
+- API calls: is `load()` triggered once per mount, or repeated by watchers/effects? Are retries/debounces intentional?
+- Bundle size: check router lazy loading, route/component dynamic imports, UI library import style, and CSS theme inclusion before blaming one page. When raw dev-server performance issues are false, still retain source-confirmed eager routing or heavy feature import problems as source-discovered issues.
+- Exception simulations: are 401/403/404/500 request ids from `exceptionSimulations[]` rather than real backend behavior?
+- Native browser console entries: is the console error app-generated, or just Chromium logging a non-2xx resource?
+- Deployment ownership: does the frontend repo include nginx/CDN/server config for reported headers/TLS, or is it outside the app?
+
+Use final statuses: `confirmed-by-code`, `source-discovered`, `contradicted-by-code`, `deployment-only`, `product-or-ADR-tradeoff`, `synthetic-or-tool-limitation`, or `insufficient-source-coverage`.
+
+For every retained frontend issue, include file paths and line numbers. For every rejected issue, include the contradiction source: source file, scan phase, exception id, ADR, or deployment ownership.
+
+## Final report format
+
+Return:
+
+1. Raw artifact paths and raw score.
+2. Adjusted triage summary: counts by bucket and confidence.
+3. Top real fixes, ordered by P1/P2/P3.
+4. Deployment/security tasks separately from app-code tasks.
+5. False positives/tool limitations with issue IDs and reason.
+6. Verification commands and rerun plan.

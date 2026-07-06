@@ -1,0 +1,163 @@
+{
+  "browser": {
+    "name": "chromium",
+    "headless": true,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "timeoutMs": 45000,
+    "waitUntil": "domcontentloaded",
+    "extraWaitMs": 1500
+  },
+  "auth": {
+    "storageState": ".frontlens/auth/admin.json",
+    "sessionStorageState": ".frontlens/auth/admin.json.session-storage.json"
+  },
+  "safety": {
+    "allowCreate": false,
+    "allowEdit": false,
+    "allowDelete": false,
+    "allowUpload": false,
+    "allowDownload": false,
+    "allowSubmit": false,
+    "blockMutatingRequests": true
+  },
+  "security": {
+    "enabled": true,
+    "mode": "passive",
+    "checkHeaders": true,
+    "checkCookies": true,
+    "checkSensitiveData": true,
+    "checkMixedContent": true,
+    "checkThirdPartyResources": true,
+    "checkXssPassive": true,
+    "checkCsrfHints": true,
+    "checkApiLeaks": true,
+    "activeProbing": false
+  },
+  "analysis": {
+    "network": true,
+    "console": true,
+    "resource": true,
+    "coverage": true,
+    "accessibility": true,
+    "seo": false,
+    "performance": true,
+    "integration": true,
+    "responsive": true,
+    "ai": true,
+    "slowRequestMs": 1500,
+    "slowResourceMs": 1500,
+    "largeResourceBytes": 1000000,
+    "coverageMinBytes": 50000,
+    "coverageUnusedPercent": 60,
+    "maxResponsePreviewBytes": 64000
+  },
+  "responsive": {
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      {
+        "name": "laptop",
+        "width": 1366,
+        "height": 768
+      },
+      {
+        "name": "tablet",
+        "width": 768,
+        "height": 1024
+      },
+      {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      }
+    ]
+  },
+  "exception": {
+    "enabled": true,
+    "delayMs": 3000
+  },
+  "plugins": {
+    "analyzers": [],
+    "reporters": [],
+    "rules": []
+  },
+  "ai": {
+    "provider": "heuristic",
+    "maxIssues": 20,
+    "maxContextBytes": 120000
+  },
+  "report": {
+    "formats": [
+      "json",
+      "markdown"
+    ],
+    "outputDir": "./reports/frontlens",
+    "trace": false,
+    "screenshot": true,
+    "video": false,
+    "domSnapshot": true
+  },
+  "journeys": {
+    "enabled": true,
+    "continueOnFailure": true,
+    "maxJourneys": 5,
+    "maxStepsPerJourney": 30,
+    "journeys": [
+      {
+        "name": "Default page smoke journey",
+        "steps": [
+          {
+            "action": "waitForLoad",
+            "description": "等待页面完成基础加载"
+          },
+          {
+            "action": "expectVisible",
+            "target": "body",
+            "description": "确认页面主体可见"
+          }
+        ]
+      }
+    ]
+  },
+  "contract": {
+    "enabled": true,
+    "inferFromTraffic": true,
+    "strict": false,
+    "maxBodyExamples": 30
+  },
+  "realtime": {
+    "enabled": true,
+    "captureWebSocket": true,
+    "captureSse": true,
+    "maxMessages": 50
+  },
+  "p2": {
+    "enabled": true,
+    "visual": {
+      "enabled": true,
+      "diffThresholdRatio": 0.01
+    },
+    "budgets": {
+      "enabled": true,
+      "fcpMs": 1800,
+      "loadMs": 3000,
+      "totalTransferKb": 2000,
+      "domNodes": 2000,
+      "longTaskCount": 5,
+      "cls": 0.1
+    },
+    "networkProfiles": {
+      "enabled": true,
+      "profiles": [
+        "offline",
+        "slow-3g"
+      ]
+    }
+  }
+}

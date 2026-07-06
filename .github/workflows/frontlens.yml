@@ -1,0 +1,103 @@
+name: FrontLens QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Target URL to analyze"
+        required: true
+        type: string
+      browser:
+        description: "Browser"
+        required: false
+        default: "chromium"
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+      fail_on:
+        description: "Fail workflow when this severity or above is found"
+        required: false
+        default: "high"
+        type: choice
+        options:
+          - critical
+          - high
+          - medium
+          - low
+          - info
+      min_score:
+        description: "Fail workflow when score is lower than this number"
+        required: false
+        default: "80"
+        type: string
+      storage_state:
+        description: "Optional Playwright storageState path already present in the repo/runner"
+        required: false
+        type: string
+      session_storage_state:
+        description: "Optional FrontLens sessionStorage sidecar path"
+        required: false
+        type: string
+  pull_request:
+    paths:
+      - "src/**"
+      - "skills/**"
+      - ".github/workflows/frontlens.yml"
+      - "frontlens.config.example.json"
+      - "examples/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: npx playwright install --with-deps ${{ inputs.browser || 'chromium' }}
+      - name: Run FrontLens QA
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          FRONTLENS_URL: ${{ inputs.url }}
+          FRONTLENS_BROWSER: ${{ inputs.browser || 'chromium' }}
+          FRONTLENS_FAIL_ON: ${{ inputs.fail_on || 'high' }}
+          FRONTLENS_MIN_SCORE: ${{ inputs.min_score || '80' }}
+          FRONTLENS_STORAGE_STATE: ${{ inputs.storage_state }}
+          FRONTLENS_SESSION_STORAGE_STATE: ${{ inputs.session_storage_state }}
+        run: |
+          AUTH_ARGS=()
+          if [ -n "$FRONTLENS_STORAGE_STATE" ]; then
+            AUTH_ARGS+=(--storage-state "$FRONTLENS_STORAGE_STATE")
+          fi
+          if [ -n "$FRONTLENS_SESSION_STORAGE_STATE" ]; then
+            AUTH_ARGS+=(--session-storage-state "$FRONTLENS_SESSION_STORAGE_STATE")
+          fi
+          node dist/cli.js qa \
+            --url "$FRONTLENS_URL" \
+            --browser "$FRONTLENS_BROWSER" \
+            --output "reports/frontlens-gha" \
+            --no-trace \
+            --json \
+            --fail-on "$FRONTLENS_FAIL_ON" \
+            --min-score "$FRONTLENS_MIN_SCORE" \
+            "${AUTH_ARGS[@]}"
+      - name: Upload FrontLens report
+        if: ${{ always() && github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontlens-report
+          path: reports/frontlens-gha

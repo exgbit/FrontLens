@@ -1,0 +1,8 @@
+node_modules/
+dist/
+reports/
+.frontlens/
+playwright-report/
+test-results/
+*.log
+.DS_Store

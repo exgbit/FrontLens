@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import type { BrowserContext, CDPSession, Page } from 'playwright';
 import type { ArtifactIndex, FrontLensConfig, Issue, NetworkRecord, P2TestResult, PerformanceMetrics } from '../types.js';
 import { IssueFactory } from '../analyzers/issueFactory.js';
@@ -28,6 +28,12 @@ async function byteDiffRatio(aPath: string, bPath: string): Promise<number> {
     if (a[index] !== b[index]) diff += 1;
   }
   return diff / max;
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  return access(filePath)
+    .then(() => true)
+    .catch(() => false);
 }
 
 function budget(metric: string, actual: number | undefined, budgetValue: number | undefined, unit: string): P2TestResult['budgets'][number] | undefined {
@@ -143,9 +149,10 @@ export class P2Tester {
           const hasUserVisibleNetworkFeedback = /offline|network|retry|error|失败|断网|重试/i.test(text);
           if (hasUserVisibleNetworkFeedback) observations.push('Page shows network/offline feedback.');
           if (navigationError && !hasBootedPage) observations.push('Page did not boot under this network profile; feedback assessment skipped.');
-          const screenshot = path.join(this.artifacts.outputDir, 'screenshots', `network-${profile}.png`);
-          await ensureDir(path.dirname(screenshot));
-          await probe.screenshot({ path: screenshot, fullPage: true }).catch(() => undefined);
+          const screenshotPath = path.join(this.artifacts.outputDir, 'screenshots', `network-${profile}.png`);
+          await ensureDir(path.dirname(screenshotPath));
+          await probe.screenshot({ path: screenshotPath, fullPage: true }).catch(() => undefined);
+          const screenshot = (await fileExists(screenshotPath)) ? screenshotPath : undefined;
           result.networkProfiles.push({
             profile,
             status: navigationError && !hasBootedPage ? 'skipped' : profile === 'offline' ? (hasUserVisibleNetworkFeedback ? 'passed' : 'warning') : navigationError ? 'warning' : 'passed',

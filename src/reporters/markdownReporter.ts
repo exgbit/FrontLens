@@ -42,6 +42,51 @@ function formatDetails(value: unknown): string {
   }
 }
 
+function portablePath(filePath: string): string {
+  return filePath.replace(/\\/g, '/');
+}
+
+function isWindowsAbsolutePath(filePath: string): boolean {
+  return /^[A-Za-z]:[\\/]/.test(filePath) || /^\\\\/.test(filePath);
+}
+
+function safeRelative(relativePath: string): string | undefined {
+  if (relativePath === '') return '.';
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath) || isWindowsAbsolutePath(relativePath)) return undefined;
+  return relativePath;
+}
+
+export function reportArtifactPath(outputDir: string | undefined, filePath: string | undefined): string | undefined {
+  if (!filePath) return undefined;
+  if (path.isAbsolute(filePath) && outputDir) {
+    const relative = path.relative(outputDir, filePath);
+    const safe = safeRelative(relative);
+    if (safe !== undefined) {
+      return portablePath(safe);
+    }
+  }
+  if (outputDir && isWindowsAbsolutePath(filePath) && isWindowsAbsolutePath(outputDir)) {
+    const relative = path.win32.relative(outputDir, filePath);
+    const safe = safeRelative(relative);
+    if (safe !== undefined) {
+      return portablePath(safe);
+    }
+  }
+  if (outputDir) {
+    const normalizedOutput = portablePath(outputDir).replace(/\/+$/, '');
+    const normalizedFile = portablePath(filePath);
+    if (normalizedFile === normalizedOutput) return '.';
+    if (normalizedOutput && normalizedFile.startsWith(`${normalizedOutput}/`)) {
+      return normalizedFile.slice(normalizedOutput.length + 1);
+    }
+  }
+  return portablePath(filePath);
+}
+
+function reportPath(result: QaResult, filePath: string | undefined): string | undefined {
+  return reportArtifactPath(result.artifacts.outputDir, filePath);
+}
+
 function formatIssueTable(issues: Issue[]): string {
   if (issues.length === 0) {
     return '未发现该类问题。\n';
@@ -57,7 +102,7 @@ function formatIssueTable(issues: Issue[]): string {
   return ['| ID | 等级 | 类型 | 问题 | 置信度 |', '| --- | --- | --- | --- | --- |', ...rows, ''].join('\n');
 }
 
-function formatIssueDetails(issues: Issue[]): string {
+function formatIssueDetails(result: QaResult, issues: Issue[]): string {
   if (issues.length === 0) {
     return '';
   }
@@ -67,8 +112,8 @@ function formatIssueDetails(issues: Issue[]): string {
     .sort((a, b) => issuePriority(a) - issuePriority(b))
     .map((issue) => {
       const evidenceLines = [
-        issue.evidence.screenshot ? `- Screenshot: \`${issue.evidence.screenshot}\`` : undefined,
-        issue.evidence.dom ? `- DOM: \`${issue.evidence.dom}\`` : undefined,
+        issue.evidence.screenshot ? `- Screenshot: \`${reportPath(result, issue.evidence.screenshot)}\`` : undefined,
+        issue.evidence.dom ? `- DOM: \`${reportPath(result, issue.evidence.dom)}\`` : undefined,
         issue.evidence.networkRequestId ? `- Network Request: \`${issue.evidence.networkRequestId}\`` : undefined,
         issue.evidence.consoleId ? `- Console: \`${issue.evidence.consoleId}\`` : undefined,
         issue.evidence.pageErrorId ? `- Page Error: \`${issue.evidence.pageErrorId}\`` : undefined,
@@ -257,7 +302,7 @@ function formatResponsiveChecks(result: QaResult): string {
 
   const rows = result.responsiveChecks.map((check) => {
     const status = check.horizontalOverflow || check.clippedInteractiveCount > 0 || check.tableOverflowCount > 0 ? '异常' : check.smallTapTargetCount > 0 ? '注意' : '通过';
-    return `| ${check.name} | ${check.width}x${check.height} | ${status} | ${check.horizontalOverflow ? '是' : '否'} | ${check.clippedInteractiveCount} | ${check.smallTapTargetCount} | ${check.tableOverflowCount} | ${check.screenshot ? `\`${check.screenshot}\`` : '-'} |`;
+    return `| ${check.name} | ${check.width}x${check.height} | ${status} | ${check.horizontalOverflow ? '是' : '否'} | ${check.clippedInteractiveCount} | ${check.smallTapTargetCount} | ${check.tableOverflowCount} | ${check.screenshot ? `\`${reportPath(result, check.screenshot)}\`` : '-'} |`;
   });
 
   return `## 四、响应式测试
@@ -373,11 +418,11 @@ ${gqlRows.length ? ['| ID | Type | Operation | Status | Errors | Request |', '| 
 
 function formatP2Summary(result: QaResult): string {
   const budgets = result.p2.budgets.map((item) => `| ${item.metric} | ${item.actual}${item.unit} | ${item.budget}${item.unit} | ${item.status} |`);
-  const network = result.p2.networkProfiles.map((item) => `| ${item.profile} | ${item.status} | ${markdownEscape(item.observations.join('; ') || item.error || '-')} | ${item.screenshot ? `\`${item.screenshot}\`` : '-'} |`);
+  const network = result.p2.networkProfiles.map((item) => `| ${item.profile} | ${item.status} | ${markdownEscape(item.observations.join('; ') || item.error || '-')} | ${item.screenshot ? `\`${reportPath(result, item.screenshot)}\`` : '-'} |`);
   return `## 十、P2 测试增强
 
 - Visual：${result.p2.visual.status}，${result.p2.visual.message ?? '-'}
-- Visual current：${result.p2.visual.currentScreenshot ? `\`${result.p2.visual.currentScreenshot}\`` : '-'}
+- Visual current：${result.p2.visual.currentScreenshot ? `\`${reportPath(result, result.p2.visual.currentScreenshot)}\`` : '-'}
 
 ### 性能预算
 
@@ -513,7 +558,7 @@ function formatArtifacts(result: QaResult): string {
   const entries = Object.entries(result.artifacts).filter(([, value]) => typeof value === 'string' && value);
   return `## 十九、证据索引
 
-${entries.map(([key, value]) => `- ${key}: \`${value}\``).join('\n')}
+${entries.map(([key, value]) => `- ${key}: \`${reportPath(result, value as string)}\``).join('\n')}
 `;
 }
 
@@ -580,25 +625,25 @@ ${formatAiAnalysis(result)}
 
 ${formatIssueTable(frontendIssues)}
 
-${formatIssueDetails(frontendIssues)}
+${formatIssueDetails(result, frontendIssues)}
 
 ### 后端接口问题
 
 ${formatIssueTable(backendIssues)}
 
-${formatIssueDetails(backendIssues)}
+${formatIssueDetails(result, backendIssues)}
 
 ### 前后端联动问题
 
 ${formatIssueTable(integrationIssues)}
 
-${formatIssueDetails(integrationIssues)}
+${formatIssueDetails(result, integrationIssues)}
 
 ### 安全扫描问题
 
 ${formatIssueTable(securityIssues)}
 
-${formatIssueDetails(securityIssues)}
+${formatIssueDetails(result, securityIssues)}
 
 ${formatNetworkSummary(result)}
 

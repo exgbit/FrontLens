@@ -117,8 +117,19 @@ For every retained frontend fix, include:
 - minimal fix suggestion
 - verification/rerun command
 
+For every retained or passed business requirement, include a confidence label:
+
+- `runtime-verified`: include exact screenshot/DOM selector/network request IDs and source lines.
+- `runtime-partial`: include what was verified and what was blocked.
+- `static-source-only`: include source/chunk evidence and state that runtime behavior/data/export was not proven.
+- `not-verified`: include the blocker, such as login state, missing storageState, branch mismatch, download not allowed, or target route not reached.
+
+Never report "business function validation passed with 100% confidence" from static source/chunk inspection alone. Runtime business validation requires the target page state, relevant API response, visible UI result, and any export/download artifact when export is part of the requirement.
+
 Before listing fixes, group raw browser issues by implementation root cause. For example, if `useXxx()` captures `error` but the page never renders it, group api-500/api-401/api-403/api-404/timeout no-feedback findings under one frontend fix and list the raw issue IDs / exception IDs as supporting evidence. Keep scenario-specific severity in evidence, but present one actionable fix unless separate source paths prove separate causes.
 
 When the source reveals the same unhandled-state pattern may exist on adjacent pages that share a composable, report it as "adjacent risk / optional sweep" unless the current route or user request covers those pages. This keeps page-specific findings compatible with future runs on different pages.
 
 For false positives, include the raw issue id and the exact contradiction: source line, exception simulation id, scan phase, ADR, or deployment ownership.
+
+For artifact evidence, cite report-relative paths and only cite files that exist. If a report generated on another OS uses absolute paths such as `D:\...` or `/tmp/...`, rewrite them to report-relative paths when possible; otherwise mark them as non-portable artifact references.

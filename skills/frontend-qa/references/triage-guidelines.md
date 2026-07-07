@@ -20,6 +20,15 @@ Also add a **root-cause grouping** before the final fix list:
 - Count work by root cause, not by raw issue IDs or `fixTasks[]` length. `fixTasks[]` is machine-oriented and may intentionally contain per-scenario tasks.
 - If a generated suggestion does not match the issue category or evidence, mark it as template noise and replace it with a source/evidence-specific fix.
 
+Add an **evidence confidence** label to any business-function conclusion:
+
+- `runtime-verified`: the browser reached the target state and FrontLens captured DOM/screenshot/network/console evidence for that exact behavior.
+- `runtime-partial`: the page booted but login, permissions, downloads, destructive safety policy, or missing data prevented full verification.
+- `static-source-only`: conclusion is based only on source/chunk/code inspection; useful for syntax/import/config issues, but not enough to say the user-facing business flow passed.
+- `not-verified`: the runtime path was not reached. Do not say business validation passed or use 100% confidence.
+
+For product/design/style findings, default to **Product decision / optional** unless there is evidence that the style blocks a core task, violates an explicit ADR/accessibility requirement, or causes measurable usability failure. Avoid turning subjective visual density or color hierarchy into mandatory defects.
+
 ## Common false positives and downgrades
 
 1. **Synthetic network profiles**
@@ -57,6 +66,11 @@ Also add a **root-cause grouping** before the final fix list:
    - Do not convert skipped interactions to defects. Mention coverage gaps only when the user asked for journey coverage.
    - If all or most IT-* checks are skipped, explicitly state that search/forms/drawers/table actions were not covered by automation; do not imply the interaction layer is fully verified.
 
+8. **Artifact links and copied reports**
+   - Before citing a screenshot/video/trace path, verify that the file exists in the report directory.
+   - Prefer paths relative to the report directory, for example `screenshots/page-full.png`, so reports remain usable after being copied between machines.
+   - If a referenced artifact is missing, mark it as a tool/reporting issue and do not use it as evidence.
+
 ## Source-code cross-check pattern
 
 When the repository or source files are available, verify high-impact findings against implementation before finalizing issue status. Do not retain a frontend-code defect solely from browser heuristics when source evidence contradicts it.
@@ -64,6 +78,7 @@ When the repository or source files are available, verify high-impact findings a
 - Error handling: does the composable/store keep an `error` state, and does the view render it with retry?
 - Loading/empty distinction: can users distinguish loading, empty, permission denied, and failed API states?
 - Shared error-handling pattern: if the same composable/http/store pattern is reused by sibling pages, mention it as an adjacent-risk sweep, but do not file it as a defect for the current page without source evidence.
+- Business requirement validation: distinguish runtime proof from source-only proof. Static source/chunk evidence can detect syntax errors, missing imports, missing columns, or unreachable code, but it cannot prove API data correctness, export file contents, permissions, or full business workflow success.
 - Accessibility: do icon-only buttons have `aria-label` or visible text? Are tap targets large enough on mobile?
 - API calls: is `load()` triggered once per mount, or repeated by watchers/effects? Are retries/debounces intentional?
 - Bundle size: check router lazy loading, route/component dynamic imports, UI library import style, and CSS theme inclusion before blaming one page. When raw dev-server performance issues are false, still retain source-confirmed eager routing or heavy feature import problems as source-discovered issues.
@@ -74,6 +89,8 @@ When the repository or source files are available, verify high-impact findings a
 Use final statuses: `confirmed-by-code`, `source-discovered`, `contradicted-by-code`, `deployment-only`, `product-or-ADR-tradeoff`, `synthetic-or-tool-limitation`, or `insufficient-source-coverage`.
 
 For every retained frontend issue, include file paths and line numbers. For every rejected issue, include the contradiction source: source file, scan phase, exception id, ADR, or deployment ownership.
+
+Avoid speculative wording. Use "confirmed", "source-discovered", "not verified", or "requires runtime/auth rerun" instead of assuming hidden backend data, product intent, or user behavior. If the scanner says "API has data but page empty", verify the exact network response, DOM state, screenshot, and source rendering branch before retaining it.
 
 ## Final report format
 

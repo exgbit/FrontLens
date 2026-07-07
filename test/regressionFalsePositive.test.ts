@@ -20,6 +20,7 @@ import { hasSensitivePayloadSignal, hasSensitiveUrlSignal, runSecurityScanner } 
 import { shouldBlockMutatingRequest } from '../src/runner.ts';
 import { redactText, redactUrl } from '../src/utils/redact.ts';
 import { isNativeResourceLoadConsole } from '../src/utils/console.ts';
+import { reportArtifactPath } from '../src/reporters/markdownReporter.ts';
 import type { AnalyzerContext, Issue, NetworkRecord, PageModel } from '../src/types.ts';
 
 function networkRecord(input: Partial<NetworkRecord> & { id: string; url: string }): NetworkRecord {
@@ -175,6 +176,21 @@ test('P2 transfer budget is skipped for Vite dev server runs', async () => {
   const output = await new P2Tester(config, {}, performance, records).run({} as never, {} as never);
   assert.equal(output.result.budgets.some((item) => item.metric === 'totalTransfer'), false);
   assert.equal(output.issues.some((issue) => /totalTransfer/.test(issue.title)), false);
+});
+
+test('markdown report artifact paths are portable and relative to output directory', () => {
+  assert.equal(
+    reportArtifactPath(
+      'D:\\tom_code\\tyerp\\reports\\frontlens\\profit-cost-quantity-20260707\\order-profit',
+      'D:\\tom_code\\tyerp\\reports\\frontlens\\profit-cost-quantity-20260707\\order-profit\\screenshots\\page-full.png'
+    ),
+    'screenshots/page-full.png'
+  );
+  assert.equal(
+    reportArtifactPath('/tmp/frontlens/order-profit', '/tmp/frontlens/order-profit/screenshots/responsive/mobile-390x844.png'),
+    'screenshots/responsive/mobile-390x844.png'
+  );
+  assert.equal(reportArtifactPath('/tmp/frontlens/order-profit', '/tmp/frontlens/order-profit'), '.');
 });
 
 test('phase-owned journey requests are ignored by duplicate-request heuristic', () => {

@@ -482,6 +482,18 @@ function classifyPerformance(issue: Issue, rootCauseGroupId?: string): IssueDisp
   if (!['frontend-performance', 'resource-performance', 'resource-loading'].includes(String(issue.category))) return undefined;
   const text = `${textOf(issue)} ${issue.evidence.resourceUrl ?? ''}`.toLowerCase();
   const details = detailsOf(issue);
+  if (typeof details.sourceFindingId === 'string' && typeof details.sourceFile === 'string') {
+    return makeItem(issue, {
+      status: 'confirmed',
+      bucket: 'real-frontend-fix',
+      actionability: 'actionable',
+      owner: 'frontend',
+      evidenceStrength: 'strong',
+      reason: '该性能项来自 sourceAnalysis 的源码 file:line 证据，不依赖 dev-server 请求数或传输体积；属于可复核的源码级优化点。',
+      nextStep: '按 sourceFile/line 修复静态路由导入、重型依赖或首屏静态引入，并用 build + preview 的 bundle/coverage 回归确认收益。',
+      rootCauseGroupId
+    });
+  }
   if (/\/src\/|@vite\/client|node_modules\/\.vite|hmr|vite dev/.test(text)) {
     return makeItem(issue, {
       status: 'tool-limitation',

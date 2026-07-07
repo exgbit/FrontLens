@@ -176,6 +176,110 @@ test('dev server module graph does not become production request or transfer fin
   assert.equal(analyzePerformance(ctx, factory).some((issue) => /传输体积过大/.test(issue.title)), false);
 });
 
+test('source-confirmed eager route imports stay proof-ready while vite dev resources stay noise', () => {
+  const result = normalizeResult({
+    summary: {
+      url: 'http://127.0.0.1:5173/credentials',
+      title: 'Credentials',
+      testedAt: '2026-07-07T00:00:00.000Z',
+      browser: 'chromium',
+      viewport: { width: 1440, height: 900 }
+    },
+    metadata: {
+      config: {
+        source: { enabled: true, root: '/repo' }
+      }
+    },
+    sourceAnalysis: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '2026-07-07T00:00:00.000Z',
+      root: '/repo',
+      scannedFiles: 3,
+      scannedBytes: 1200,
+      summary: {
+        routeFileCount: 1,
+        routeCount: 2,
+        eagerRouteImportCount: 2,
+        heavyImportCount: 0,
+        apiCallCount: 0,
+        errorStateSignalCount: 0,
+        emptyStateSignalCount: 0
+      },
+      routeFiles: ['src/router/index.ts'],
+      routes: [],
+      imports: [],
+      apiCalls: [],
+      stateSignals: [],
+      findings: [
+        {
+          id: 'SRC-001',
+          kind: 'eager-route-imports',
+          severity: 'low',
+          title: '源码发现路由组件静态导入：2 个',
+          locations: [{ file: 'src/router/index.ts', line: 2 }],
+          details: {}
+        }
+      ],
+      issues: []
+    },
+    issues: [
+      {
+        id: 'SOURCE-SRC-001',
+        title: '源码发现路由组件静态导入：2 个',
+        category: 'frontend-performance',
+        severity: 'low',
+        confidence: 0.86,
+        description: '源码扫描发现路由文件静态 import 多个页面组件，当前路由可能被迫加载无关页面代码。',
+        evidence: {
+          details: {
+            sourceFindingId: 'SRC-001',
+            sourceFile: 'src/router/index.ts',
+            line: 2,
+            imports: [{ file: 'src/router/index.ts', line: 2, source: '../views/CredentialsView.vue' }]
+          }
+        },
+        reproduceSteps: ['检查源码文件 src/router/index.ts'],
+        reason: '静态路由组件导入会削弱路由级拆包，dev-server 噪音降级后仍可能代表真实源码级性能问题。',
+        suggestion: {
+          frontend: '将非当前首屏必需的 route component 改为 component: () => import(...)，并在 build + preview 下复测 bundle/coverage。',
+          test: '补充 sourceAnalysis + build/preview coverage 回归。',
+          priority: 'P3'
+        }
+      },
+      {
+        id: 'DEV-RESOURCE',
+        title: '未使用JS资源偏多：http://127.0.0.1:5173/src/App.vue',
+        category: 'resource-performance',
+        severity: 'low',
+        confidence: 0.72,
+        description: 'Vite dev module coverage noise.',
+        evidence: {
+          resourceUrl: 'http://127.0.0.1:5173/src/App.vue',
+          details: { coverageEntry: { url: 'http://127.0.0.1:5173/src/App.vue' } }
+        },
+        reproduceSteps: ['打开 Vite dev 页面'],
+        reason: 'dev server module graph noise.',
+        suggestion: {
+          frontend: '对该脚本做代码分割。',
+          priority: 'P3'
+        }
+      }
+    ]
+  });
+
+  const sourceDisposition = result.issueDisposition.items.find((item) => item.issueId === 'SOURCE-SRC-001');
+  const devDisposition = result.issueDisposition.items.find((item) => item.issueId === 'DEV-RESOURCE');
+  assert.equal(sourceDisposition?.status, 'confirmed');
+  assert.equal(sourceDisposition?.actionability, 'actionable');
+  assert.equal(sourceDisposition?.bucket, 'real-frontend-fix');
+  assert.equal(devDisposition?.status, 'tool-limitation');
+  assert.equal(devDisposition?.actionability, 'non-actionable');
+  assert.equal(result.rootCauseGroups.some((group) => group.sourceLocations.some((location) => location.file === 'src/router/index.ts' && location.line === 2)), true);
+  assert.equal(result.professionalSummary.counts.proofReadyRootCauseCount, 1);
+  assert.equal(result.professionalSummary.shouldFix.some((item) => item.issueIds?.includes('SOURCE-SRC-001')), true);
+});
+
 test('environment assessment identifies Vite dev server and lowers production trust', () => {
   const config = createDefaultConfig('http://127.0.0.1:5173/credentials');
   const pageModel: PageModel = {

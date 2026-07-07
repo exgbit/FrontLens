@@ -41,6 +41,7 @@ import { buildQaIntake } from './intake/qaIntake.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildRiskRegister } from './risk/riskRegister.js';
+import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
@@ -911,6 +912,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     artifactIntegrity: initialArtifactIntegrity
   });
 
+  const riskAcceptance = buildRiskAcceptance({ riskRegister });
+
   const result: QaResult = {
     summary,
     pageModel,
@@ -963,6 +966,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     qaPlan,
     qaCoverage,
     riskRegister,
+    riskAcceptance,
     reportContentAudit: createSkippedReportContentAudit(resultConfig.report.profile),
     journeyAssertionAudit,
     professionalSummary,

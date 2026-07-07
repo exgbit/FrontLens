@@ -37,6 +37,8 @@ const FILE_ARTIFACT_KEYS = [
   'qaCoverageLog',
   'riskRegister',
   'riskRegisterLog',
+  'riskAcceptance',
+  'riskAcceptanceLog',
   'regressionPlanLog',
   'scopeReview',
   'scopeReviewLog',

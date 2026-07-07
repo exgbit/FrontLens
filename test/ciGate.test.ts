@@ -266,6 +266,35 @@ test('professional CI gate fails on blocked risk register', () => {
   assert.equal(gate.professionalContractFailures.some((item) => item.includes('riskRegister is blocked')), true);
 });
 
+test('professional CI gate fails on blocked risk acceptance checklist', () => {
+  const result = {
+    issues: [],
+    summary: summary({ score: 100, adjustedScore: 100, issueCount: 0, adjustedIssueCount: 0, highCount: 0 }),
+    issueDisposition: disposition([], {}),
+    riskAcceptance: {
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      status: 'blocked' as const,
+      summary: {
+        itemCount: 1,
+        mustMitigateCount: 1,
+        acceptanceRequiredCount: 0,
+        acceptedCount: 0,
+        rejectedCount: 0,
+        deferredCount: 0,
+        releaseBlockingCount: 1
+      },
+      items: [],
+      notes: []
+    }
+  };
+
+  const gate = evaluateQaCiGate({ result, minScore: 80, mode: 'professional' });
+
+  assert.equal(gate.status, 'failed');
+  assert.equal(gate.failedByProfessionalContract, true);
+  assert.equal(gate.professionalContractFailures.some((item) => item.includes('riskAcceptance is blocked')), true);
+});
+
 test('matrix CI gate uses actionable counts and adjusted score by default', () => {
   const item = {
     success: true,

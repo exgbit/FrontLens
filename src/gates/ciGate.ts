@@ -48,7 +48,7 @@ function hasSeverityAtOrAbove(counts: Record<Severity, number>, failOn: Severity
   return severities.some((severity) => severityRank[severity] <= severityRank[failOn] && counts[severity] > 0);
 }
 
-type ProfessionalContractInput = Partial<Pick<QaResult, 'artifactIntegrity' | 'claimGuard' | 'qaCoverage' | 'qaIntake' | 'qaSignoff' | 'qualityGate' | 'reportContentAudit' | 'journeyAssertionAudit' | 'riskRegister'>>;
+type ProfessionalContractInput = Partial<Pick<QaResult, 'artifactIntegrity' | 'claimGuard' | 'qaCoverage' | 'qaIntake' | 'qaSignoff' | 'qualityGate' | 'reportContentAudit' | 'journeyAssertionAudit' | 'riskRegister' | 'riskAcceptance'>>;
 
 function professionalContractFailures(result: ProfessionalContractInput): string[] {
   const failures: string[] = [];
@@ -79,6 +79,9 @@ function professionalContractFailures(result: ProfessionalContractInput): string
   }
   if (result.riskRegister?.status === 'blocked') {
     failures.push(`riskRegister is blocked (${result.riskRegister.summary.releaseBlockingCount} release-blocking risk(s)).`);
+  }
+  if (result.riskAcceptance?.status === 'blocked') {
+    failures.push(`riskAcceptance is blocked (${result.riskAcceptance.summary.mustMitigateCount} must-mitigate risk(s)).`);
   }
   return failures;
 }
@@ -111,7 +114,7 @@ export function evaluateQaCiGate(input: {
     notes: mode === 'professional'
       ? [
           'Professional gate uses adjustedScore and actionable+proof-ready findings only; raw deployment/product/tool/needs-evidence findings do not fail CI.',
-          'Professional gate also fails on report/sign-off contract blockers such as failed reportContentAudit, failed journeyAssertionAudit, qaSignoff, qualityGate, artifactIntegrity, claimGuard, qaIntake, riskRegister, or failed/insufficient qaCoverage.'
+          'Professional gate also fails on report/sign-off contract blockers such as failed reportContentAudit, failed journeyAssertionAudit, qaSignoff, qualityGate, artifactIntegrity, claimGuard, qaIntake, riskRegister, riskAcceptance, or failed/insufficient qaCoverage.'
         ]
       : ['Raw gate uses raw score and all raw findings for backward-compatible scanner behavior.']
   };

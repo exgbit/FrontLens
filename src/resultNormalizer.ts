@@ -48,8 +48,9 @@ import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 import { buildRiskRegister } from './risk/riskRegister.js';
+import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 
-export const RESULT_SCHEMA_VERSION = '1.64.0';
+export const RESULT_SCHEMA_VERSION = '1.65.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1387,6 +1388,7 @@ export function normalizeResult(raw: unknown): QaResult {
     testData,
     artifactIntegrity
   });
+  const riskAcceptance = buildRiskAcceptance({ riskRegister });
   const reportContentAudit = normalizeReportContentAudit(raw.reportContentAudit, metadataConfig.report.profile);
 
   return {
@@ -1424,6 +1426,7 @@ export function normalizeResult(raw: unknown): QaResult {
     qaPlan,
     qaCoverage,
     riskRegister,
+    riskAcceptance,
     reportContentAudit,
     journeyAssertionAudit,
     professionalSummary,

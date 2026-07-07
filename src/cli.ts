@@ -1265,6 +1265,8 @@ async function main(): Promise<void> {
     console.log(`Fix tasks: ${result.fixTasks.length}`);
     console.log(`Professional Summary: ${result.professionalSummary.status}, must-fix ${result.professionalSummary.mustFix.length}, non-defect buckets ${result.professionalSummary.nonDefectObservations.length}`);
     console.log(`Regression Plan: ${result.regressionPlan.status}, items ${result.regressionPlan.summary.itemCount}, blocked ${result.regressionPlan.summary.blockedCount}`);
+    console.log(`Risk Register: ${result.riskRegister.status}, risks ${result.riskRegister.summary.totalCount}, release-blocking ${result.riskRegister.summary.releaseBlockingCount}`);
+    console.log(`Risk Acceptance: ${result.riskAcceptance.status}, must-mitigate ${result.riskAcceptance.summary.mustMitigateCount}, needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}`);
     console.log(`QA Gate: ${result.qualityGate.status}, confidence ${result.qualityGate.confidence}`);
     console.log(`QA Sign-off: ${result.qaSignoff.status}, confidence ${result.qaSignoff.confidence}, business ${result.qaSignoff.businessValidationConfidence}`);
     console.log(`Issues: ${result.summary.issueCount} (critical ${result.summary.criticalCount}, high ${result.summary.highCount}, medium ${result.summary.mediumCount}, low ${result.summary.lowCount})`);
@@ -1276,6 +1278,8 @@ async function main(): Promise<void> {
     console.log(`Defect Proof: ${result.artifacts.defectProof ?? '(disabled)'}`);
     console.log(`Report Content Audit: ${result.artifacts.reportContentAudit ?? '(disabled)'}`);
     console.log(`Journey Assertion Audit: ${result.artifacts.journeyAssertionAudit ?? '(disabled)'}`);
+    console.log(`Risk Register: ${result.artifacts.riskRegister ?? '(disabled)'}`);
+    console.log(`Risk Acceptance: ${result.artifacts.riskAcceptance ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

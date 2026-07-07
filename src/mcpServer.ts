@@ -508,6 +508,14 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           headline: result.professionalSummary.headline,
           counts: result.professionalSummary.counts
         },
+        riskRegister: {
+          status: result.riskRegister.status,
+          summary: result.riskRegister.summary
+        },
+        riskAcceptance: {
+          status: result.riskAcceptance.status,
+          summary: result.riskAcceptance.summary
+        },
         qualityGate: result.qualityGate,
         qaSignoff: result.qaSignoff,
         regressionPlan: {
@@ -577,6 +585,8 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         professionalSummary: result.professionalSummary,
         qaPlan: result.qaPlan,
         qaCoverage: result.qaCoverage,
+        riskRegister: result.riskRegister,
+        riskAcceptance: result.riskAcceptance,
         qualityGate: result.qualityGate,
         qaSignoff: result.qaSignoff,
         regressionPlan: result.regressionPlan

@@ -1711,6 +1711,42 @@ export interface RiskRegisterResult {
   notes: string[];
 }
 
+export type RiskAcceptanceDecision = 'must-mitigate' | 'needs-acceptance' | 'accepted' | 'rejected' | 'deferred';
+export type RiskAcceptanceApprover = 'product' | 'qa' | 'engineering' | 'security' | 'release-manager';
+
+export interface RiskAcceptanceItem {
+  id: string;
+  riskId: string;
+  title: string;
+  category: RiskRegisterCategory;
+  level: RiskRegisterItem['level'];
+  blocksRelease: boolean;
+  owner: RiskRegisterItem['owner'];
+  decision: RiskAcceptanceDecision;
+  requiredApprovers: RiskAcceptanceApprover[];
+  acceptanceCriteria: string[];
+  minimumEvidence: string[];
+  mitigationRequired: boolean;
+  expiry: string;
+  notes: string[];
+}
+
+export interface RiskAcceptanceResult {
+  generatedAt: string;
+  status: 'not-needed' | 'needs-acceptance' | 'blocked';
+  summary: {
+    itemCount: number;
+    mustMitigateCount: number;
+    acceptanceRequiredCount: number;
+    acceptedCount: number;
+    rejectedCount: number;
+    deferredCount: number;
+    releaseBlockingCount: number;
+  };
+  items: RiskAcceptanceItem[];
+  notes: string[];
+}
+
 export type ProfessionalSummaryItemKind =
   | 'defect'
   | 'coverage-gap'
@@ -2150,6 +2186,8 @@ export interface ArtifactIndex {
   qaCoverage?: string;
   /** Release risk register Markdown. */
   riskRegister?: string;
+  /** Risk acceptance / must-mitigate decision checklist Markdown. */
+  riskAcceptance?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -2175,6 +2213,7 @@ export interface ArtifactIndex {
   qaPlanLog?: string;
   qaCoverageLog?: string;
   riskRegisterLog?: string;
+  riskAcceptanceLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2336,6 +2375,7 @@ export interface QaResult {
   qaPlan: QaExecutionPlanResult;
   qaCoverage: QaCoverageMatrixResult;
   riskRegister: RiskRegisterResult;
+  riskAcceptance: RiskAcceptanceResult;
   reportContentAudit: ReportContentAuditResult;
   journeyAssertionAudit: JourneyAssertionAuditResult;
   professionalSummary: ProfessionalSummaryResult;

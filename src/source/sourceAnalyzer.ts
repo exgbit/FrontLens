@@ -269,6 +269,10 @@ function extractTemplate(content: string): string {
   return /<template[^>]*>([\s\S]*?)<\/template>/i.exec(content)?.[1] ?? '';
 }
 
+function stripScriptTags(content: string): string {
+  return content.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+}
+
 function firstLineMatching(lines: string[], pattern: RegExp, startIndex = 0, endIndex = lines.length): SourceLocation | undefined {
   const index = lines.findIndex((line, currentIndex) => currentIndex >= startIndex && currentIndex < endIndex && pattern.test(line));
   return index >= 0 ? { file: '', line: index + 1 } : undefined;
@@ -286,19 +290,82 @@ function firstLineMatchingOutsideRange(lines: string[], pattern: RegExp, range: 
   return index >= 0 ? { file: '', line: index + 1 } : undefined;
 }
 
+function firstLineMatchingOutsideRanges(lines: string[], pattern: RegExp, ranges: Array<{ start: number; end: number }>): SourceLocation | undefined {
+  const inRange = (index: number): boolean => ranges.some((range) => index >= range.start && index < range.end);
+  const index = lines.findIndex((line, currentIndex) => !inRange(currentIndex) && pattern.test(line));
+  return index >= 0 ? { file: '', line: index + 1 } : undefined;
+}
+
+function jsxRenderLineRanges(lines: string[]): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  let start = -1;
+  let parenDepth = 0;
+  for (const [index, line] of lines.entries()) {
+    const starts = /\breturn\s*\(/.test(line) || /=>\s*\(/.test(line) || /\breturn\s*</.test(line) || /=>\s*</.test(line);
+    if (start < 0 && starts) {
+      start = index;
+      parenDepth = Math.max(1, (line.match(/\(/g)?.length ?? 0) - (line.match(/\)/g)?.length ?? 0));
+    } else if (start >= 0) {
+      parenDepth += (line.match(/\(/g)?.length ?? 0) - (line.match(/\)/g)?.length ?? 0);
+    }
+    if (start >= 0 && ((parenDepth <= 0 && /[);]\s*$/.test(line.trim())) || /^\s*\)\s*;?\s*$/.test(line))) {
+      ranges.push({ start, end: index + 1 });
+      start = -1;
+      parenDepth = 0;
+    }
+  }
+  if (start >= 0) ranges.push({ start, end: lines.length });
+  return ranges;
+}
+
+function contentFromRanges(lines: string[], ranges: Array<{ start: number; end: number }>): string {
+  return ranges.flatMap((range) => lines.slice(range.start, range.end)).join('\n');
+}
+
+function firstLineMatchingRanges(lines: string[], ranges: Array<{ start: number; end: number }>, pattern: RegExp): SourceLocation | undefined {
+  for (const range of ranges) {
+    const match = firstLineMatching(lines, pattern, range.start, range.end);
+    if (match) return match;
+  }
+  return undefined;
+}
+
 function parseErrorStateGapFindings(rel: string, content: string, lines: string[]): SourceAnalysisResult['findings'] {
-  if (!/\.vue$/i.test(rel) || !/<template/i.test(content)) return [];
-  const template = extractTemplate(content);
-  const script = stripTemplate(content);
-  const range = templateLineRange(lines);
+  const isVue = /\.vue$/i.test(rel) && /<template/i.test(content);
+  const isSvelte = /\.svelte$/i.test(rel);
+  const isJsx = /\.(tsx|jsx)$/i.test(rel) && /<[A-Za-z][\w.:-]/.test(content);
+  if (!isVue && !isSvelte && !isJsx) return [];
+
+  let template = '';
+  let script = '';
+  let scriptErrorLine: SourceLocation | undefined;
+  let templateEmptyLine: SourceLocation | undefined;
+
+  if (isVue) {
+    const range = templateLineRange(lines);
+    template = extractTemplate(content);
+    script = stripTemplate(content);
+    scriptErrorLine = firstLineMatchingOutsideRange(lines, /\b(error|err|catch|onError|ApiError|异常|错误|失败)\b/i, range);
+    templateEmptyLine = firstLineMatching(lines, /暂无|无数据|没有数据|empty|no data|not found|未找到/i, range.start, range.end);
+  } else if (isSvelte) {
+    template = stripScriptTags(content);
+    script = content.match(/<script\b[\s\S]*?<\/script>/i)?.[0] ?? content;
+    scriptErrorLine = firstLineMatching(lines, /\b(error|err|catch|onError|ApiError|异常|错误|失败)\b/i);
+    templateEmptyLine = firstLineMatching(lines, /暂无|无数据|没有数据|empty|no data|not found|未找到/i);
+  } else {
+    const ranges = jsxRenderLineRanges(lines);
+    template = contentFromRanges(lines, ranges);
+    script = lines.filter((_, index) => !ranges.some((range) => index >= range.start && index < range.end)).join('\n');
+    scriptErrorLine = firstLineMatchingOutsideRanges(lines, /\b(error|err|catch|onError|ApiError|异常|错误|失败)\b/i, ranges) ?? firstLineMatching(lines, /\b(error|err|catch|onError|ApiError|异常|错误|失败)\b/i);
+    templateEmptyLine = firstLineMatchingRanges(lines, ranges, /暂无|无数据|没有数据|empty|no data|not found|未找到/i);
+  }
+
   const hasSourceErrorHandling = /\b(error|err|catch|onError|ApiError|异常|错误|失败)\b/i.test(script);
   const hasErrorLikeState = /\b(error|err|hasError|loadError|apiError)\b/i.test(script);
   const hasVisibleEmptyState = /暂无|无数据|没有数据|empty|no data|not found|未找到/i.test(template);
   const hasTemplateErrorFeedback = /\b(error|err|hasError|loadError|apiError|retry|reload|refresh)\b|错误|失败|异常|出错|重试|重新加载|刷新|无权限|未登录|网络/i.test(template);
   if (!hasSourceErrorHandling || !hasErrorLikeState || !hasVisibleEmptyState || hasTemplateErrorFeedback) return [];
 
-  const scriptErrorLine = firstLineMatchingOutsideRange(lines, /\b(error|err|catch|onError|ApiError|异常|错误|失败)\b/i, range);
-  const templateEmptyLine = firstLineMatching(lines, /暂无|无数据|没有数据|empty|no data|not found|未找到/i, range.start, range.end);
   const locations: SourceLocation[] = [];
   if (scriptErrorLine) locations.push({ file: rel, line: scriptErrorLine.line });
   if (templateEmptyLine) locations.push({ file: rel, line: templateEmptyLine.line });

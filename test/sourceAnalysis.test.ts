@@ -102,6 +102,51 @@ test('source analysis skips cleanly without a source root', async () => {
   assert.equal(issues.length, 0);
 });
 
+test('source analysis detects JSX error state gaps but ignores rendered error feedback', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-source-jsx-gap-'));
+  await mkdir(path.join(dir, 'src/pages'), { recursive: true });
+  await writeFile(
+    path.join(dir, 'src/pages/OrdersPage.tsx'),
+    `
+export function OrdersPage() {
+  const { orders, error } = useOrders();
+  if (error) {
+    // tracked for telemetry, but not rendered for users
+  }
+  return (
+    <section>
+      {orders.length === 0 ? <p>No data</p> : orders.map((order) => <span key={order.id}>{order.name}</span>)}
+    </section>
+  );
+}
+`,
+    'utf8'
+  );
+  await writeFile(
+    path.join(dir, 'src/pages/UsersPage.tsx'),
+    `
+export function UsersPage() {
+  const { users, error, retry } = useUsers();
+  if (error) {
+    return <Alert role="alert" message={error.message} action={<button onClick={retry}>Retry</button>} />;
+  }
+  return <section>{users.length === 0 ? <p>No data</p> : <UserList users={users} />}</section>;
+}
+`,
+    'utf8'
+  );
+
+  const config = createDefaultConfig('https://example.com/orders');
+  config.source.root = dir;
+  const { result } = await analyzeSource(config);
+
+  const findings = result.findings.filter((finding) => finding.kind === 'error-state-gap');
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].locations[0].file, 'src/pages/OrdersPage.tsx');
+  assert.deepEqual(findings[0].details.tokens, ['orders']);
+  assert.match(JSON.stringify(findings[0].details.samples), /No data/);
+});
+
 test('source runtime correlation links network responses to source API and UI hints', () => {
   const sourceAnalysis: SourceAnalysisResult = {
     enabled: true,

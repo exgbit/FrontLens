@@ -415,6 +415,12 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           source: result.pageProfile.source,
           questions: result.pageProfile.questions
         },
+        testData: {
+          status: result.testData.status,
+          environment: result.testData.environment,
+          summary: result.testData.summary,
+          findingCount: result.testData.findings.length
+        },
         sourceHealth: {
           status: result.sourceHealth.status,
           syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
@@ -475,6 +481,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         },
         environment: result.environment,
         pageProfile: result.pageProfile,
+        testData: result.testData,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,
         artifactIntegrity: result.artifactIntegrity,

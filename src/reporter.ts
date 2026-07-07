@@ -12,6 +12,7 @@ import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
+import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 
 async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.issues = result.issues.map((issue, index) =>
@@ -38,6 +39,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     accessibilityChecks: result.accessibilityChecks
   });
   result.artifactIntegrity = await buildArtifactIntegrity(result);
+  result.testData = buildTestDataAssessment(result.metadata.config, result.requirementCoverage);
   result.rootCauseGroups = buildRootCauseGroups(result.issues, result.metadata.config);
   result.issueDisposition = buildIssueDisposition(result.issues, result.metadata.config, result.rootCauseGroups);
   result.qualityGate = buildQualityGate({
@@ -61,6 +63,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     artifactIntegrity: result.artifactIntegrity,
     environment: result.environment,
     pageProfile: result.pageProfile,
+    testData: result.testData,
     journeyTests: result.journeyTests,
     interactionTests: result.interactionTests,
     exceptionSimulations: result.exceptionSimulations,

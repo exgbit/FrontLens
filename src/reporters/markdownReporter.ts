@@ -282,6 +282,22 @@ ${rows.length ? ['| Type | Note |', '| --- | --- |', ...rows, ''].join('\n') : '
 `;
 }
 
+function formatTestDataAssessment(result: QaResult): string {
+  const testData = result.testData;
+  const rows = testData.findings.slice(0, 30).map((finding) => `| ${markdownEscape(finding.id)} | ${finding.severity} | ${finding.category} | ${markdownEscape(finding.recordId ?? '-')} | ${markdownEscape(finding.operationId ?? '-')} | ${markdownEscape(finding.message)} |`);
+  return `## Test Data Lifecycle / 测试数据生命周期
+
+- Status：**${testData.status}**
+- Environment：${testData.environment}
+- Records / setup / cleanup：${testData.summary.recordCount} / ${testData.summary.setupStepCount} / ${testData.summary.cleanupStepCount}
+- Destructive requirements / operations：${testData.summary.destructiveRequirementCount} / ${testData.summary.destructiveOperationCount}
+- Generated records / missing cleanup / sensitive / production risk：${testData.summary.generatedRecordCount} / ${testData.summary.missingCleanupCount} / ${testData.summary.sensitiveRecordCount} / ${testData.summary.productionRiskCount}
+- Recommendations：${testData.recommendations.length ? markdownEscape(testData.recommendations.join('；')) : '-'}
+
+${rows.length ? ['| ID | Severity | Category | Record | Operation | Message |', '| --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '未发现测试数据生命周期问题。'}
+`;
+}
+
 function formatSourceAnalysis(result: QaResult): string {
   const source = result.sourceAnalysis;
   const findingRows = source.findings.slice(0, 20).map((finding) => {
@@ -869,6 +885,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Requirement coverage：${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed；provided / inferred：${result.requirementCoverage.summary.providedCount}/${result.requirementCoverage.summary.inferredCount}
 - Environment：${result.environment.kind} / trust performance ${result.environment.trust.performance} / security ${result.environment.trust.security}
 - Page profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
+- Test data：${result.testData.status} / records ${result.testData.summary.recordCount} / missing cleanup ${result.testData.summary.missingCleanupCount}
 - Source health：${result.sourceHealth.status}；syntax errors ${result.sourceHealth.syntaxErrorCount}；script checks ${result.sourceHealth.scriptChecks.length}（passed ${sourceScriptPassed} / failed-or-timeout ${sourceScriptFailed}）
 - Artifact integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 
@@ -940,6 +957,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Fix Tasks：${result.fixTasks.length}
 - QA Sign-off：${result.qaSignoff.status} / ${result.qaSignoff.confidence} / ${result.qaSignoff.businessValidationConfidence}
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
+- Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
@@ -954,6 +972,8 @@ ${formatQaSignoff(result)}
 ${formatEnvironmentAssessment(result)}
 
 ${formatPageProfileAssessment(result)}
+
+${formatTestDataAssessment(result)}
 
 ${formatRootCauseGroups(result)}
 

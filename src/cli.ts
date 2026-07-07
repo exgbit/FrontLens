@@ -271,6 +271,7 @@ async function handleResultCommand(command: 'inspect' | 'issues' | 'root-causes'
           },
           environment: result.environment,
           pageProfile: result.pageProfile,
+          testData: result.testData,
           requirementCoverage: result.requirementCoverage,
           sourceHealth: result.sourceHealth,
           artifactIntegrity: result.artifactIntegrity,
@@ -984,6 +985,12 @@ async function main(): Promise<void> {
             source: result.pageProfile.source,
             questions: result.pageProfile.questions
           },
+          testData: {
+            status: result.testData.status,
+            environment: result.testData.environment,
+            summary: result.testData.summary,
+            findingCount: result.testData.findings.length
+          },
           sourceHealth: {
             status: result.sourceHealth.status,
             syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
@@ -1015,6 +1022,7 @@ async function main(): Promise<void> {
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);
     console.log(`Requirement coverage: ${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed, ${result.requirementCoverage.summary.highPriorityGapCount} high-priority gaps`);
+    console.log(`Test Data: ${result.testData.status}, env ${result.testData.environment}, records ${result.testData.summary.recordCount}, cleanup gaps ${result.testData.summary.missingCleanupCount}`);
     console.log(`Environment: ${result.environment.kind}, trust perf/security ${result.environment.trust.performance}/${result.environment.trust.security}`);
     console.log(`Page profile: ${result.pageProfile.status}/${result.pageProfile.pageType} (${result.pageProfile.confidence})`);
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;

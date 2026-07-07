@@ -16,6 +16,7 @@ import type {
   QaSummary,
   ResourceSection,
   Severity,
+  TestDataAssessmentResult,
   InteractionTestResult,
   JourneyTestResult,
   ExceptionSimulationResult,
@@ -34,8 +35,9 @@ import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { createEmptyEnvironmentAssessment } from './environment/environmentAssessment.js';
 import { buildPageProfileAssessment, createEmptyPageProfileAssessment } from './product/pageProfile.js';
+import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 
-export const RESULT_SCHEMA_VERSION = '1.16.0';
+export const RESULT_SCHEMA_VERSION = '1.17.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -656,6 +658,55 @@ function normalizePageProfile(raw: unknown, fallback?: PageProfileAssessment): P
   };
 }
 
+function normalizeTestDataAssessment(raw: unknown, fallback: TestDataAssessmentResult): TestDataAssessmentResult {
+  if (!isRecord(raw)) return fallback;
+  const status = raw.status === 'passed' || raw.status === 'warning' || raw.status === 'failed' || raw.status === 'skipped' ? raw.status : fallback.status;
+  const environment = raw.environment === 'unknown' || raw.environment === 'local' || raw.environment === 'staging' || raw.environment === 'production' ? raw.environment : fallback.environment;
+  const summary = isRecord(raw.summary) ? raw.summary : {};
+  const findings = asArray(raw.findings)
+    .filter(isRecord)
+    .map((finding) => {
+      const severity: TestDataAssessmentResult['findings'][number]['severity'] =
+        finding.severity === 'critical' || finding.severity === 'high' || finding.severity === 'medium' || finding.severity === 'low' || finding.severity === 'info' ? finding.severity : 'info';
+      const category: TestDataAssessmentResult['findings'][number]['category'] =
+        finding.category === 'missing-data' ||
+        finding.category === 'missing-cleanup' ||
+        finding.category === 'production-risk' ||
+        finding.category === 'sensitive-data' ||
+        finding.category === 'authorization-gap' ||
+        finding.category === 'review'
+          ? finding.category
+          : 'review';
+      return {
+        id: asString(finding.id, 'TD-UNKNOWN'),
+        severity,
+        category,
+        message: asString(finding.message),
+        recordId: optionalString(finding.recordId),
+        operationId: optionalString(finding.operationId)
+      };
+    });
+  return {
+    enabled: typeof raw.enabled === 'boolean' ? raw.enabled : fallback.enabled,
+    status,
+    checkedAt: asString(raw.checkedAt, fallback.checkedAt),
+    environment,
+    summary: {
+      recordCount: asNumber(summary.recordCount, fallback.summary.recordCount),
+      setupStepCount: asNumber(summary.setupStepCount, fallback.summary.setupStepCount),
+      cleanupStepCount: asNumber(summary.cleanupStepCount, fallback.summary.cleanupStepCount),
+      generatedRecordCount: asNumber(summary.generatedRecordCount, fallback.summary.generatedRecordCount),
+      destructiveRequirementCount: asNumber(summary.destructiveRequirementCount, fallback.summary.destructiveRequirementCount),
+      destructiveOperationCount: asNumber(summary.destructiveOperationCount, fallback.summary.destructiveOperationCount),
+      missingCleanupCount: asNumber(summary.missingCleanupCount, fallback.summary.missingCleanupCount),
+      sensitiveRecordCount: asNumber(summary.sensitiveRecordCount, fallback.summary.sensitiveRecordCount),
+      productionRiskCount: asNumber(summary.productionRiskCount, fallback.summary.productionRiskCount)
+    },
+    findings,
+    recommendations: asArray<string>(raw.recommendations).filter((item) => typeof item === 'string')
+  };
+}
+
 function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): QaResult['qualityGate'] {
   if (!isRecord(raw)) return fallback;
   const status = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
@@ -1008,6 +1059,7 @@ export function normalizeResult(raw: unknown): QaResult {
   const sourceHealth = normalizeSourceHealth(raw.sourceHealth);
   const environment = normalizeEnvironment(raw.environment, metadataConfig.target.url);
   const pageProfile = normalizePageProfile(raw.pageProfile, buildPageProfileAssessment({ config: metadataConfig, pageModel }));
+  const testData = normalizeTestDataAssessment(raw.testData, buildTestDataAssessment(metadataConfig, requirementCoverage));
   const rootCauseGroups = buildRootCauseGroups(issues, metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
   const qualityGateFallback = buildQualityGate({
@@ -1032,6 +1084,7 @@ export function normalizeResult(raw: unknown): QaResult {
     artifactIntegrity,
     environment,
     pageProfile,
+    testData,
     journeyTests,
     interactionTests,
     exceptionSimulations,
@@ -1063,6 +1116,7 @@ export function normalizeResult(raw: unknown): QaResult {
     sourceHealth,
     environment,
     pageProfile,
+    testData,
     p2: normalizeP2(raw.p2),
     artifactIntegrity,
     rootCauseGroups,

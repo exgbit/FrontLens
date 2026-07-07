@@ -13,6 +13,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.realtimeLog = path.join(outputDir, 'realtime.json');
   result.artifacts.apiContractLog = path.join(outputDir, 'api-contract.json');
   result.artifacts.p2Log = path.join(outputDir, 'p2.json');
+  result.artifacts.testDataLog = path.join(outputDir, 'test-data.json');
   result.artifacts.sourceAnalysisLog = path.join(outputDir, 'source-analysis.json');
   result.artifacts.sourceRuntimeLog = path.join(outputDir, 'source-runtime-correlation.json');
   result.artifacts.sourceHealthLog = path.join(outputDir, 'source-health.json');
@@ -30,6 +31,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     realtimeLog: string;
     apiContractLog: string;
     p2Log: string;
+    testDataLog: string;
     sourceAnalysisLog: string;
     sourceRuntimeLog: string;
     sourceHealthLog: string;
@@ -42,6 +44,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   await writeJson(artifacts.realtimeLog, result.realtime);
   await writeJson(artifacts.apiContractLog, result.apiContract);
   await writeJson(artifacts.p2Log, result.p2);
+  await writeJson(artifacts.testDataLog, result.testData);
   await writeJson(artifacts.sourceAnalysisLog, result.sourceAnalysis);
   await writeJson(artifacts.sourceRuntimeLog, result.sourceRuntimeCorrelation);
   await writeJson(artifacts.sourceHealthLog, result.sourceHealth);

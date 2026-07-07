@@ -71,6 +71,15 @@ export function createDefaultConfig(url = 'about:blank'): FrontLensConfig {
       decisions: [],
       adrRefs: []
     },
+    testData: {
+      enabled: true,
+      environment: 'unknown',
+      allowProductionWrites: false,
+      records: [],
+      setupSteps: [],
+      cleanupSteps: [],
+      notes: []
+    },
     source: {
       enabled: true,
       maxFiles: 1200,

@@ -26,6 +26,7 @@ For every target-page QA run:
 9. When PRD/acceptance criteria are provided as Markdown or natural language, first run `frontlens requirements synthesize` to create a reviewable draft, read the generated Markdown questions, then pass the reviewed JSON as `--requirements`. If the user already provided structured JSON, use it directly. Encode explicit `selectors`, `expectedTexts`, `apiPatterns`, and/or safe `journeySteps` whenever possible. FrontLens turns those fields into generated requirement journeys and links runtime evidence back to `requirementCoverage`; free-text requirements without explicit assertions remain coverage gaps, not inferred passes.
 10. When product scope, ADRs, supported devices, or “this is designed this way” feedback is available, encode it in `productContext` before rerunning or triaging. Use `deviceScope`, `requiredFeatures`, `optionalFeatures`, `outOfScopeFeatures`, `decisions[]`, and `adrRefs[]` so style, export, pagination, refresh, and touch-target findings are classified by product scope rather than guesswork.
 11. When multiple login roles/storage states are provided, or when the page has permission-sensitive actions, run `frontlens role-matrix` after the baseline QA. Treat role differences as permission-review evidence; only call them defects when they violate explicit requirements, expected allowed/forbidden text contracts, or source/runtime permission guards.
+12. When requirements or journeys include create/edit/delete/upload/import/submit flows, require `testData` context before claiming business validation: isolated records, setup steps, cleanup/rollback steps, environment, and production-write authorization. Missing cleanup or production mutation risk must be reported as QA sign-off risk/blocker.
 
 Recommended checklist to show the user:
 
@@ -39,6 +40,7 @@ Recommended checklist to show the user:
 - Heuristic AI comprehensive analysis
 - Browser compatibility matrix
 - Role / permission matrix when storage states are available
+- Test data lifecycle for create/edit/delete/upload/import/submit flows
 
 If the user selects "all/default", run the full default QA command. If the user deselects modules, create a per-run config JSON in the output directory and pass it with `--config`.
 
@@ -108,6 +110,34 @@ If the user selects "all/default", run the full default QA command. If the user 
          }
        ],
        "adrRefs": ["docs/adr/0001-pc-first.md"]
+     }
+   }
+   ```
+
+   Test data lifecycle can be added when write/data-changing flows are in scope:
+
+   ```json
+   {
+     "testData": {
+       "enabled": true,
+       "environment": "staging",
+       "allowProductionWrites": false,
+       "records": [
+         {
+           "id": "user-seed-001",
+           "title": "可删除的测试用户",
+           "state": "seeded",
+           "requiredFor": ["REQ-DELETE-USER"],
+           "cleanupOperationId": "cleanup-user"
+         }
+       ],
+       "setupSteps": [
+         { "id": "seed-user", "title": "创建测试用户", "type": "api", "method": "POST", "endpoint": "/api/users", "destructive": true, "rollbackOperationId": "cleanup-user" }
+       ],
+       "cleanupSteps": [
+         { "id": "cleanup-user", "title": "删除测试用户", "type": "api", "method": "DELETE", "endpoint": "/api/users/{id}" }
+       ],
+       "notes": ["仅在 staging 运行写操作"]
      }
    }
    ```
@@ -371,6 +401,7 @@ Minimum stable fields:
 - `requirementCoverage`
 - `environment`
 - `pageProfile`
+- `testData`
 - `sourceAnalysis`
 - `sourceRuntimeCorrelation`
 - `sourceHealth`
@@ -417,7 +448,7 @@ Summarize:
 - top backend/API fixes;
 - API contract / GraphQL / WebSocket / SSE findings;
 - machine-executable fix task count and important task IDs;
-- generated artifact paths and artifact integrity status; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used;
+- generated artifact paths and artifact integrity status; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used; test-data lifecycle status when write/data-changing flows are in scope;
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation; include pageProfile questions when product scope is inferred rather than configured;
 - raw score plus confidence/adjusted-risk note when score is distorted by skipped/synthetic/deployment-only findings;
 - raw issue count separated from implementation root-cause count;

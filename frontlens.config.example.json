@@ -180,6 +180,17 @@
     ],
     "adrRefs": []
   },
+  "testData": {
+    "enabled": true,
+    "environment": "unknown",
+    "allowProductionWrites": false,
+    "records": [],
+    "setupSteps": [],
+    "cleanupSteps": [],
+    "notes": [
+      "涉及新增/编辑/删除/上传/导入/提交时，在这里声明隔离测试数据、准备步骤和清理/回滚步骤。"
+    ]
+  },
   "source": {
     "enabled": true,
     "root": "../target-frontend",

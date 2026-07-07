@@ -25,6 +25,7 @@ Show this checklist in Chinese unless the user requested another language:
 8. AI 综合分析
 9. Browser matrix 多浏览器兼容性
 10. Role matrix 多角色/权限矩阵（需要 storageState）
+11. Test data lifecycle 测试数据生命周期（写操作/导入/上传/删除等）
 
 回复：全选，或回复编号/模块名，例如：1,2,3,4,8。
 ```
@@ -47,6 +48,8 @@ node dist/cli.js requirements synthesize --input "docs/prd.md" --output "<OUTPUT
 ```
 
 Read `<OUTPUT_DIR>/requirements.md` and treat low-confidence or `needsReview` items as coverage gaps until the user/source adds selectors, expected texts, API patterns, journey steps, roles, or test-data authorization.
+
+If requirements or journeys include create/edit/delete/upload/import/submit flows, add `testData` to the run config before claiming business validation. Missing isolated records, missing cleanup/rollback, sensitive fixture use, or unapproved production writes must downgrade QA sign-off even when UI smoke checks pass.
 
 This default enables security, contract, realtime, safe smoke journey, exception simulation, heuristic AI, coverage, P2 visual capture, P2 budgets, P2 offline + slow-3g profiles, accessibility, responsive, performance, resource, integration, Console, Network, reports, issueDisposition, rootCauseGroups, and fixTasks. It keeps destructive actions disabled.
 
@@ -80,6 +83,7 @@ Start from the default config and disable only unselected modules.
 | AI comprehensive analysis | `analysis.ai=true` | `--no-ai` or config `analysis.ai=false` |
 | Browser matrix | separate `matrix` command | omit matrix command |
 | Role matrix | separate `role-matrix` command with `--role` or `--roles` | omit role-matrix command unless storage states are available |
+| Test data lifecycle | `testData.enabled=true` with records/setup/cleanup in config | keep enabled; set `testData.enabled=false` only for explicitly read-only exploratory scans |
 
 ## Per-run config template
 
@@ -110,7 +114,16 @@ When the user deselects modules without direct CLI flags, create `<OUTPUT_DIR>/f
     "budgets": { "enabled": true },
     "networkProfiles": { "enabled": true, "profiles": ["offline", "slow-3g"] }
   },
-  "exception": { "enabled": true }
+  "exception": { "enabled": true },
+  "testData": {
+    "enabled": true,
+    "environment": "unknown",
+    "allowProductionWrites": false,
+    "records": [],
+    "setupSteps": [],
+    "cleanupSteps": [],
+    "notes": []
+  }
 }
 ```
 
@@ -138,6 +151,7 @@ Use a fresh worker prompt like:
 先运行 npm run build，再按模块选择生成配置并执行 QA 命令；若是专业 QA/sign-off 且提供了源码路径，在依赖已安装且脚本存在时追加 `--source-run-scripts --source-scripts "typecheck,lint"`，把 typecheck/lint 的真实通过/失败写入 `sourceHealth.scriptChecks`。
 如果 Chromium 或私网访问被沙箱限制，使用 escalated 执行；仍失败则输出诊断。
 优先读取 qa-review.md 作为已收敛的专业 QA 摘要，再读取 result.json/report.md 补证据；结构化判断优先查看 qaSignoff、qualityGate、requirementCoverage、environment、pageProfile、sourceHealth、artifactIntegrity、issueDisposition 和 rootCauseGroups，并按 skills/frontend-qa/references/triage-guidelines.md 做二次校准。若有源码路径，逐项核对相关 router/view/composable/store/api/component/vite/ADR 文件，为每个保留的前端问题给出 file:line 证据；若 sourceHealth 发现语法错误或 `scriptChecks` 失败/超时，优先作为 source-confirmed 阻断处理；对误报给出被源码、部署归属、环境可信度、异常模拟或扫描阶段反驳的理由。降级 dev/synthetic raw issue 后仍要继续做源码归因；若源码或 dev 模块图揭示真实设计缺陷（如路由静态导入导致非当前页面代码进入首屏），必须以 source-discovered/frontend fix 单独保留。
+若需求/旅程包含新增、编辑、删除、上传、导入、提交，必须检查 `result.json.testData`：没有隔离 records/setup/cleanup 时只能给 runtime-partial 或 blocked/pass-with-risks；生产环境写操作未显式授权时必须作为 QA blocker。
 优先使用 `result.json.issueDisposition` 过滤可执行/条件性/非缺陷项，再用 `result.json.rootCauseGroups` 合并工作量，并按源码复核补充/修正；必须按“实现根因”合并 raw issue：同一视图/组件/组合函数导致的 500/401/403/404/timeout 无反馈，只作为一个可执行前端修复输出，并列出支持它的 raw issue / EX-*；不要把 raw issue 数量或 fixTasks 数量当成工作量。若报告建议与问题类别不匹配（例如触控尺寸却建议表格分页接口），标记为模板噪音并改写建议。
 必须做可执行性过滤：核心问题只保留运行时错误、核心旅程失败、真实接口失败无反馈、硬性 a11y、源码确认的数据绑定/性能问题；样式密度、按钮层级、刷新/导出/分页/SEO 等默认放“产品决策/参考观察”，不要生成修复任务。不要展开大量参考项的逐 selector 细节。
 “接口有数据但页面为空”属于高风险推断：只有在具体列表响应、当前可见 DOM 为空、且源码/E2E 能证明该响应绑定该 UI 时才保留；否则写成未验证/证据不足/误报，不要猜测字段映射错误。

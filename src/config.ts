@@ -128,6 +128,7 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
   assert(isRecord(config.journeys), 'journeys must be an object.');
   assert(isRecord(config.requirements), 'requirements must be an object.');
   assert(isRecord(config.productContext), 'productContext must be an object.');
+  assert(isRecord(config.testData), 'testData must be an object.');
   assert(isRecord(config.source), 'source must be an object.');
   assert(isRecord(config.contract), 'contract must be an object.');
   assert(isRecord(config.realtime), 'realtime must be an object.');
@@ -233,6 +234,41 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
     if (decision.appliesTo !== undefined) assertStringArray(decision.appliesTo, `${decisionPath}.appliesTo`);
     if (decision.rationale !== undefined) assert(typeof decision.rationale === 'string', `${decisionPath}.rationale must be a string.`);
   });
+
+  assertBoolean(config.testData.enabled, 'testData.enabled');
+  assert(config.testData.environment === 'unknown' || config.testData.environment === 'local' || config.testData.environment === 'staging' || config.testData.environment === 'production', 'testData.environment must be unknown, local, staging, or production.');
+  assertBoolean(config.testData.allowProductionWrites, 'testData.allowProductionWrites');
+  assertStringArray(config.testData.notes, 'testData.notes');
+  assert(Array.isArray(config.testData.records), 'testData.records must be an array.');
+  (config.testData.records as unknown[]).forEach((record, index) => {
+    const recordPath = `testData.records[${index}]`;
+    assert(isRecord(record), `${recordPath} must be an object.`);
+    assert(typeof record.id === 'string' && record.id.trim().length > 0, `${recordPath}.id must be a non-empty string.`);
+    assert(typeof record.title === 'string' && record.title.trim().length > 0, `${recordPath}.title must be a non-empty string.`);
+    assert(record.state === 'existing' || record.state === 'seeded' || record.state === 'generated' || record.state === 'unknown', `${recordPath}.state must be existing, seeded, generated, or unknown.`);
+    if (record.requiredFor !== undefined) assertStringArray(record.requiredFor, `${recordPath}.requiredFor`);
+    if (record.expectedTexts !== undefined) assertStringArray(record.expectedTexts, `${recordPath}.expectedTexts`);
+    if (record.apiPatterns !== undefined) assertStringArray(record.apiPatterns, `${recordPath}.apiPatterns`);
+    if (record.cleanupOperationId !== undefined) assert(typeof record.cleanupOperationId === 'string', `${recordPath}.cleanupOperationId must be a string.`);
+    if (record.sensitive !== undefined) assertBoolean(record.sensitive, `${recordPath}.sensitive`);
+    if (record.owner !== undefined) assert(typeof record.owner === 'string', `${recordPath}.owner must be a string.`);
+  });
+  const validateOperation = (operation: unknown, operationPath: string): void => {
+    assert(isRecord(operation), `${operationPath} must be an object.`);
+    assert(typeof operation.id === 'string' && operation.id.trim().length > 0, `${operationPath}.id must be a non-empty string.`);
+    assert(typeof operation.title === 'string' && operation.title.trim().length > 0, `${operationPath}.title must be a non-empty string.`);
+    assert(operation.type === 'manual' || operation.type === 'api' || operation.type === 'script' || operation.type === 'sql' || operation.type === 'fixture', `${operationPath}.type must be manual, api, script, sql, or fixture.`);
+    if (operation.target !== undefined) assert(typeof operation.target === 'string', `${operationPath}.target must be a string.`);
+    if (operation.command !== undefined) assert(typeof operation.command === 'string', `${operationPath}.command must be a string.`);
+    if (operation.endpoint !== undefined) assert(typeof operation.endpoint === 'string', `${operationPath}.endpoint must be a string.`);
+    if (operation.method !== undefined) assert(typeof operation.method === 'string', `${operationPath}.method must be a string.`);
+    if (operation.destructive !== undefined) assertBoolean(operation.destructive, `${operationPath}.destructive`);
+    if (operation.rollbackOperationId !== undefined) assert(typeof operation.rollbackOperationId === 'string', `${operationPath}.rollbackOperationId must be a string.`);
+  };
+  assert(Array.isArray(config.testData.setupSteps), 'testData.setupSteps must be an array.');
+  config.testData.setupSteps.forEach((operation, index) => validateOperation(operation, `testData.setupSteps[${index}]`));
+  assert(Array.isArray(config.testData.cleanupSteps), 'testData.cleanupSteps must be an array.');
+  config.testData.cleanupSteps.forEach((operation, index) => validateOperation(operation, `testData.cleanupSteps[${index}]`));
 
   assertBoolean(config.source.enabled, 'source.enabled');
   if (config.source.root !== undefined) assert(typeof config.source.root === 'string', 'source.root must be a string.');

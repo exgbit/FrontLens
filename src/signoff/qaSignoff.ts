@@ -1,4 +1,4 @@
-import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult } from '../types.js';
+import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
 
 function passedCount(items: Array<{ status: string }>): number {
   return items.filter((item) => item.status === 'passed').length;
@@ -59,6 +59,7 @@ export function buildQaSignoff(input: {
   artifactIntegrity: ArtifactIntegrityResult;
   environment?: EnvironmentAssessment;
   pageProfile?: PageProfileAssessment;
+  testData?: TestDataAssessmentResult;
   journeyTests: JourneyTestResult[];
   interactionTests: InteractionTestResult[];
   exceptionSimulations: Array<{ status: string }>;
@@ -136,6 +137,19 @@ export function buildQaSignoff(input: {
   if (!destructiveActionsAllowed && input.requirementCoverage.items.some((item) => /创建|新增|编辑|删除|上传|提交|下载|导出|create|edit|delete|upload|submit|download|export/i.test(`${item.title} ${item.description ?? ''}`))) {
     gaps.push('默认非破坏策略阻止创建/编辑/删除/上传/提交/下载类验证，相关业务流只能部分验证。');
   }
+  if (input.testData) {
+    evidence.push(`testData ${input.testData.status} (${input.testData.summary.recordCount} record(s), ${input.testData.summary.cleanupStepCount} cleanup step(s))`);
+    if (input.testData.status === 'failed') blockers.push('testData failed: production mutation risk or invalid test data lifecycle.');
+    if (input.testData.status === 'warning') risks.push(`testData warning: ${input.testData.findings.slice(0, 2).map((finding) => finding.message).join(' ')}`);
+    if (input.testData.summary.destructiveRequirementCount > 0 && input.testData.summary.recordCount === 0) {
+      gaps.push('涉及写操作/数据变更的需求缺少隔离测试数据声明。');
+      followups.push('补充 testData.records、setupSteps、cleanupSteps，并确认测试数据准备和清理策略。');
+    }
+    if (input.testData.summary.missingCleanupCount > 0) {
+      gaps.push(`测试数据生命周期缺少清理/回滚：${input.testData.summary.missingCleanupCount} 个缺口。`);
+      followups.push('为 generated/seeded 数据补 cleanupSteps 或 cleanupOperationId 后再执行破坏性 journey。');
+    }
+  }
   if (input.sourceHealth.scriptChecks.length === 0 && input.sourceHealth.packageScripts.some((script) => script.category === 'build' || script.category === 'typecheck' || script.category === 'lint')) {
     followups.push('运行 package.json 中的 build/typecheck/lint 脚本，确认源码健康不只停留在语法解析层。');
   }
@@ -156,6 +170,7 @@ export function buildQaSignoff(input: {
     status = 'pass-with-risks';
   }
   if (input.sourceHealth.status === 'failed') status = 'fail';
+  if (input.testData?.status === 'failed') status = 'fail';
   if (input.qualityGate.status === 'blocked') status = 'blocked';
 
   const uniqueGaps = [...new Set(gaps)];

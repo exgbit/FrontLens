@@ -41,6 +41,8 @@ For product/design/style findings, default to **Product decision / optional** un
 
 For role/permission findings, default role-specific UI differences to **permission review evidence**, not bugs. Promote to a real defect only when a PRD/role matrix says the role must or must not see the action, `role-matrix` reports expected allowed/forbidden text violations, or source/runtime guards confirm a permission leak.
 
+For test-data lifecycle findings, separate **test environment/data readiness** from frontend bugs. Missing fixtures, missing cleanup, sensitive fixture usage, or unapproved production writes are QA blockers/risks owned by test data or environment setup unless source/runtime evidence shows the frontend mishandles data.
+
 If the project supplies `metadata.config.productContext`, use it as the source of truth before classifying product-scope findings. If not, use `pageProfile.questions` to report missing scope instead of inventing a requirement:
 
 - `requiredFeatures`: keep matching findings as real fix candidates or source-confirmation gaps.

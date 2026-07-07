@@ -8,7 +8,7 @@ Use this reference when consuming QA results from another skill.
 - Summary, page model, artifacts
 - Network, console, resources
 - Interactions, journeys, responsive, accessibility, permission, exceptions
-- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Environment, Page Profile, Source Analysis, Source Runtime Correlation, Source Health, Artifact Integrity, Root Cause Groups, Issue Disposition, Fix Tasks, QA Gate, QA Sign-off, AI
+- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Environment, Page Profile, Test Data, Source Analysis, Source Runtime Correlation, Source Health, Artifact Integrity, Root Cause Groups, Issue Disposition, Fix Tasks, QA Gate, QA Sign-off, AI
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
@@ -48,9 +48,24 @@ Stable fields:
 
 Role differences alone are not defects. Promote only explicit permission contract violations (`expectedForbiddenTexts` visible, `expectedAllowedTexts` missing), PRD role rules, or source/runtime-confirmed leaks.
 
+## Test data lifecycle output
+
+`testData` is part of `QaResult` since schema `1.17.0`. It does not execute setup/cleanup; it evaluates whether destructive or data-dependent validation is safe and reproducible.
+
+Stable fields:
+
+- `enabled`: whether lifecycle assessment is enabled.
+- `status`: `passed`, `warning`, `failed`, or `skipped`.
+- `environment`: `unknown`, `local`, `staging`, or `production`.
+- `summary`: record/setup/cleanup counts plus destructive requirement/operation, missing cleanup, sensitive fixture, and production-risk counts.
+- `findings[]`: lifecycle risks with `severity`, `category`, optional `recordId` / `operationId`, and a message.
+- `recommendations[]`: next actions for fixture/setup/cleanup or environment authorization.
+
+Use `testData.status` and `qaSignoff` before claiming business validation for create/edit/delete/upload/import/submit flows. Missing isolated records or cleanup is a QA gap; unapproved production writes are a blocker. Do not classify these as frontend bugs unless runtime/source evidence shows the frontend mishandles data.
+
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`; reports before `1.15.0` may miss `environment`; reports before `1.16.0` may miss `pageProfile`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health / environment / pageProfile when older reports do not contain them.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`; reports before `1.15.0` may miss `environment`; reports before `1.16.0` may miss `pageProfile`; reports before `1.17.0` may miss `testData`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health / environment / pageProfile / testData when older reports do not contain them.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -79,6 +94,7 @@ interface QaResult {
   sourceHealth: SourceHealthResult;
   environment: EnvironmentAssessment;
   pageProfile: PageProfileAssessment;
+  testData: TestDataAssessmentResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];
@@ -195,6 +211,7 @@ interface ArtifactIndex {
   realtimeLog?: string;
   apiContractLog?: string;
   p2Log?: string;
+  testDataLog?: string;
   sourceAnalysisLog?: string;
   sourceRuntimeLog?: string;
   sourceHealthLog?: string;
@@ -394,7 +411,7 @@ interface ExceptionSimulationResult {
 
 ## API Contract, Realtime, Requirement Coverage, Product Context, Source Analysis, Source Runtime Correlation, Source Health, P2, Root Cause Groups, Issue Disposition, Fix Tasks, QA Sign-off, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`; `metadata.schemaVersion >= 1.12.0` includes `sourceHealth`; `metadata.schemaVersion >= 1.13.0` includes `qaSignoff`; `metadata.schemaVersion >= 1.14.0` includes optional source script execution results under `sourceHealth.scriptChecks[]`; `metadata.schemaVersion >= 1.15.0` includes `environment` to classify dev/preview/staging/production trust; `metadata.schemaVersion >= 1.16.0` includes `pageProfile` to make product-scope assumptions explicit.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`; `metadata.schemaVersion >= 1.12.0` includes `sourceHealth`; `metadata.schemaVersion >= 1.13.0` includes `qaSignoff`; `metadata.schemaVersion >= 1.14.0` includes optional source script execution results under `sourceHealth.scriptChecks[]`; `metadata.schemaVersion >= 1.15.0` includes `environment` to classify dev/preview/staging/production trust; `metadata.schemaVersion >= 1.16.0` includes `pageProfile` to make product-scope assumptions explicit; `metadata.schemaVersion >= 1.17.0` includes `testData` to assess fixture/setup/cleanup/sensitive-data/production-write lifecycle risks.
 
 ```ts
 interface ApiContractResult {

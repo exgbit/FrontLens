@@ -179,6 +179,73 @@ export interface ProductContextConfig {
   adrRefs: string[];
 }
 
+export type TestDataEnvironment = 'unknown' | 'local' | 'staging' | 'production';
+export type TestDataRecordState = 'existing' | 'seeded' | 'generated' | 'unknown';
+export type TestDataOperationType = 'manual' | 'api' | 'script' | 'sql' | 'fixture';
+
+export interface TestDataRecordConfig {
+  id: string;
+  title: string;
+  state: TestDataRecordState;
+  requiredFor?: string[];
+  expectedTexts?: string[];
+  apiPatterns?: string[];
+  cleanupOperationId?: string;
+  sensitive?: boolean;
+  owner?: string;
+}
+
+export interface TestDataOperationConfig {
+  id: string;
+  title: string;
+  type: TestDataOperationType;
+  target?: string;
+  command?: string;
+  endpoint?: string;
+  method?: string;
+  destructive?: boolean;
+  rollbackOperationId?: string;
+}
+
+export interface TestDataConfig {
+  enabled: boolean;
+  environment: TestDataEnvironment;
+  allowProductionWrites: boolean;
+  records: TestDataRecordConfig[];
+  setupSteps: TestDataOperationConfig[];
+  cleanupSteps: TestDataOperationConfig[];
+  notes: string[];
+}
+
+export interface TestDataFinding {
+  id: string;
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+  category: 'missing-data' | 'missing-cleanup' | 'production-risk' | 'sensitive-data' | 'authorization-gap' | 'review';
+  message: string;
+  recordId?: string;
+  operationId?: string;
+}
+
+export interface TestDataAssessmentResult {
+  enabled: boolean;
+  status: 'passed' | 'warning' | 'failed' | 'skipped';
+  checkedAt: string;
+  environment: TestDataEnvironment;
+  summary: {
+    recordCount: number;
+    setupStepCount: number;
+    cleanupStepCount: number;
+    generatedRecordCount: number;
+    destructiveRequirementCount: number;
+    destructiveOperationCount: number;
+    missingCleanupCount: number;
+    sensitiveRecordCount: number;
+    productionRiskCount: number;
+  };
+  findings: TestDataFinding[];
+  recommendations: string[];
+}
+
 export interface SourceAnalysisConfig {
   enabled: boolean;
   root?: string;
@@ -282,6 +349,7 @@ export interface FrontLensConfig {
   journeys: JourneyTestConfig;
   requirements: RequirementCoverageConfig;
   productContext: ProductContextConfig;
+  testData: TestDataConfig;
   source: SourceAnalysisConfig;
   contract: ContractConfig;
   realtime: RealtimeConfig;
@@ -1473,6 +1541,7 @@ export interface ArtifactIndex {
   realtimeLog?: string;
   apiContractLog?: string;
   p2Log?: string;
+  testDataLog?: string;
   sourceAnalysisLog?: string;
   sourceRuntimeLog?: string;
   sourceHealthLog?: string;
@@ -1598,6 +1667,7 @@ export interface QaResult {
   sourceHealth: SourceHealthResult;
   environment: EnvironmentAssessment;
   pageProfile: PageProfileAssessment;
+  testData: TestDataAssessmentResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];

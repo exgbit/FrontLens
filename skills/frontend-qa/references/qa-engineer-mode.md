@@ -29,6 +29,7 @@ If missing, continue with best effort but mark coverage gaps:
 - Login state and role matrix, including admin/normal/readonly/unauthorized when relevant.
 - When multiple storage states are available, run `node dist/cli.js role-matrix --url <url> --roles roles.json --output <output>-roles` and include the generated `role-matrix.md` in the evidence set.
 - Test data requirements and whether create/edit/delete/download/upload are allowed.
+- Test data lifecycle: isolated records, fixture/seed source, setup steps, cleanup/rollback steps, environment, sensitive-data handling, and whether production writes are explicitly prohibited or approved.
 - API contract/OpenAPI or backend envelope conventions.
 - Supported browsers/devices and performance budgets.
 - Release context: smoke check, regression, production readiness, PR review, or bug verification.
@@ -40,6 +41,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Navigation and route health**: direct URL load, refresh, login redirects, empty/error/loading states.
 - **Source health**: package scripts, syntax parse errors, optional controlled `typecheck/lint` script checks, build/typecheck/lint availability. Syntax errors and failed/timed-out typecheck/build/test checks are source-confirmed blockers; passing source health is not business validation.
 - **Core business flows**: search/filter/sort/pagination/detail/modal/export/import/create/edit/delete only when present and safe/authorized.
+- **Test data lifecycle**: for create/edit/delete/upload/import/submit flows, verify `testData.records`, setup, cleanup, and environment authorization before claiming runtime-verified business validation.
 - **Data correctness**: bind one exact API response to one exact UI region; verify totals, rows/cards, field formatting, permissions, and stale refresh behavior. Prefer `sourceRuntimeCorrelation.links[]` as the API↔source↔UI binding evidence when available.
 - **Negative/resilience**: 401/403/404/500/timeout/offline, but classify synthetic probes separately from real backend behavior.
 - **Forms**: validation, required fields, boundary values, duplicate submit, success/failure feedback.
@@ -86,6 +88,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No backend contract failure from FrontLens exception mocks.
 - No missing export/refresh/pagination defect unless the requirement or page type demands it.
 - No permission defect from role differences alone; require role requirements, expected allowed/forbidden contracts, or source/runtime confirmation.
+- No destructive-flow business pass without isolated test data and cleanup/rollback evidence; production writes without explicit authorization are release blockers.
 - No release sign-off solely from `summary.score`; use `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
 
 ## Output template

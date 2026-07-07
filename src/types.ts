@@ -1018,6 +1018,28 @@ export interface PageProfileAssessment {
   questions: string[];
 }
 
+export interface ScopeReviewQuestion {
+  id: string;
+  category: 'requirement' | 'product' | 'device' | 'accessibility' | 'feature' | 'role' | 'test-data' | 'environment';
+  question: string;
+  impact: string;
+  defaultDisposition: string;
+}
+
+export interface ScopeReviewResult {
+  generatedAt: string;
+  status: 'configured' | 'needs-input';
+  confidence: 'high' | 'medium' | 'low';
+  pageType: PageProfileType;
+  summary: string;
+  questions: ScopeReviewQuestion[];
+  suggestedProductContext: ProductContextConfig;
+  configSnippet: {
+    productContext: ProductContextConfig;
+  };
+  notes: string[];
+}
+
 export interface SourceHealthScript {
   name: string;
   command: string;
@@ -1681,6 +1703,8 @@ export interface ArtifactIndex {
   testDataLog?: string;
   professionalSummaryLog?: string;
   regressionPlanLog?: string;
+  scopeReview?: string;
+  scopeReviewLog?: string;
   downloadDir?: string;
   downloadedFiles?: string[];
   sourceAnalysisLog?: string;
@@ -1822,6 +1846,7 @@ export interface QaResult {
   sourceHealth: SourceHealthResult;
   environment: EnvironmentAssessment;
   pageProfile: PageProfileAssessment;
+  scopeReview: ScopeReviewResult;
   testData: TestDataAssessmentResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;

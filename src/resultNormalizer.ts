@@ -38,8 +38,9 @@ import { buildPageProfileAssessment, createEmptyPageProfileAssessment } from './
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
+import { buildScopeReview } from './product/scopeReview.js';
 
-export const RESULT_SCHEMA_VERSION = '1.27.0';
+export const RESULT_SCHEMA_VERSION = '1.28.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1084,6 +1085,12 @@ export function normalizeResult(raw: unknown): QaResult {
   const environment = normalizeEnvironment(raw.environment, metadataConfig.target.url);
   const pageProfile = normalizePageProfile(raw.pageProfile, buildPageProfileAssessment({ config: metadataConfig, pageModel }));
   const testData = normalizeTestDataAssessment(raw.testData, buildTestDataAssessment(metadataConfig, requirementCoverage));
+  const scopeReview = buildScopeReview({
+    config: metadataConfig,
+    pageProfile,
+    requirementCoverage,
+    title: summary.title
+  });
   const preliminaryDisposition = buildIssueDisposition(issues, metadataConfig);
   const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
@@ -1167,6 +1174,7 @@ export function normalizeResult(raw: unknown): QaResult {
     sourceHealth,
     environment,
     pageProfile,
+    scopeReview,
     testData,
     p2: normalizeP2(raw.p2),
     artifactIntegrity,

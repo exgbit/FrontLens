@@ -16,6 +16,8 @@ Report raw score separately from adjusted risk. If many findings are skipped, sy
 
 Use `qaSignoff`, `environment`, and `pageProfile` before final sign-off wording. If `qaSignoff.businessValidationConfidence` is not `runtime-verified`, or `environment.trust.performance/security` is not high for release claims, do not describe business validation or production readiness as fully passed even when `qualityGate.status=pass`.
 
+Use `scopeReview` before product/design conclusions. If `scopeReview.status=needs-input`, answer the questions in `scope-review.md` or copy the confirmed `configSnippet.productContext` into the next run before promoting style, pagination, export, refresh, responsive, visual-density, or device-scope findings to must-fix defects.
+
 Apply an **actionability gate** before presenting final findings:
 
 - Keep as **core fixes** only defects with direct user impact and evidence: runtime error, broken route, failed core journey, API failure with missing visible error state, a11y violation with selectors, confirmed data binding mismatch, or source-confirmed performance/bundle issue.
@@ -51,6 +53,8 @@ If the project supplies `metadata.config.productContext`, use it as the source o
 - `outOfScopeFeatures`: mark matching findings as non-actionable observations.
 - `deviceScope`: downgrade mobile/touch-target findings for `desktop-only` / `desktop-first`; keep them in scope for `mobile-first` and stricter accessibility targets.
 - `decisions[]` / `adrRefs[]`: cite the matching ADR/product decision in the reason.
+
+If `result.json.scopeReview.questions[]` contains relevant unanswered items, include a short "待产品/PRD 确认" row in the final answer and keep the matching raw findings conditional/non-actionable. Do not expand every selector-level style/touch target issue into a fix list unless productContext says the capability is required or the issue blocks a core task.
 
 ## Common false positives and downgrades
 

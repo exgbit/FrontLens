@@ -229,6 +229,11 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     ...result.pageProfile.questions.map((item) => `<tr><td>question</td><td>${escapeHtml(item)}</td></tr>`),
     ...result.pageProfile.signals.map((item) => `<tr><td>signal</td><td>${escapeHtml(item)}</td></tr>`)
   ].join('\n');
+  const scopeReviewRows = result.scopeReview.questions
+    .slice(0, 30)
+    .map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.category)}</td><td>${escapeHtml(item.question)}</td><td>${escapeHtml(item.defaultDisposition)}</td></tr>`)
+    .join('\n');
+  const scopeConfigSnippet = JSON.stringify(result.scopeReview.configSnippet, null, 2);
   const rootCauseRows = result.rootCauseGroups
     .slice(0, 80)
     .map((group) => {
@@ -346,6 +351,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>QA Sign-off</span><strong>${escapeHtml(result.qaSignoff.status)}</strong></div>
           <div class="metric"><span>Environment</span><strong>${escapeHtml(result.environment.kind)}</strong></div>
           <div class="metric"><span>Page Profile</span><strong>${escapeHtml(result.pageProfile.pageType)}</strong></div>
+          <div class="metric"><span>Scope Review</span><strong>${escapeHtml(result.scopeReview.status)} / ${result.scopeReview.questions.length}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
@@ -428,6 +434,25 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <thead><tr><th>Type</th><th>Note</th></tr></thead>
           <tbody>${pageProfileRows || '<tr><td colspan="2">No page-profile prompts</td></tr>'}</tbody>
         </table>
+      </section>
+
+      <section>
+        <h2>Scope Review / 产品范围确认</h2>
+        <p>${escapeHtml(result.scopeReview.summary)}</p>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.scopeReview.status)}</strong></div>
+          <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.scopeReview.confidence)}</strong></div>
+          <div class="metric"><span>Page type</span><strong>${escapeHtml(result.scopeReview.pageType)}</strong></div>
+          <div class="metric"><span>Questions</span><strong>${result.scopeReview.questions.length}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Category</th><th>Question</th><th>Default disposition</th></tr></thead>
+          <tbody>${scopeReviewRows || '<tr><td colspan="4">Product scope is configured.</td></tr>'}</tbody>
+        </table>
+        <details>
+          <summary>Suggested productContext</summary>
+          <pre>${escapeHtml(scopeConfigSnippet)}</pre>
+        </details>
       </section>
 
       <section>

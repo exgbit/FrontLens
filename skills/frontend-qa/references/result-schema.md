@@ -8,7 +8,7 @@ Use this reference when consuming QA results from another skill.
 - Summary, page model, artifacts
 - Network, console, resources
 - Interactions, journeys, responsive, accessibility, permission, exceptions
-- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Environment, Page Profile, Test Data, Source Analysis, Source Runtime Correlation, Source Health, Artifact Integrity, Root Cause Groups, Issue Disposition, Fix Tasks, QA Gate, QA Sign-off, Professional Summary, Regression Plan, AI
+- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Environment, Page Profile, Scope Review, Test Data, Source Analysis, Source Runtime Correlation, Source Health, Artifact Integrity, Root Cause Groups, Issue Disposition, Fix Tasks, QA Gate, QA Sign-off, Professional Summary, Regression Plan, AI
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
@@ -65,7 +65,7 @@ Use `testData.status` and `qaSignoff` before claiming business validation for cr
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`; reports before `1.15.0` may miss `environment`; reports before `1.16.0` may miss `pageProfile`; reports before `1.17.0` may miss `testData`; reports before `1.18.0` may miss `downloadPath` / `downloadSizeBytes` / `downloadSha256` and `artifacts.downloadedFiles[]`; reports before `1.19.0` may miss `downloadContent` parse summaries; reports before `1.20.0` may miss `regressionPlan` and `artifacts.regressionPlanLog`; reports before `1.21.0` may miss `professionalSummary` and `artifacts.professionalSummaryLog`; reports before `1.22.0` may miss pixel-level P2 visual diff fields such as `diffScreenshot`, `changedPixelCount`, `totalPixelCount`, `sizeMismatch`, and `diffBoundingBox`; reports before `1.23.0` may miss QA sign-off journey assertion counters and stricter recorded-journey business-validation downgrades; reports before `1.24.0` may miss `expectRequest` journey API assertions; reports before `1.25.0` may over-include conditional/non-actionable raw findings in `rootCauseGroups` and `fixTasks`; reports before `1.26.0` may miss `summary.adjustedScore` / `adjustedIssueCount` / `scoreNotes`; reports before `1.27.0` may miss `artifacts.evidenceReport` and may still use `report.md` as the full raw evidence report. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `professionalSummary`, `regressionPlan`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health / environment / pageProfile / testData when older reports do not contain them.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`; reports before `1.15.0` may miss `environment`; reports before `1.16.0` may miss `pageProfile`; reports before `1.17.0` may miss `testData`; reports before `1.18.0` may miss `downloadPath` / `downloadSizeBytes` / `downloadSha256` and `artifacts.downloadedFiles[]`; reports before `1.19.0` may miss `downloadContent` parse summaries; reports before `1.20.0` may miss `regressionPlan` and `artifacts.regressionPlanLog`; reports before `1.21.0` may miss `professionalSummary` and `artifacts.professionalSummaryLog`; reports before `1.22.0` may miss pixel-level P2 visual diff fields such as `diffScreenshot`, `changedPixelCount`, `totalPixelCount`, `sizeMismatch`, and `diffBoundingBox`; reports before `1.23.0` may miss QA sign-off journey assertion counters and stricter recorded-journey business-validation downgrades; reports before `1.24.0` may miss `expectRequest` journey API assertions; reports before `1.25.0` may over-include conditional/non-actionable raw findings in `rootCauseGroups` and `fixTasks`; reports before `1.26.0` may miss `summary.adjustedScore` / `adjustedIssueCount` / `scoreNotes`; reports before `1.27.0` may miss `artifacts.evidenceReport` and may still use `report.md` as the full raw evidence report; reports before `1.28.0` may miss `scopeReview`, `artifacts.scopeReview`, and `artifacts.scopeReviewLog`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `professionalSummary`, `regressionPlan`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health / environment / pageProfile / scopeReview / testData when older reports do not contain them.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. P2 visual captures `visual/current.png`; when `p2.visual.baselineDir` contains `baseline.png`, it writes `visual/diff.png` and pixel-level diff metrics. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -94,6 +94,7 @@ interface QaResult {
   sourceHealth: SourceHealthResult;
   environment: EnvironmentAssessment;
   pageProfile: PageProfileAssessment;
+  scopeReview: ScopeReviewResult;
   testData: TestDataAssessmentResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
@@ -219,6 +220,8 @@ interface ArtifactIndex {
   apiContractLog?: string;
   p2Log?: string;
   testDataLog?: string;
+  scopeReview?: string;     // product/PRD scope-review Markdown
+  scopeReviewLog?: string;  // scopeReview JSON sidecar
   downloadDir?: string;
   downloadedFiles?: string[];
   sourceAnalysisLog?: string;
@@ -423,9 +426,9 @@ interface ExceptionSimulationResult {
 }
 ```
 
-## API Contract, Realtime, Requirement Coverage, Product Context, Source Analysis, Source Runtime Correlation, Source Health, P2, Root Cause Groups, Issue Disposition, Fix Tasks, QA Sign-off, Diff
+## API Contract, Realtime, Requirement Coverage, Product Context, Scope Review, Source Analysis, Source Runtime Correlation, Source Health, P2, Root Cause Groups, Issue Disposition, Fix Tasks, QA Sign-off, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`; `metadata.schemaVersion >= 1.12.0` includes `sourceHealth`; `metadata.schemaVersion >= 1.13.0` includes `qaSignoff`; `metadata.schemaVersion >= 1.14.0` includes optional source script execution results under `sourceHealth.scriptChecks[]`; `metadata.schemaVersion >= 1.15.0` includes `environment` to classify dev/preview/staging/production trust; `metadata.schemaVersion >= 1.16.0` includes `pageProfile` to make product-scope assumptions explicit; `metadata.schemaVersion >= 1.17.0` includes `testData` to assess fixture/setup/cleanup/sensitive-data/production-write lifecycle risks; `metadata.schemaVersion >= 1.18.0` includes saved download/export artifact metadata and integrity coverage; `metadata.schemaVersion >= 1.19.0` includes `downloadContent` parse summaries; `metadata.schemaVersion >= 1.20.0` includes `regressionPlan` and `artifacts.regressionPlanLog`; `metadata.schemaVersion >= 1.21.0` includes `professionalSummary` and `artifacts.professionalSummaryLog`; `metadata.schemaVersion >= 1.22.0` includes pixel-level P2 visual diff artifacts and metrics; `metadata.schemaVersion >= 1.23.0` includes journey assertion counters in `qaSignoff.scope` and prevents passed click/fill-only recorded journeys from becoming `runtime-verified`; `metadata.schemaVersion >= 1.24.0` includes `expectRequest` journey API assertions; `metadata.schemaVersion >= 1.25.0` filters `rootCauseGroups` and `fixTasks` through `issueDisposition.actionability=actionable` so product decisions, deployment-only items, tool limitations, and insufficient-evidence findings do not become implementation tasks. `metadata.schemaVersion >= 1.26.0` adds `summary.adjustedScore`, `summary.adjustedIssueCount`, `summary.scoreBasis`, and `summary.scoreNotes`; adjustedScore is computed from actionable findings only, while `summary.score` remains the raw scanner score for backward compatibility. `metadata.schemaVersion >= 1.27.0` adds `artifacts.evidenceReport` and makes `report.md` decision-oriented by default while moving full raw evidence into `evidence-report.md`.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`; `metadata.schemaVersion >= 1.12.0` includes `sourceHealth`; `metadata.schemaVersion >= 1.13.0` includes `qaSignoff`; `metadata.schemaVersion >= 1.14.0` includes optional source script execution results under `sourceHealth.scriptChecks[]`; `metadata.schemaVersion >= 1.15.0` includes `environment` to classify dev/preview/staging/production trust; `metadata.schemaVersion >= 1.16.0` includes `pageProfile` to make product-scope assumptions explicit; `metadata.schemaVersion >= 1.17.0` includes `testData` to assess fixture/setup/cleanup/sensitive-data/production-write lifecycle risks; `metadata.schemaVersion >= 1.18.0` includes saved download/export artifact metadata and integrity coverage; `metadata.schemaVersion >= 1.19.0` includes `downloadContent` parse summaries; `metadata.schemaVersion >= 1.20.0` includes `regressionPlan` and `artifacts.regressionPlanLog`; `metadata.schemaVersion >= 1.21.0` includes `professionalSummary` and `artifacts.professionalSummaryLog`; `metadata.schemaVersion >= 1.22.0` includes pixel-level P2 visual diff artifacts and metrics; `metadata.schemaVersion >= 1.23.0` includes journey assertion counters in `qaSignoff.scope` and prevents passed click/fill-only recorded journeys from becoming `runtime-verified`; `metadata.schemaVersion >= 1.24.0` includes `expectRequest` journey API assertions; `metadata.schemaVersion >= 1.25.0` filters `rootCauseGroups` and `fixTasks` through `issueDisposition.actionability=actionable` so product decisions, deployment-only items, tool limitations, and insufficient-evidence findings do not become implementation tasks. `metadata.schemaVersion >= 1.26.0` adds `summary.adjustedScore`, `summary.adjustedIssueCount`, `summary.scoreBasis`, and `summary.scoreNotes`; adjustedScore is computed from actionable findings only, while `summary.score` remains the raw scanner score for backward compatibility. `metadata.schemaVersion >= 1.27.0` adds `artifacts.evidenceReport` and makes `report.md` decision-oriented by default while moving full raw evidence into `evidence-report.md`. `metadata.schemaVersion >= 1.28.0` adds `scopeReview`, `artifacts.scopeReview`, and `artifacts.scopeReviewLog` to make product/PRD scope questions explicit and machine-readable.
 
 ```ts
 interface ApiContractResult {
@@ -641,7 +644,7 @@ interface ProductContextConfig {
   enabled: boolean;
   productName?: string;
   pageName?: string;
-  pageType?: string; // e.g. admin, credential, dashboard, public, custom
+  pageType?: string; // e.g. credential-security, admin-data-list, admin-dashboard, form-flow, detail-master, auth-login, public-content, custom
   deviceScope: 'unknown' | 'desktop-only' | 'desktop-first' | 'responsive' | 'mobile-first';
   accessibilityTarget: 'unknown' | 'basic' | 'wcag-aa' | 'wcag-aaa';
   requiredFeatures: string[];      // matching raw findings stay real-fix/source-confirmation candidates
@@ -783,6 +786,32 @@ interface PageProfileAssessment {
 
 If `pageProfile.status=inferred`, final triage should keep style, pagination, export, manual-refresh, and mobile-touch findings conditional unless explicit `productContext`, PRD, ADR, or runtime task evidence confirms them. If `pageProfile.status=configured`, use `metadata.config.productContext` as the source of truth.
 
+`scopeReview` turns page-profile uncertainty and missing PRD/product context into a reviewable checklist plus a config snippet. It exists to stop agents from guessing product intent: answer the questions or copy the confirmed `configSnippet.productContext` into the next run before promoting style/product-scope findings to must-fix defects.
+
+```ts
+interface ScopeReviewQuestion {
+  id: string;
+  category: 'requirement' | 'product' | 'device' | 'accessibility' | 'feature' | 'role' | 'test-data' | 'environment';
+  question: string;
+  impact: string;
+  defaultDisposition: string;
+}
+
+interface ScopeReviewResult {
+  generatedAt: string;
+  status: 'configured' | 'needs-input';
+  confidence: 'high' | 'medium' | 'low';
+  pageType: PageProfileType;
+  summary: string;
+  questions: ScopeReviewQuestion[];
+  suggestedProductContext: ProductContextConfig;
+  configSnippet: { productContext: ProductContextConfig };
+  notes: string[];
+}
+```
+
+If `scopeReview.status=needs-input`, keep PRD/product/style/device/a11y assumptions as conditional or non-actionable unless they already have explicit requirement evidence and direct user impact. Use `artifacts.scopeReview` / `scope-review.md` as the human checklist and `artifacts.scopeReviewLog` for machine consumption.
+
 `sourceHealth` is a source-health layer. It always detects package-manager/scripts from `package.json` and parses TS/JS/Vue `<script>` blocks for syntax errors. It only runs target-app scripts when explicitly enabled through `source.runScripts=true`, CLI `--source-run-scripts`, or MCP `sourceRunScripts=true`; default script names are `typecheck,lint`, timeout is per script, and output is preview-limited. It can prove build-blocking syntax and type/lint/test problems, but it still does not replace complete business validation.
 
 ```ts
@@ -883,7 +912,7 @@ interface QaSignoffResult {
 
 Use `qaSignoff.status` for release/sign-off conversations and `qaSignoff.businessValidationConfidence` for business-function claims. A raw `qualityGate.pass` can still become `qaSignoff.pass-with-risks` when no PRD, login/role state, passed user journey, or passed journey assertion proves the business flow. A recorded journey with only `click`/`fill`/`press` is runtime-partial until at least one `expectVisible` / `expectText` / `expectUrl` / `expectRequest` assertion passes.
 
-`regressionPlan` is the machine-readable post-fix verification plan. It converts root causes, failed requirements/journeys, source-health blockers, download/export evidence, artifact integrity, environment trust, pageProfile gaps, and test-data gaps into rerun commands and focused verification items.
+`regressionPlan` is the machine-readable post-fix verification plan. It converts root causes, failed requirements/journeys, source-health blockers, download/export evidence, artifact integrity, environment trust, pageProfile/scopeReview gaps, and test-data gaps into rerun commands and focused verification items.
 
 ```ts
 interface RegressionPlanResult {
@@ -1205,7 +1234,7 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Read `professionalSummary`, `qaSignoff`, `qualityGate`, `regressionPlan`, `requirementCoverage`, `environment`, `pageProfile`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, post-fix verification steps, business-validation confidence, requirement gaps, static/runtime source binding, syntax/source-health status, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
+3. Read `professionalSummary`, `qaSignoff`, `qualityGate`, `regressionPlan`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, post-fix verification steps, business-validation confidence, requirement gaps, static/runtime source binding, syntax/source-health status, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
 4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.

@@ -309,6 +309,28 @@ ${rows.length ? ['| Type | Note |', '| --- | --- |', ...rows, ''].join('\n') : '
 `;
 }
 
+function formatScopeReview(result: QaResult): string {
+  const scope = result.scopeReview;
+  const questionRows = scope.questions.slice(0, 30).map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.category)} | ${markdownEscape(item.question)} | ${markdownEscape(truncateMiddle(item.impact, 160))} | ${markdownEscape(truncateMiddle(item.defaultDisposition, 140))} |`);
+  const configJson = JSON.stringify(scope.configSnippet, null, 2).replace(/```/g, '`​``');
+  return `## Scope Review / 产品范围确认
+
+- Status：**${scope.status}**
+- Confidence：${scope.confidence}
+- Page type：${scope.pageType}
+- Summary：${markdownEscape(scope.summary)}
+- Notes：${scope.notes.length ? markdownEscape(scope.notes.join('；')) : '-'}
+
+${questionRows.length ? ['| ID | Category | Question | Impact | Default disposition |', '| --- | --- | --- | --- | --- |', ...questionRows, ''].join('\n') : '产品范围已配置，当前没有待确认问题。'}
+
+### Suggested productContext
+
+\`\`\`json
+${configJson}
+\`\`\`
+`;
+}
+
 function formatTestDataAssessment(result: QaResult): string {
   const testData = result.testData;
   const rows = testData.findings.slice(0, 30).map((finding) => `| ${markdownEscape(finding.id)} | ${finding.severity} | ${finding.category} | ${markdownEscape(finding.recordId ?? '-')} | ${markdownEscape(finding.operationId ?? '-')} | ${markdownEscape(finding.message)} |`);
@@ -942,6 +964,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Requirement coverage：${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed；provided / inferred：${result.requirementCoverage.summary.providedCount}/${result.requirementCoverage.summary.inferredCount}
 - Environment：${result.environment.kind} / trust performance ${result.environment.trust.performance} / security ${result.environment.trust.security}
 - Page profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
+- Scope review：${result.scopeReview.status} / ${result.scopeReview.questions.length} question(s)
 - Test data：${result.testData.status} / records ${result.testData.summary.recordCount} / missing cleanup ${result.testData.summary.missingCleanupCount}
 - Regression plan：${result.regressionPlan.status} / items ${result.regressionPlan.summary.itemCount} / blocked ${result.regressionPlan.summary.blockedCount}
 - Source health：${result.sourceHealth.status}；syntax errors ${result.sourceHealth.syntaxErrorCount}；script checks ${result.sourceHealth.scriptChecks.length}（passed ${sourceScriptPassed} / failed-or-timeout ${sourceScriptFailed}）
@@ -960,6 +983,14 @@ ${nonDefectRows.join('\n')}
 ## 签核阻断、风险与待补证据
 
 ${gapRows.length ? ['| Type | Item |', '| --- | --- |', ...gapRows, ''].join('\n') : '未发现额外阻断、风险或待补证据。'}
+
+## 产品范围 / PRD 待确认
+
+- Scope review：**${result.scopeReview.status}** / confidence **${result.scopeReview.confidence}**
+- Questions：${result.scopeReview.questions.length}
+- Suggested config：${artifactPath(result.artifacts.scopeReview)}
+
+${result.scopeReview.questions.length ? ['| ID | Category | Question | Default disposition |', '| --- | --- | --- | --- |', ...result.scopeReview.questions.slice(0, 8).map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.category)} | ${markdownEscape(item.question)} | ${markdownEscape(item.defaultDisposition)} |`), ''].join('\n') : '产品范围已配置；按 productContext 作为产品/设计 triage 的依据。'}
 
 ## 需求/能力覆盖
 
@@ -983,9 +1014,11 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const outputPath = path.join(result.artifacts.outputDir, 'report.md');
   const evidencePath = path.join(result.artifacts.outputDir, 'evidence-report.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
+  const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   result.artifacts.markdownReport = outputPath;
   result.artifacts.evidenceReport = evidencePath;
   result.artifacts.qaReview = reviewPath;
+  result.artifacts.scopeReview = scopeReviewPath;
 
   const dispositionByIssue = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
   const isReportActionable = (issue: Issue): boolean => dispositionByIssue.get(issue.id)?.actionability === 'actionable' || (!dispositionByIssue.has(issue.id) && isActionableIssue(issue));
@@ -1038,6 +1071,8 @@ ${formatProfessionalSummary(result)}
 ${formatEnvironmentAssessment(result)}
 
 ${formatPageProfileAssessment(result)}
+
+${formatScopeReview(result)}
 
 ${formatTestDataAssessment(result)}
 
@@ -1148,4 +1183,5 @@ ${formatArtifacts(result)}
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);
+  await writeText(scopeReviewPath, formatScopeReview(result));
 }

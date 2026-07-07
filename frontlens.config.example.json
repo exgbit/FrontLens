@@ -160,7 +160,7 @@
   "productContext": {
     "enabled": true,
     "productName": "Example Admin",
-    "pageType": "admin",
+    "pageType": "admin-data-list",
     "deviceScope": "unknown",
     "accessibilityTarget": "basic",
     "requiredFeatures": [],

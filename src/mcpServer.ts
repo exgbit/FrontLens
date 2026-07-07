@@ -415,6 +415,12 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           source: result.pageProfile.source,
           questions: result.pageProfile.questions
         },
+        scopeReview: {
+          status: result.scopeReview.status,
+          confidence: result.scopeReview.confidence,
+          questionCount: result.scopeReview.questions.length,
+          summary: result.scopeReview.summary
+        },
         testData: {
           status: result.testData.status,
           environment: result.testData.environment,
@@ -490,6 +496,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         },
         environment: result.environment,
         pageProfile: result.pageProfile,
+        scopeReview: result.scopeReview,
         testData: result.testData,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,

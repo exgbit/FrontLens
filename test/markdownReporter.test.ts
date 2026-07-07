@@ -43,13 +43,17 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   const report = await readFile(result.artifacts.markdownReport!, 'utf8');
   const review = await readFile(result.artifacts.qaReview!, 'utf8');
   const evidence = await readFile(result.artifacts.evidenceReport!, 'utf8');
+  const scopeReview = await readFile(result.artifacts.scopeReview!, 'utf8');
 
   assert.match(report, /FrontLens Professional QA Report/);
   assert.match(report, /核心缺陷 \/ 修复根因/);
+  assert.match(report, /产品范围 \/ PRD 待确认/);
   assert.doesNotMatch(report, /## 十三、问题详情/);
   assert.doesNotMatch(report, /<details><summary>Evidence details/);
   assert.match(review, /完整原始证据见 `evidence-report\.md`/);
   assert.match(evidence, /FrontLens QA Evidence Appendix/);
   assert.match(evidence, /## 十三、问题详情/);
   assert.match(evidence, /<details><summary>Evidence details/);
+  assert.match(scopeReview, /Scope Review \/ 产品范围确认/);
+  assert.match(scopeReview, /Suggested productContext/);
 });

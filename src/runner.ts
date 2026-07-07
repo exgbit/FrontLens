@@ -30,6 +30,7 @@ import { buildQualityGate } from './qualityGate.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { buildEnvironmentAssessment } from './environment/environmentAssessment.js';
 import { buildPageProfileAssessment } from './product/pageProfile.js';
+import { buildScopeReview } from './product/scopeReview.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
@@ -42,7 +43,7 @@ import { analyzeSource, createEmptySourceAnalysis } from './source/sourceAnalyze
 import { buildSourceRuntimeCorrelation, createEmptySourceRuntimeCorrelation } from './source/sourceRuntimeCorrelation.js';
 import { analyzeSourceHealth, createEmptySourceHealth } from './source/sourceHealth.js';
 import { sessionStorageSidecarPath } from './auth.js';
-import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, EnvironmentAssessment, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, PageProfileAssessment, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult, TestDataAssessmentResult } from './types.js';
+import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, EnvironmentAssessment, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, PageProfileAssessment, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, ScopeReviewResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult, TestDataAssessmentResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
 import { RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 import { redactText, redactUrl } from './utils/redact.js';
@@ -698,6 +699,12 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     config,
     pageModel
   });
+  const scopeReview: ScopeReviewResult = buildScopeReview({
+    config: resultConfig,
+    pageProfile,
+    requirementCoverage,
+    title: pageModel.title
+  });
   const preliminaryDisposition = buildIssueDisposition(issues, resultConfig);
   const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), resultConfig);
   const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
@@ -808,6 +815,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     sourceHealth,
     environment,
     pageProfile,
+    scopeReview,
     testData,
     p2,
     artifactIntegrity: initialArtifactIntegrity,

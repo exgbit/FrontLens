@@ -15,6 +15,7 @@ import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
+import { buildScopeReview } from './product/scopeReview.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
@@ -49,6 +50,12 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   });
   result.artifactIntegrity = await buildArtifactIntegrity(result);
   result.testData = buildTestDataAssessment(result.metadata.config, result.requirementCoverage);
+  result.scopeReview = buildScopeReview({
+    config: result.metadata.config,
+    pageProfile: result.pageProfile,
+    requirementCoverage: result.requirementCoverage,
+    title: result.summary.title
+  });
   rebuildTriageArtifacts(result);
   applyAdjustedScore(result.summary, result.issues, result.issueDisposition);
   result.qualityGate = buildQualityGate({

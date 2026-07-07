@@ -8,7 +8,7 @@ FrontLens is the evidence engine; the skill is the QA engineer. Do not present r
 
 A professional-test-engineer answer must include:
 
-1. **Scope and assumptions**: target URL, route/page, sourceRoot, environment, pageProfile/product scope, auth role, selected modules, allowed/destructive actions, known missing inputs.
+1. **Scope and assumptions**: target URL, route/page, sourceRoot, environment, pageProfile/scopeReview/product scope, auth role, selected modules, allowed/destructive actions, known missing inputs.
 2. **Requirement coverage matrix**: business requirement / evidence / confidence / result / gaps. If no PRD or acceptance criteria was provided, infer only obvious page capabilities and mark them `inferred`, not `confirmed requirement`.
 3. **Execution evidence**: report-relative screenshot/DOM/network/console/download/source file references that exist; treat `artifactIntegrity.status === failed` as a report-quality defect.
 4. **Defect triage**: core defects by root cause, raw-finding disposition, severity, owner, reproduction, fix surface, and merged raw issue IDs. Do not list every raw issue as a separate bug.
@@ -16,7 +16,7 @@ A professional-test-engineer answer must include:
 6. **Regression pack**: use `result.json.regressionPlan` first; include exact FrontLens rerun commands, blocked/needs-input items, journey/requirement/download/environment checks, and focused verification steps after fixes.
 7. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
-Use `result.json.professionalSummary` as the first human-facing triage summary and `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, or relevant journeys are missing.
+Use `result.json.professionalSummary` as the first human-facing triage summary and `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, scope questions, or relevant journeys are missing.
 
 ## Inputs a human QA would ask for
 
@@ -26,7 +26,7 @@ If missing, continue with best effort but mark coverage gaps:
 - If PRD/user stories are only Markdown or natural language, run `node dist/cli.js requirements synthesize --input <prd.md> --output <output>/requirements.json` first, review the generated `.md` questions, and keep `needsReview` or low-confidence items as coverage gaps rather than confirmed requirements.
 - For each acceptance criterion, prefer explicit runtime assertions: `selectors`, `expectedTexts`, and safe `journeySteps`. These generate `journeyTests[].source = requirement-generated` and allow high-confidence coverage. Criteria that are only free text remain coverage gaps unless other runtime evidence proves them.
 - If no executable business flow exists, record the real manual path with `node dist/cli.js journey record --url <url> --output <journey.json> --name <flow>` and then review the generated `.md`. Treat the raw recording as a scaffold; add success assertions and test data before sign-off.
-- Product scope/ADR context. Inspect `pageProfile`; if it is inferred, use its questions to ask for scope confirmation. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
+- Product scope/ADR context. Inspect `pageProfile` and `scopeReview`; if scope is inferred or `scopeReview.status=needs-input`, answer its questions before promoting style/product findings. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
 - Login state and role matrix, including admin/normal/readonly/unauthorized when relevant.
 - When multiple storage states are available, run `node dist/cli.js role-matrix --url <url> --roles roles.json --output <output>-roles` and include the generated `role-matrix.md` in the evidence set.
 - Test data requirements and whether create/edit/delete/download/upload are allowed.
@@ -51,7 +51,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Permissions**: visible/disabled dangerous actions, unauthorized API status, role-specific visibility.
 - **Role matrix**: compare admin/normal/readonly/anonymous runs. Treat role-specific UI and issues as review evidence; promote only expected-forbidden visible text, missing expected-allowed text, or source/runtime-confirmed permission leaks to defects.
 - **Accessibility**: accessible names, labels, keyboard/focus, contrast. Treat hard a11y evidence as real defects; treat touch-size tradeoffs as product/device scope unless mobile is in scope.
-- **Page profile**: inspect `pageProfile.status/pageType`; use it to frame product questions, not as confirmed PRD.
+- **Page profile / scope review**: inspect `pageProfile.status/pageType` and `scopeReview.questions[]`; use them to frame product questions, not as confirmed PRD.
 - **Environment**: inspect `environment.kind` and `environment.trust`; use dev server only for function/source correlation, local/private preview for pre-production checks, and production-like HTTPS for release security/performance sign-off.
 - **Performance**: use production build/preview for bundle/security conclusions; use dev server only for function/source correlation.
 - **Security passive checks**: separate frontend code issues from deployment headers/TLS/gateway work.
@@ -87,6 +87,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No business pass solely from `sourceHealth.status=passed`; it only means parsed source files had no syntax errors and any explicitly enabled source script checks passed.
 - No “API has data but UI empty” unless the exact list response is bound to the exact UI by DOM/source/E2E evidence; if `sourceRuntimeCorrelation.status=passed`, missing link or `confidence=none/low` means not a defect.
 - No style/design bug unless it violates an explicit design/ADR/accessibility requirement or blocks a task.
+- No product-scope assumption becomes must-fix while `scopeReview.status=needs-input`; keep it as a scope question or product decision unless direct user impact is proven.
 - No production performance/security conclusion from Vite dev server artifacts.
 - No backend contract failure from FrontLens exception mocks.
 - No missing export/refresh/pagination defect unless the requirement or page type demands it.

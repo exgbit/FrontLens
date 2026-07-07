@@ -22,6 +22,8 @@ const FILE_ARTIFACT_KEYS = [
   'testDataLog',
   'professionalSummaryLog',
   'regressionPlanLog',
+  'scopeReview',
+  'scopeReviewLog',
   'sourceAnalysisLog',
   'sourceRuntimeLog',
   'sourceHealthLog',

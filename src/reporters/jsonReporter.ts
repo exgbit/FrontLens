@@ -16,6 +16,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.testDataLog = path.join(outputDir, 'test-data.json');
   result.artifacts.professionalSummaryLog = path.join(outputDir, 'professional-summary.json');
   result.artifacts.regressionPlanLog = path.join(outputDir, 'regression-plan.json');
+  result.artifacts.scopeReviewLog = path.join(outputDir, 'scope-review.json');
   result.artifacts.sourceAnalysisLog = path.join(outputDir, 'source-analysis.json');
   result.artifacts.sourceRuntimeLog = path.join(outputDir, 'source-runtime-correlation.json');
   result.artifacts.sourceHealthLog = path.join(outputDir, 'source-health.json');
@@ -36,6 +37,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     testDataLog: string;
     professionalSummaryLog: string;
     regressionPlanLog: string;
+    scopeReviewLog: string;
     sourceAnalysisLog: string;
     sourceRuntimeLog: string;
     sourceHealthLog: string;
@@ -51,6 +53,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   await writeJson(artifacts.testDataLog, result.testData);
   await writeJson(artifacts.professionalSummaryLog, result.professionalSummary);
   await writeJson(artifacts.regressionPlanLog, result.regressionPlan);
+  await writeJson(artifacts.scopeReviewLog, result.scopeReview);
   await writeJson(artifacts.sourceAnalysisLog, result.sourceAnalysis);
   await writeJson(artifacts.sourceRuntimeLog, result.sourceRuntimeCorrelation);
   await writeJson(artifacts.sourceHealthLog, result.sourceHealth);

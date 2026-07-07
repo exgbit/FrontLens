@@ -1068,6 +1068,12 @@ async function main(): Promise<void> {
             source: result.pageProfile.source,
             questions: result.pageProfile.questions
           },
+          scopeReview: {
+            status: result.scopeReview.status,
+            confidence: result.scopeReview.confidence,
+            questionCount: result.scopeReview.questions.length,
+            summary: result.scopeReview.summary
+          },
           testData: {
             status: result.testData.status,
             environment: result.testData.environment,
@@ -1121,6 +1127,7 @@ async function main(): Promise<void> {
     console.log(`Test Data: ${result.testData.status}, env ${result.testData.environment}, records ${result.testData.summary.recordCount}, cleanup gaps ${result.testData.summary.missingCleanupCount}`);
     console.log(`Environment: ${result.environment.kind}, trust perf/security ${result.environment.trust.performance}/${result.environment.trust.security}`);
     console.log(`Page profile: ${result.pageProfile.status}/${result.pageProfile.pageType} (${result.pageProfile.confidence})`);
+    console.log(`Scope Review: ${result.scopeReview.status}, questions ${result.scopeReview.questions.length}`);
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
     console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
@@ -1134,6 +1141,7 @@ async function main(): Promise<void> {
     console.log(`Issues: ${result.summary.issueCount} (critical ${result.summary.criticalCount}, high ${result.summary.highCount}, medium ${result.summary.mediumCount}, low ${result.summary.lowCount})`);
     console.log(`Markdown: ${result.artifacts.markdownReport ?? '(disabled)'}`);
     console.log(`QA Review: ${result.artifacts.qaReview ?? '(disabled)'}`);
+    console.log(`Scope Review: ${result.artifacts.scopeReview ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

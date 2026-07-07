@@ -264,3 +264,25 @@ test('product context decides whether product-scope findings are defects or non-
   assert.equal(credentialDisposition.items[0].actionability, 'non-actionable');
   assert.match(credentialDisposition.items[0].reason, /不在当前页面\/版本范围/);
 });
+
+test('color contrast findings require explicit WCAG or accessibility scope before becoming frontend fixes', () => {
+  const basicConfig = createDefaultConfig('https://example.com/admin');
+  const contrastIssue = issue({
+    id: 'ISSUE-CONTRAST',
+    title: '文本颜色对比度不足：3 处',
+    category: 'frontend-accessibility',
+    severity: 'low',
+    evidence: { selector: '.muted', details: { rule: 'color-contrast', count: 3 } },
+    suggestion: { frontend: 'adjust text color token', priority: 'P3' }
+  });
+  const basicDisposition = buildIssueDisposition([contrastIssue], basicConfig, []);
+  assert.equal(basicDisposition.items[0].status, 'product-decision');
+  assert.equal(basicDisposition.items[0].actionability, 'conditional');
+  assert.equal(basicDisposition.items[0].owner, 'product');
+
+  const wcagConfig = createDefaultConfig('https://example.com/public');
+  wcagConfig.productContext.accessibilityTarget = 'wcag-aa';
+  const wcagDisposition = buildIssueDisposition([contrastIssue], wcagConfig, []);
+  assert.equal(wcagDisposition.items[0].status, 'confirmed');
+  assert.equal(wcagDisposition.items[0].bucket, 'real-frontend-fix');
+});

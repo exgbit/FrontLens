@@ -46,6 +46,7 @@ const featureAliases: Record<string, string[]> = {
   seo: ['搜索引擎优化'],
   'visual-design': ['style', '视觉', '视觉密度', '样式', '颜色', '按钮层级'],
   style: ['visual-design', '视觉', '样式'],
+  'color-contrast': ['颜色对比度', 'contrast', 'wcag', 'accessibility', 'a11y', 'visual-design'],
   'empty-state': ['空状态', 'empty', 'no-data'],
   'error-state': ['错误态', '异常反馈', '失败反馈', 'error-feedback'],
   search: ['搜索', 'filter', '筛选', 'query'],
@@ -77,6 +78,7 @@ function issueFeatureCandidates(issue: Issue): string[] {
   if (/分页|pagination|pager|page-size|pagesize|page\/pagesize/.test(text)) add('pagination');
   if (/seo|搜索引擎/.test(text)) add('seo');
   if (/视觉|视觉密度|样式|style|颜色|按钮层级|button hierarchy/.test(text)) add('visual-design', 'style');
+  if (/颜色对比度|color-contrast|contrast/.test(text)) add('color-contrast');
   if (/empty state|空状态|暂无|no data/.test(text)) add('empty-state');
   if (/错误态|error state|异常反馈|失败反馈|error feedback/.test(text)) add('error-state');
   if (/搜索|筛选|search|filter|query/.test(text)) add('search', 'filter');
@@ -408,6 +410,7 @@ function classifyIntegration(issue: Issue, rootCauseGroupId?: string): IssueDisp
 function classifyAccessibility(issue: Issue, config: FrontLensConfig, rootCauseGroupId?: string): IssueDispositionItem | undefined {
   if (issue.category !== 'frontend-accessibility') return undefined;
   const text = textOf(issue);
+  const details = detailsOf(issue);
   if (/触控目标|tap target/.test(text)) {
     const contextDecision = productDecisionForIssue(issue, config);
     if (contextDecision.state === 'required') {
@@ -430,6 +433,36 @@ function classifyAccessibility(issue: Issue, config: FrontLensConfig, rootCauseG
       evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
       reason: '小触控目标在 PC-first 或管理后台页面常是信息密度取舍；是否必须修复取决于移动端支持范围和显式 a11y 标准。',
       nextStep: '若移动端/触屏是目标范围，再在 <768 断点扩大点击区并补响应式回归；否则作为可选优化。',
+      rootCauseGroupId
+    });
+  }
+  if (String(details.rule ?? '') === 'color-contrast' || /颜色对比度|color-contrast|contrast/.test(text)) {
+    const features = ['color-contrast', 'accessibility', 'a11y'];
+    const strictScope =
+      config.productContext.enabled &&
+      (config.productContext.accessibilityTarget === 'wcag-aa' ||
+        config.productContext.accessibilityTarget === 'wcag-aaa' ||
+        hasFeature(config.productContext.requiredFeatures, features));
+    if (strictScope) {
+      return makeItem(issue, {
+        status: hasEvidence(issue) ? 'confirmed' : 'needs-source-confirmation',
+        bucket: 'real-frontend-fix',
+        actionability: issue.severity === 'low' ? 'conditional' : 'actionable',
+        owner: 'frontend',
+        evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+        reason: '产品范围或无障碍目标明确要求 WCAG/颜色对比度，不能按视觉偏好降级。',
+        nextStep: '按 evidence.nodes 定位文本和背景色，调整设计 token/主题变量，并补 a11y/视觉回归。',
+        rootCauseGroupId
+      });
+    }
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'conditional',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '颜色对比度在未声明 WCAG AA/AAA 或严格 a11y 目标时属于产品/设计范围敏感项；应先确认无障碍等级再排期。',
+      nextStep: '若产品确认 WCAG AA/AAA 或公共页面可访问性目标，再升级为前端样式修复；否则保留为可选设计优化。',
       rootCauseGroupId
     });
   }

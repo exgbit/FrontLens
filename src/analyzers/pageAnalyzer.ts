@@ -3,6 +3,42 @@ import { IssueFactory } from './issueFactory.js';
 
 const dangerPattern = /删除|移除|禁用|停用|作废|清空|重置密码|delete|remove|disable|destroy|clear/i;
 
+function normalizeFeature(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^\w\u4e00-\u9fff-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function configuredFeatureMatches(configured: string[] | undefined, aliases: string[]): boolean {
+  if (!configured?.length) return false;
+  const expected = new Set(aliases.map(normalizeFeature));
+  return configured.some((feature) => expected.has(normalizeFeature(feature)));
+}
+
+function explicitRequirementRequiresSeo(context: AnalyzerContext): boolean {
+  if (!context.config.requirements.enabled) return false;
+  return context.config.requirements.items.some((item) => {
+    if (item.source === 'inferred') return false;
+    const text = `${item.title} ${item.description ?? ''}`.toLowerCase();
+    return /seo|搜索引擎|meta\s*description|页面描述|页面标题|document\.title|title\s*tag|open\s*graph|og:|分享|社交卡片/.test(text);
+  });
+}
+
+function shouldCreateSeoIssue(context: AnalyzerContext): boolean {
+  if (explicitRequirementRequiresSeo(context)) return true;
+  const productContext = context.config.productContext;
+  if (!productContext.enabled) return false;
+  const aliases = ['seo', '搜索引擎优化', 'meta-description', 'open-graph', 'social-share'];
+  if (configuredFeatureMatches(productContext.outOfScopeFeatures, aliases)) return false;
+  if (configuredFeatureMatches(productContext.optionalFeatures, aliases)) return false;
+  if (configuredFeatureMatches(productContext.requiredFeatures, aliases)) return true;
+  return productContext.pageType === 'public-content';
+}
+
 export function analyzePageQuality(context: AnalyzerContext, factory: IssueFactory): Issue[] {
   const issues: Issue[] = [];
   const { pageModel, artifacts } = context;
@@ -69,7 +105,7 @@ export function analyzePageQuality(context: AnalyzerContext, factory: IssueFacto
     );
   }
 
-  if (context.config.analysis.seo) {
+  if (context.config.analysis.seo && shouldCreateSeoIssue(context)) {
     if (!pageModel.title) {
       issues.push(
         factory.create({

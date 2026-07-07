@@ -485,6 +485,40 @@ test('subjective product design heuristics do not become actionable defects by d
   assert.equal(issues.some((issue) => /主按钮过多|按钮数量偏多/.test(issue.title)), false);
 });
 
+test('optional SEO findings stay out of raw issues unless public content or requirements require them', () => {
+  const adminCtx = context({
+    pageModel: {
+      ...context().pageModel,
+      title: '',
+      meta: { h1: [], openGraph: {} }
+    }
+  });
+  adminCtx.config.analysis.seo = true;
+  assert.equal(analyzePageQuality(adminCtx, new IssueFactory()).some((issue) => issue.category === 'seo'), false);
+
+  const publicCtx = context({
+    pageModel: {
+      ...context().pageModel,
+      title: '',
+      meta: { h1: [], openGraph: {} }
+    }
+  });
+  publicCtx.config.analysis.seo = true;
+  publicCtx.config.productContext.pageType = 'public-content';
+  assert.equal(analyzePageQuality(publicCtx, new IssueFactory()).filter((issue) => issue.category === 'seo').length, 2);
+
+  const requirementCtx = context({
+    pageModel: {
+      ...context().pageModel,
+      title: 'Landing',
+      meta: { h1: [], openGraph: {} }
+    }
+  });
+  requirementCtx.config.analysis.seo = true;
+  requirementCtx.config.requirements.items = [{ id: 'REQ-SEO', title: '公开页需要 SEO meta description', source: 'provided', priority: 'P2' }];
+  assert.equal(analyzePageQuality(requirementCtx, new IssueFactory()).some((issue) => issue.title === '页面缺少 Meta Description'), true);
+});
+
 test('integration mismatch ignores generic data arrays that are not tied to a list endpoint', () => {
   const pageModel: PageModel = {
     ...context().pageModel,

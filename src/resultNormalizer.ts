@@ -43,7 +43,7 @@ import { buildClaimGuard } from './claims/claimGuard.js';
 import { buildQaIntake } from './intake/qaIntake.js';
 import { buildDefectProof } from './proof/defectProof.js';
 
-export const RESULT_SCHEMA_VERSION = '1.45.0';
+export const RESULT_SCHEMA_VERSION = '1.46.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));

@@ -25,6 +25,7 @@ For every target-page QA run:
 8. When the user asks for professional-QA replacement, full acceptance, release sign-off, business validation, or skill quality review, read `references/qa-engineer-mode.md` and require a QA sign-off, requirement coverage matrix, defect root-cause table, non-defect observations, and regression commands. Never claim full business pass without requirements and runtime evidence.
 9. When PRD/acceptance criteria are provided as Markdown or natural language, first run `frontlens requirements synthesize` to create a reviewable draft, read the generated Markdown questions, then pass the reviewed JSON as `--requirements`. If the user already provided structured JSON, use it directly. Encode explicit `selectors`, `expectedTexts`, `apiPatterns`, and/or safe `journeySteps` whenever possible. FrontLens turns those fields into generated requirement journeys and links runtime evidence back to `requirementCoverage`; free-text requirements without explicit assertions remain coverage gaps, not inferred passes.
 10. When product scope, ADRs, supported devices, or “this is designed this way” feedback is available, encode it in `productContext` before rerunning or triaging. Use `deviceScope`, `requiredFeatures`, `optionalFeatures`, `outOfScopeFeatures`, `decisions[]`, and `adrRefs[]` so style, export, pagination, refresh, and touch-target findings are classified by product scope rather than guesswork.
+11. When multiple login roles/storage states are provided, or when the page has permission-sensitive actions, run `frontlens role-matrix` after the baseline QA. Treat role differences as permission-review evidence; only call them defects when they violate explicit requirements, expected allowed/forbidden text contracts, or source/runtime permission guards.
 
 Recommended checklist to show the user:
 
@@ -37,6 +38,7 @@ Recommended checklist to show the user:
 - Realtime GraphQL / WebSocket / SSE
 - Heuristic AI comprehensive analysis
 - Browser compatibility matrix
+- Role / permission matrix when storage states are available
 
 If the user selects "all/default", run the full default QA command. If the user deselects modules, create a per-run config JSON in the output directory and pass it with `--config`.
 
@@ -222,6 +224,19 @@ node dist/cli.js matrix \
   --output "reports/frontlens/compat-users"
 ```
 
+Run role/permission matrix when multiple auth states are available:
+
+```bash
+node dist/cli.js role-matrix \
+  --url "https://example.com/admin/users" \
+  --role admin=".frontlens/auth/admin.json" \
+  --role viewer=".frontlens/auth/viewer.json" \
+  --role guest= \
+  --output "reports/frontlens/roles-users"
+```
+
+Use `--roles roles.json` when each role has `expectedAllowedTexts` / `expectedForbiddenTexts`. Role-specific buttons/issues are review evidence, not defects, until mapped to explicit permission requirements.
+
 Run exception simulations explicitly (already enabled by default):
 
 ```bash
@@ -385,6 +400,7 @@ node dist/cli.js fix-tasks --report "reports/frontlens/users/result.json"
 node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "reports/frontlens/new/result.json"
 node dist/cli.js env-compare --dev-url "http://127.0.0.1:5173/users" --preview-url "http://127.0.0.1:4173/users"
 node dist/cli.js requirements synthesize --input "docs/prd.md" --output "reports/frontlens/users/requirements.json"
+node dist/cli.js role-matrix --url "http://127.0.0.1:5173/users" --role admin=".frontlens/auth/admin.json" --role viewer=".frontlens/auth/viewer.json"
 node dist/cli.js suggestions --report "reports/frontlens/users/result.json"
 ```
 
@@ -401,7 +417,7 @@ Summarize:
 - top backend/API fixes;
 - API contract / GraphQL / WebSocket / SSE findings;
 - machine-executable fix task count and important task IDs;
-- generated artifact paths and artifact integrity status; env-compare artifact path when dev/preview dual-run was used;
+- generated artifact paths and artifact integrity status; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used;
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation; include pageProfile questions when product scope is inferred rather than configured;
 - raw score plus confidence/adjusted-risk note when score is distorted by skipped/synthetic/deployment-only findings;
 - raw issue count separated from implementation root-cause count;

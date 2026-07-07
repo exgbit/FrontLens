@@ -1364,6 +1364,72 @@ export interface EnvironmentComparisonResult {
   };
 }
 
+export interface RoleMatrixRoleConfig {
+  name: string;
+  storageState?: string;
+  sessionStorageState?: string;
+  expectedAllowedTexts?: string[];
+  expectedForbiddenTexts?: string[];
+}
+
+export interface RoleMatrixRunItem {
+  role: string;
+  success: boolean;
+  outputDir: string;
+  storageStateProvided: boolean;
+  sessionStorageStateProvided: boolean;
+  score?: number;
+  issueCount?: number;
+  criticalCount?: number;
+  highCount?: number;
+  mediumCount?: number;
+  lowCount?: number;
+  infoCount?: number;
+  qaSignoffStatus?: QaSignoffResult['status'];
+  qaSignoffConfidence?: QaSignoffResult['confidence'];
+  businessValidationConfidence?: BusinessValidationConfidence;
+  title?: string;
+  finalUrl?: string;
+  componentCount?: number;
+  actionLabels?: string[];
+  dangerousActionLabels?: string[];
+  permissionIssueCount?: number;
+  authIssueCount?: number;
+  expectedAllowedMissing?: string[];
+  expectedForbiddenVisible?: string[];
+  screenshot?: string;
+  jsonReport?: string;
+  markdownReport?: string;
+  qaReview?: string;
+  error?: string;
+}
+
+export interface RoleMatrixResult {
+  url: string;
+  testedAt: string;
+  outputDir: string;
+  roles: RoleMatrixRunItem[];
+  comparison: {
+    successfulRoleCount: number;
+    failedRoleCount: number;
+    roleSpecificIssueTitles: Record<string, string[]>;
+    sharedIssueTitles: string[];
+    roleSpecificActionLabels: Record<string, string[]>;
+    sharedActionLabels: string[];
+    dangerousActionsByRole: Record<string, string[]>;
+    lowPrivilegeDangerousActionRoles: string[];
+    expectedForbiddenViolations: Record<string, string[]>;
+    expectedAllowedGaps: Record<string, string[]>;
+    permissionRiskCount: number;
+    authRiskCount: number;
+  };
+  recommendations: string[];
+  artifacts: {
+    json: string;
+    markdown: string;
+  };
+}
+
 export interface ArtifactIntegrityEntry {
   source: string;
   path: string;

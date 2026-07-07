@@ -1,5 +1,6 @@
 export { runQa } from './runner.js';
 export { runCompatibility } from './matrix.js';
+export { runRoleMatrix, createRoleMatrixResult, writeRoleMatrixResult, loadRoleMatrixRoles, parseRoleSpec } from './roles/roleMatrix.js';
 export { saveAuthState } from './auth.js';
 export { loadConfig } from './config.js';
 export { createDefaultConfig } from './defaultConfig.js';

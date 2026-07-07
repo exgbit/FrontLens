@@ -27,6 +27,7 @@ If missing, continue with best effort but mark coverage gaps:
 - For each acceptance criterion, prefer explicit runtime assertions: `selectors`, `expectedTexts`, and safe `journeySteps`. These generate `journeyTests[].source = requirement-generated` and allow high-confidence coverage. Criteria that are only free text remain coverage gaps unless other runtime evidence proves them.
 - Product scope/ADR context. Inspect `pageProfile`; if it is inferred, use its questions to ask for scope confirmation. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
 - Login state and role matrix, including admin/normal/readonly/unauthorized when relevant.
+- When multiple storage states are available, run `node dist/cli.js role-matrix --url <url> --roles roles.json --output <output>-roles` and include the generated `role-matrix.md` in the evidence set.
 - Test data requirements and whether create/edit/delete/download/upload are allowed.
 - API contract/OpenAPI or backend envelope conventions.
 - Supported browsers/devices and performance budgets.
@@ -43,6 +44,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Negative/resilience**: 401/403/404/500/timeout/offline, but classify synthetic probes separately from real backend behavior.
 - **Forms**: validation, required fields, boundary values, duplicate submit, success/failure feedback.
 - **Permissions**: visible/disabled dangerous actions, unauthorized API status, role-specific visibility.
+- **Role matrix**: compare admin/normal/readonly/anonymous runs. Treat role-specific UI and issues as review evidence; promote only expected-forbidden visible text, missing expected-allowed text, or source/runtime-confirmed permission leaks to defects.
 - **Accessibility**: accessible names, labels, keyboard/focus, contrast. Treat hard a11y evidence as real defects; treat touch-size tradeoffs as product/device scope unless mobile is in scope.
 - **Page profile**: inspect `pageProfile.status/pageType`; use it to frame product questions, not as confirmed PRD.
 - **Environment**: inspect `environment.kind` and `environment.trust`; use dev server only for function/source correlation, local/private preview for pre-production checks, and production-like HTTPS for release security/performance sign-off.
@@ -83,6 +85,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No production performance/security conclusion from Vite dev server artifacts.
 - No backend contract failure from FrontLens exception mocks.
 - No missing export/refresh/pagination defect unless the requirement or page type demands it.
+- No permission defect from role differences alone; require role requirements, expected allowed/forbidden contracts, or source/runtime confirmation.
 - No release sign-off solely from `summary.score`; use `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
 
 ## Output template

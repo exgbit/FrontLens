@@ -24,6 +24,7 @@ Show this checklist in Chinese unless the user requested another language:
 7. Realtime GraphQL / WebSocket / SSE
 8. AI 综合分析
 9. Browser matrix 多浏览器兼容性
+10. Role matrix 多角色/权限矩阵（需要 storageState）
 
 回复：全选，或回复编号/模块名，例如：1,2,3,4,8。
 ```
@@ -55,6 +56,14 @@ Use browser matrix only when the user selected module 9 or explicitly asked comp
 node dist/cli.js matrix --url "<URL>" --browsers chromium,firefox,webkit --output "<OUTPUT_DIR>-matrix" --no-trace --json
 ```
 
+Use role matrix only when the user selected module 10 or provided multiple role storage states:
+
+```bash
+node dist/cli.js role-matrix --url "<URL>" --roles "roles.json" --output "<OUTPUT_DIR>-roles" --no-trace --json
+```
+
+Role matrix differences are review evidence. Promote to defects only when `expectedForbiddenTexts` / `expectedAllowedTexts`, PRD permission rules, or source/runtime guards prove the difference is wrong.
+
 ## Module-to-config mapping
 
 Start from the default config and disable only unselected modules.
@@ -70,6 +79,7 @@ Start from the default config and disable only unselected modules.
 | Realtime | `realtime.enabled=true` | `--no-realtime` or config `realtime.enabled=false` |
 | AI comprehensive analysis | `analysis.ai=true` | `--no-ai` or config `analysis.ai=false` |
 | Browser matrix | separate `matrix` command | omit matrix command |
+| Role matrix | separate `role-matrix` command with `--role` or `--roles` | omit role-matrix command unless storage states are available |
 
 ## Per-run config template
 

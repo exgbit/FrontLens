@@ -7,12 +7,13 @@ import { saveAuthState } from './auth.js';
 import { startMcpServer } from './mcpServer.js';
 import { runEnvironmentComparison } from './compare/environmentComparison.js';
 import { synthesizeRequirements } from './requirements/requirementWizard.js';
-import type { BrowserName, Issue, QaResult, QaRunInput, Severity } from './types.js';
+import { loadRoleMatrixRoles, parseRoleSpec, runRoleMatrix } from './roles/roleMatrix.js';
+import type { BrowserName, Issue, QaResult, QaRunInput, RoleMatrixRoleConfig, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'matrix', 'env-compare', 'requirements', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -23,6 +24,7 @@ Usage:
   frontlens auth save --url <login-url> --output <storage-state-path>
   frontlens requirements synthesize --input <prd.md> --output <requirements.json>
   frontlens matrix --url <url> --browsers chromium,firefox,webkit
+  frontlens role-matrix --url <url> --role admin=.auth/admin.json --role viewer=.auth/viewer.json
   frontlens env-compare --dev-url <vite-dev-url> --preview-url <build-preview-url>
   frontlens mcp
   frontlens inspect --report <result.json>
@@ -57,6 +59,9 @@ Options:
   --session-storage-state <path>
                               FrontLens sessionStorage sidecar file.
   --browsers <list>           Browser list for matrix command.
+  --role <name=storageState[|sessionStorageState]>
+                              Role matrix entry. Use name= for anonymous/no storage. Repeatable.
+  --roles <path>              Role matrix JSON file: [{name, storageState, sessionStorageState, expectedAllowedTexts, expectedForbiddenTexts}].
   --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/suggestions.
   --severity <level>          Filter issues by severity.
   --trace                     Enable Playwright trace.
@@ -98,6 +103,7 @@ Examples:
   frontlens auth save --url https://example.com/login --output .frontlens/auth/admin.json
   frontlens requirements synthesize --input docs/prd.md --output requirements.json
   frontlens matrix --url https://example.com --browsers chromium,firefox,webkit --output reports/compat
+  frontlens role-matrix --url https://example.com/admin --role admin=.frontlens/auth/admin.json --role viewer=.frontlens/auth/viewer.json --output reports/roles
   frontlens env-compare --dev-url http://127.0.0.1:5173/users --preview-url http://127.0.0.1:4173/users --output reports/env-users
   frontlens mcp
   frontlens issues --report reports/frontlens/users/result.json --severity high
@@ -160,6 +166,24 @@ function normalizePositiveNumber(value: unknown, optionName: string): number | u
   return numeric;
 }
 
+function collectRoleSpecs(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+  if (typeof value === 'string') return [value];
+  return [];
+}
+
+async function resolveRoleMatrixRoles(roleSpecs: unknown, rolesPath?: string): Promise<RoleMatrixRoleConfig[]> {
+  const roles: RoleMatrixRoleConfig[] = [];
+  if (rolesPath) roles.push(...(await loadRoleMatrixRoles(rolesPath)));
+  roles.push(...collectRoleSpecs(roleSpecs).map(parseRoleSpec));
+  const unique = new Map<string, RoleMatrixRoleConfig>();
+  for (const role of roles) {
+    if (!role.name.trim()) throw new Error('Role matrix role name cannot be empty.');
+    unique.set(role.name, role);
+  }
+  return [...unique.values()];
+}
+
 function printMcpHelp(): void {
   console.log(`FrontLens MCP server
 
@@ -171,7 +195,9 @@ Stdio MCP command:
 
 Exposed tools:
   frontlens_qa
+  frontlens_requirements_synthesize
   frontlens_matrix
+  frontlens_role_matrix
   frontlens_env_compare
   frontlens_inspect
   frontlens_issues
@@ -609,6 +635,102 @@ async function main(): Promise<void> {
       console.log(`Environment comparison completed: ${result.outputDir}`);
       console.log(`Production readiness: ${result.interpretation.productionReadiness}`);
       console.log(`Persistent/dev-only/preview-only issues: ${result.interpretation.persistentIssueCount}/${result.interpretation.devOnlyIssueCount}/${result.interpretation.previewOnlyIssueCount}`);
+      console.log(`Markdown: ${result.artifacts.markdown}`);
+      console.log(`JSON: ${result.artifacts.json}`);
+    }
+    return;
+  }
+
+  if (argv[0] === 'role-matrix') {
+    const parsed = parseArgs({
+      args: argv.slice(1),
+      allowPositionals: true,
+      options: {
+        url: { type: 'string' },
+        config: { type: 'string' },
+        requirements: { type: 'string' },
+        'source-root': { type: 'string' },
+        'source-run-scripts': { type: 'boolean' },
+        'source-scripts': { type: 'string' },
+        'source-script-timeout-ms': { type: 'string' },
+        output: { type: 'string' },
+        browser: { type: 'string' },
+        headed: { type: 'boolean' },
+        headless: { type: 'boolean' },
+        role: { type: 'string', multiple: true },
+        roles: { type: 'string' },
+        trace: { type: 'boolean' },
+        'no-trace': { type: 'boolean' },
+        video: { type: 'boolean' },
+        screenshot: { type: 'boolean' },
+        'simulate-exceptions': { type: 'boolean' },
+        'no-exceptions': { type: 'boolean' },
+        ai: { type: 'boolean' },
+        'no-ai': { type: 'boolean' },
+        coverage: { type: 'boolean' },
+        'no-coverage': { type: 'boolean' },
+        security: { type: 'boolean' },
+        'no-security': { type: 'boolean' },
+        journeys: { type: 'boolean' },
+        'no-journeys': { type: 'boolean' },
+        contract: { type: 'boolean' },
+        'no-contract': { type: 'boolean' },
+        realtime: { type: 'boolean' },
+        'no-realtime': { type: 'boolean' },
+        p2: { type: 'boolean' },
+        'no-p2': { type: 'boolean' },
+        'block-mutating-requests': { type: 'boolean' },
+        'allow-mutating-requests': { type: 'boolean' },
+        json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' }
+      }
+    });
+
+    if (parsed.values.help) {
+      printHelp();
+      return;
+    }
+
+    const url = parsed.values.url ?? parsed.positionals[0];
+    if (!url) {
+      printHelp();
+      throw new Error('Missing required role-matrix --url <url>.');
+    }
+    const roles = await resolveRoleMatrixRoles(parsed.values.role, parsed.values.roles);
+    if (roles.length === 0) {
+      throw new Error('Missing role matrix roles. Use --role admin=.auth/admin.json, --role viewer=.auth/viewer.json, or --roles roles.json.');
+    }
+    const result = await runRoleMatrix({
+      url,
+      configPath: parsed.values.config,
+      requirementsPath: parsed.values.requirements,
+      sourceRoot: parsed.values['source-root'],
+      sourceRunScripts: parsed.values['source-run-scripts'],
+      sourceScripts: normalizeStringList(parsed.values['source-scripts']),
+      sourceScriptTimeoutMs: normalizePositiveNumber(parsed.values['source-script-timeout-ms'], '--source-script-timeout-ms'),
+      outputDir: parsed.values.output,
+      browser: normalizeBrowser(parsed.values.browser),
+      headless: parsed.values.headed ? false : parsed.values.headless,
+      roles,
+      trace: parsed.values['no-trace'] ? false : parsed.values.trace,
+      video: parsed.values.video,
+      screenshot: parsed.values.screenshot,
+      simulateExceptions: parsed.values['no-exceptions'] ? false : parsed.values['simulate-exceptions'],
+      ai: parsed.values['no-ai'] ? false : parsed.values.ai,
+      coverage: parsed.values['no-coverage'] ? false : parsed.values.coverage,
+      security: parsed.values['no-security'] ? false : parsed.values.security,
+      journeys: parsed.values['no-journeys'] ? false : parsed.values.journeys,
+      contract: parsed.values['no-contract'] ? false : parsed.values.contract,
+      realtime: parsed.values['no-realtime'] ? false : parsed.values.realtime,
+      p2: parsed.values['no-p2'] ? false : parsed.values.p2,
+      blockMutatingRequests: parsed.values['allow-mutating-requests'] ? false : parsed.values['block-mutating-requests']
+    });
+    if (parsed.values.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`Role matrix QA completed: ${result.outputDir}`);
+      console.log(`Roles success/failed: ${result.comparison.successfulRoleCount}/${result.comparison.failedRoleCount}`);
+      console.log(`Permission risk candidates: ${result.comparison.permissionRiskCount}`);
       console.log(`Markdown: ${result.artifacts.markdown}`);
       console.log(`JSON: ${result.artifacts.json}`);
     }

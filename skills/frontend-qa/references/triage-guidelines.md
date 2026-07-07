@@ -39,6 +39,8 @@ Add an **evidence confidence** label to any business-function conclusion:
 
 For product/design/style findings, default to **Product decision / optional** unless there is evidence that the style blocks a core task, violates an explicit ADR/accessibility requirement, or causes measurable usability failure. Avoid turning subjective visual density or color hierarchy into mandatory defects.
 
+For role/permission findings, default role-specific UI differences to **permission review evidence**, not bugs. Promote to a real defect only when a PRD/role matrix says the role must or must not see the action, `role-matrix` reports expected allowed/forbidden text violations, or source/runtime guards confirm a permission leak.
+
 If the project supplies `metadata.config.productContext`, use it as the source of truth before classifying product-scope findings. If not, use `pageProfile.questions` to report missing scope instead of inventing a requirement:
 
 - `requiredFeatures`: keep matching findings as real fix candidates or source-confirmation gaps.

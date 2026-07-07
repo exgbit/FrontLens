@@ -33,6 +33,7 @@ FrontLens 的推荐使用方式是：
 - 结合前端源码进行 file:line 级别的问题定位
 - 基于 PRD/验收标准 JSON 生成需求覆盖矩阵和 QA Gate
 - 将 Markdown/自然语言 PRD 草案转换为可复核的 `requirements.json` 初稿
+- 按 admin / 普通用户 / 只读 / 匿名等登录态运行角色矩阵，比较权限、按钮、问题差异
 - 自动校验证据截图、DOM、trace、视频和报告路径是否真实存在
 - 生成可交给后续修复 Agent 使用的 fix tasks
 
@@ -206,6 +207,44 @@ Skill 会按规则：
 - 启动本地服务后再运行 QA。
 - 不修改业务代码。
 
+### 5. 多角色 / 权限矩阵
+
+专业 QA 不应只用一个登录态判断业务是否通过。准备多个角色的 storageState 后，可以运行：
+
+```bash
+node dist/cli.js role-matrix \
+  --url "https://example.com/admin/users" \
+  --role admin=.frontlens/auth/admin.json \
+  --role viewer=.frontlens/auth/viewer.json \
+  --role guest= \
+  --output reports/roles-users
+```
+
+也可以用 JSON 文件：
+
+```json
+[
+  {
+    "name": "admin",
+    "storageState": ".frontlens/auth/admin.json",
+    "expectedAllowedTexts": ["删除用户"]
+  },
+  {
+    "name": "viewer",
+    "storageState": ".frontlens/auth/viewer.json",
+    "expectedForbiddenTexts": ["删除用户"]
+  }
+]
+```
+
+产物：
+
+- `role-matrix.json`
+- `role-matrix.md`
+- 每个角色独立的 `result.json` / `qa-review.md` / `report.md`
+
+角色矩阵会比较各角色的可见操作、危险动作、权限/API 问题和 role-specific issue。差异默认是“权限复核证据”，只有匹配明确权限需求或 `expectedForbiddenTexts` / `expectedAllowedTexts` 时才升级为缺陷，避免把合理的角色差异误报为 bug。
+
 ## Skill 输出关注点
 
 最终输出不会简单照搬扫描器 raw issue，而是按以下结构复盘：
@@ -361,6 +400,7 @@ node dist/cli.js mcp
 - `frontlens_qa`
 - `frontlens_requirements_synthesize`
 - `frontlens_matrix`
+- `frontlens_role_matrix`
 - `frontlens_inspect`
 - `frontlens_issues`
 - `frontlens_root_causes`

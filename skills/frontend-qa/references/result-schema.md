@@ -28,6 +28,26 @@ Stable fields:
 
 Do not treat this output as runtime evidence. Low-confidence or `needsReview` candidates remain coverage gaps until grounded by selectors, expected texts, API patterns, safe journey steps, role state, and test data authorization.
 
+## Role matrix output
+
+`frontlens role-matrix` writes a `RoleMatrixResult`, not a `QaResult`. It runs the same URL once per configured role/storage state and writes one normal `result.json` per role plus aggregate `role-matrix.json` / `role-matrix.md`.
+
+Stable fields:
+
+- `roles[]`: per-role run status, score, issue counts, QA sign-off, action labels, dangerous action labels, expected allowed/forbidden text gaps, and artifact paths
+- `comparison.roleSpecificIssueTitles`
+- `comparison.sharedIssueTitles`
+- `comparison.roleSpecificActionLabels`
+- `comparison.sharedActionLabels`
+- `comparison.dangerousActionsByRole`
+- `comparison.lowPrivilegeDangerousActionRoles`
+- `comparison.expectedForbiddenViolations`
+- `comparison.expectedAllowedGaps`
+- `comparison.permissionRiskCount`
+- `recommendations[]`
+
+Role differences alone are not defects. Promote only explicit permission contract violations (`expectedForbiddenTexts` visible, `expectedAllowedTexts` missing), PRD role rules, or source/runtime-confirmed leaks.
+
 ## Top-level shape and schema version
 
 `metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`; reports before `1.15.0` may miss `environment`; reports before `1.16.0` may miss `pageProfile`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health / environment / pageProfile when older reports do not contain them.

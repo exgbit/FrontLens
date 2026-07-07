@@ -80,6 +80,7 @@ Tools exposed:
 - `frontlens_qa`: run QA for a URL and return summary + artifact paths.
 - `frontlens_requirements_synthesize`: convert PRD/user-story/acceptance text into a reviewable `requirements.json` draft plus questions for human confirmation.
 - `frontlens_matrix`: run browser compatibility matrix.
+- `frontlens_role_matrix`: run the same URL across multiple role storage states and compare permission/action/issue differences.
 - `frontlens_inspect`: summarize an existing `result.json`, including schema version and phase errors.
 - `frontlens_issues`: return issues, optionally filtered by severity; pass `full=true` for full Issue objects.
 - `frontlens_root_causes`: return implementation-level root-cause groups.
@@ -93,6 +94,8 @@ Tools exposed:
 - `frontlens_suggestions`: return frontend/backend/product/test suggestions.
 
 `frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups`; use `qaSignoff` plus `environment.trust` and `pageProfile.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
+
+`frontlens_role_matrix` returns `role-matrix.json` / `role-matrix.md`. Use it for permission-sensitive pages after collecting storage states; treat role-specific action labels or issues as review evidence unless expected allowed/forbidden text contracts or PRD/source/runtime proof show a violation.
 
 `auth save` is intentionally CLI-first because it usually launches a headed browser for manual login.
 

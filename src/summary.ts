@@ -1,4 +1,4 @@
-import type { BrowserName, Issue, QaSummary } from './types.js';
+import type { BrowserName, Issue, IssueDispositionResult, QaSummary } from './types.js';
 
 function severityPenalty(issue: Issue): number {
   const base = (() => {
@@ -53,11 +53,16 @@ export function buildSummary(input: {
   viewport: { width: number; height: number };
 }): QaSummary {
   const count = (severity: Issue['severity']) => input.issues.filter((issue) => issue.severity === severity).length;
+  const rawScore = calculateScore(input.issues);
   return {
     url: input.url,
     title: input.title,
-    score: calculateScore(input.issues),
+    score: rawScore,
+    adjustedScore: rawScore,
     issueCount: input.issues.length,
+    adjustedIssueCount: input.issues.length,
+    scoreBasis: 'raw',
+    scoreNotes: ['Adjusted score has not been actionability-calibrated yet; read issueDisposition/qaSignoff before making release decisions.'],
     criticalCount: count('critical'),
     highCount: count('high'),
     mediumCount: count('medium'),
@@ -67,4 +72,30 @@ export function buildSummary(input: {
     browser: input.browser,
     viewport: input.viewport
   };
+}
+
+export function applyAdjustedScore(summary: QaSummary, issues: Issue[], issueDisposition?: IssueDispositionResult): QaSummary {
+  if (!issueDisposition) {
+    summary.adjustedScore = summary.score;
+    summary.adjustedIssueCount = summary.issueCount;
+    summary.scoreBasis = 'raw';
+    summary.scoreNotes = ['Adjusted score is unavailable because issueDisposition was not provided.'];
+    return summary;
+  }
+
+  const dispositionByIssueId = new Map(issueDisposition.items.map((item) => [item.issueId, item]));
+  const actionableIssues = issues.filter((issue) => dispositionByIssueId.get(issue.id)?.actionability === 'actionable');
+  const conditionalCount = issueDisposition.summary.conditionalCount;
+  const nonActionableCount = issueDisposition.summary.nonActionableCount;
+  summary.adjustedScore = calculateScore(actionableIssues);
+  summary.adjustedIssueCount = actionableIssues.length;
+  summary.scoreBasis = 'actionable';
+  summary.scoreNotes = [
+    `Raw score ${summary.score}/100 is based on ${summary.issueCount} raw finding(s).`,
+    `Adjusted score ${summary.adjustedScore}/100 is based on ${summary.adjustedIssueCount} actionable finding(s).`,
+    conditionalCount + nonActionableCount > 0
+      ? `${conditionalCount} conditional and ${nonActionableCount} non-actionable finding(s) were excluded from adjustedScore; inspect issueDisposition before scheduling work.`
+      : 'No conditional or non-actionable findings were excluded from adjustedScore.'
+  ];
+  return summary;
 }

@@ -1097,7 +1097,8 @@ async function main(): Promise<void> {
     );
   } else {
     console.log(`\nFrontLens QA completed`);
-    console.log(`Score: ${result.summary.score}/100`);
+    console.log(`Adjusted score: ${result.summary.adjustedScore}/100 (${result.summary.adjustedIssueCount} actionable findings)`);
+    console.log(`Raw score: ${result.summary.score}/100 (${result.summary.issueCount} raw findings)`);
     console.log(`Security: ${result.security.status}, ${result.security.score}/100 (${result.security.summary.failedCount} failed, ${result.security.summary.warningCount} warnings)`);
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);

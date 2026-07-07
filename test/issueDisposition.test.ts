@@ -110,6 +110,53 @@ test('quality gate uses disposition so speculative high findings become pass-wit
   assert.equal(result.qualityGate.coverageGaps.some((gap) => gap.includes('Raw finding')), true);
 });
 
+test('adjusted score excludes deployment, product, and insufficient-evidence findings', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/admin', title: 'Admin' },
+    pageModel: {
+      url: 'https://example.com/admin',
+      title: 'Admin',
+      stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: 'ok' }
+    },
+    interactionTests: [{ id: 'IT-001', kind: 'search', target: 'search', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, actions: [], observations: {} }],
+    journeyTests: [{ id: 'JOURNEY-001', name: 'smoke', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, startUrl: 'https://example.com/admin', steps: [{ index: 0, action: 'expectVisible', target: 'body', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 }] }],
+    exceptionSimulations: [{ id: 'EX-001', kind: 'page-refresh', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, observations: {} }],
+    issues: [
+      {
+        title: '缺少 Content-Security-Policy',
+        category: 'security',
+        severity: 'high',
+        confidence: 0.95,
+        description: 'Missing deployment header',
+        evidence: { details: { category: 'headers', rule: 'content-security-policy' } },
+        reproduceSteps: ['Open page'],
+        reason: 'deployment config',
+        suggestion: { backend: 'set CSP', priority: 'P1' }
+      },
+      {
+        title: '接口返回疑似有列表数据，但页面表格为空',
+        category: 'integration-data-mismatch',
+        severity: 'high',
+        confidence: 0.66,
+        description: 'speculative mismatch',
+        evidence: { networkRequestId: 'REQ-1', screenshot: '/tmp/page.png' },
+        reproduceSteps: ['Open page'],
+        reason: 'requires source confirmation',
+        suggestion: { frontend: 'verify binding', priority: 'P2' }
+      }
+    ]
+  });
+
+  assert.equal(result.issueDisposition.summary.actionableCount, 0);
+  assert.equal(result.rootCauseGroups.length, 0);
+  assert.equal(result.fixTasks.length, 0);
+  assert.equal(result.summary.score < 100, true);
+  assert.equal(result.summary.adjustedScore, 100);
+  assert.equal(result.summary.adjustedIssueCount, 0);
+  assert.equal(result.summary.scoreBasis, 'actionable');
+  assert.equal(result.summary.scoreNotes.some((note) => note.includes('excluded')), true);
+});
+
 test('product context decides whether product-scope findings are defects or non-defect observations', () => {
   const mobileConfig = createDefaultConfig('https://example.com/app');
   mobileConfig.productContext.deviceScope = 'mobile-first';

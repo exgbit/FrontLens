@@ -1723,8 +1723,22 @@ export interface Issue {
 export interface QaSummary {
   url: string;
   title: string;
+  /**
+   * Raw scanner score based on every raw issue. Keep for backwards compatibility
+   * and trend sorting; professional release decisions should prefer adjustedScore,
+   * qaSignoff, qualityGate, and professionalSummary.
+   */
   score: number;
+  /**
+   * Actionability-aware score. After issueDisposition is built, this excludes
+   * conditional and non-actionable raw findings such as product decisions,
+   * deployment-only findings, tool limitations, and insufficient evidence.
+   */
+  adjustedScore: number;
   issueCount: number;
+  adjustedIssueCount: number;
+  scoreBasis: 'raw' | 'actionable';
+  scoreNotes: string[];
   criticalCount: number;
   highCount: number;
   mediumCount: number;

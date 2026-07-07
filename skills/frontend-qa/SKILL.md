@@ -160,7 +160,7 @@ If the user selects "all/default", run the full default QA command. If the user 
 10. Before returning fixes, read `professionalSummary` first for the human-facing answer, then read `issueDisposition` to separate actionable, conditional, and non-actionable raw findings, then group actionable/conditional raw issues by implementation root cause. Do not treat raw issue count, heuristic AI issue count, or `fixTasks[]` length as workload. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
 11. Apply the professional QA actionability gate: a bug needs user impact, evidence, reproducibility, and an owner/fix surface. Move style/product choices and single-signal guesses to non-defect observations.
 12. Prefer `result.json.qaSignoff` for release/sign-off wording and `result.json.regressionPlan` for post-fix verification; it may downgrade a raw `qualityGate.pass` to `pass-with-risks` when PRD, auth/role state, or runtime journeys are missing.
-13. Return the report path, JSON path, professionalSummary headline/status, raw score, raw issue count, raw-finding disposition counts, root-cause fix count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, pageProfile status/questions, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, regressionPlan status/item count, and the highest-priority fixes.
+13. Return the report path, JSON path, professionalSummary headline/status, adjusted score, raw score, raw issue count, raw-finding disposition counts, root-cause fix count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, pageProfile status/questions, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, regressionPlan status/item count, and the highest-priority fixes.
 
 ## Safety Rules
 
@@ -472,7 +472,7 @@ node dist/cli.js suggestions --report "reports/frontlens/users/result.json"
 Summarize:
 
 - professionalSummary headline/status and must-fix/non-defect counts;
-- score and issue counts;
+- adjusted score, raw score, and issue counts;
 - critical/high issues first;
 - security score and any failed security checks;
 - top frontend fixes;
@@ -481,7 +481,7 @@ Summarize:
 - machine-executable fix task count and important task IDs; regressionPlan status, blocked/needs-input counts, and top rerun commands;
 - generated artifact paths and artifact integrity status; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used; test-data lifecycle status when write/data-changing flows are in scope;
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation; include pageProfile questions when product scope is inferred rather than configured;
-- raw score plus confidence/adjusted-risk note when score is distorted by skipped/synthetic/deployment-only findings;
+- adjustedScore plus raw score and confidence/adjusted-risk note when raw score is distorted by skipped/synthetic/deployment-only findings;
 - raw issue count separated from implementation root-cause count;
 - requirement coverage / business-validation confidence when the user asks for acceptance or professional QA;
 - QA sign-off status (`pass`, `pass-with-risks`, `blocked`, or `fail`) when using professional QA mode;

@@ -3,7 +3,7 @@ import { assignJsonArtifactPaths, writeJsonReports } from './reporters/jsonRepor
 import { writeMarkdownReport } from './reporters/markdownReporter.js';
 import { writeHtmlReport } from './reporters/htmlReporter.js';
 import { runReporterPlugins } from './plugins/pluginManager.js';
-import { buildSummary } from './summary.js';
+import { applyAdjustedScore, buildSummary } from './summary.js';
 import { normalizeIssueLike } from './resultNormalizer.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
@@ -50,6 +50,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.artifactIntegrity = await buildArtifactIntegrity(result);
   result.testData = buildTestDataAssessment(result.metadata.config, result.requirementCoverage);
   rebuildTriageArtifacts(result);
+  applyAdjustedScore(result.summary, result.issues, result.issueDisposition);
   result.qualityGate = buildQualityGate({
     issues: result.issues,
     pageModel: result.pageModel,

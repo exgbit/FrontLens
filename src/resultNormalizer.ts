@@ -25,7 +25,7 @@ import type {
 import { createDefaultConfig } from './defaultConfig.js';
 import { createStableFingerprint } from './utils/id.js';
 import { generateFixTasks } from './fix/fixTasks.js';
-import { calculateScore } from './summary.js';
+import { applyAdjustedScore, calculateScore } from './summary.js';
 import { buildQualityGate } from './qualityGate.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { deepMerge } from './utils/deepMerge.js';
@@ -39,7 +39,7 @@ import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 
-export const RESULT_SCHEMA_VERSION = '1.25.0';
+export const RESULT_SCHEMA_VERSION = '1.26.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -991,7 +991,11 @@ export function normalizeResult(raw: unknown): QaResult {
     url,
     title: asString(summaryRaw.title, isRecord(raw.pageModel) ? asString(raw.pageModel.title) : ''),
     score: rawScore === undefined ? calculateScore(issues) : Math.max(0, Math.min(100, rawScore)),
+    adjustedScore: Math.max(0, Math.min(100, asNumber(summaryRaw.adjustedScore, rawScore === undefined ? calculateScore(issues) : rawScore))),
     issueCount: issues.length,
+    adjustedIssueCount: asNumber(summaryRaw.adjustedIssueCount, issues.length),
+    scoreBasis: summaryRaw.scoreBasis === 'actionable' ? 'actionable' : 'raw',
+    scoreNotes: asArray<string>(summaryRaw.scoreNotes).filter((item) => typeof item === 'string'),
     criticalCount: issues.filter((issue) => issue.severity === 'critical').length,
     highCount: issues.filter((issue) => issue.severity === 'high').length,
     mediumCount: issues.filter((issue) => issue.severity === 'medium').length,
@@ -1083,6 +1087,7 @@ export function normalizeResult(raw: unknown): QaResult {
   const preliminaryDisposition = buildIssueDisposition(issues, metadataConfig);
   const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
+  applyAdjustedScore(summary, issues, issueDisposition);
   const fixTasks = generateFixTasks(issues, metadataConfig, rootCauseGroups);
   const qualityGateFallback = buildQualityGate({
     issues,

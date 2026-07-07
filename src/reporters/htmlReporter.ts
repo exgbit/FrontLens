@@ -325,10 +325,13 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     <main>
       <section>
         <h1>FrontLens QA Report</h1>
-        <div class="score">${result.summary.score}/100</div>
+        <div class="score">${result.summary.adjustedScore}/100</div>
+        <p>Adjusted score based on ${result.summary.adjustedIssueCount} actionable finding(s). Raw score: ${result.summary.score}/100.</p>
         <p>${escapeHtml(result.summary.url)}</p>
         <div class="grid">
           <div class="metric"><span>Issues</span><strong>${result.summary.issueCount}</strong></div>
+          <div class="metric"><span>Actionable score</span><strong>${result.summary.adjustedScore}/100</strong></div>
+          <div class="metric"><span>Raw score</span><strong>${result.summary.score}/100</strong></div>
           <div class="metric"><span>Critical</span><strong>${result.summary.criticalCount}</strong></div>
           <div class="metric"><span>High</span><strong>${result.summary.highCount}</strong></div>
           <div class="metric"><span>Medium</span><strong>${result.summary.mediumCount}</strong></div>

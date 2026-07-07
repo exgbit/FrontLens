@@ -930,7 +930,8 @@ export function formatProfessionalReview(result: QaResult): string {
 ## 结论
 
 - Target：${markdownEscape(result.summary.url)}
-- Raw score：**${result.summary.score}/100**（只作排序参考，不等同业务通过率）
+- Raw score：**${result.summary.score}/100**（全量 raw finding，仅作趋势/排序参考）
+- Adjusted score：**${result.summary.adjustedScore}/100**（基于 ${result.summary.adjustedIssueCount} 个 actionable finding）
 - QA sign-off：**${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
 - Professional summary：${markdownEscape(result.professionalSummary.headline)}
 - Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
@@ -1003,7 +1004,8 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - 总耗时：${result.metadata.durationMs}ms
 - Result Schema：${result.metadata.schemaVersion}
 - 采集阶段异常：${result.metadata.phaseErrors.length}
-- 最终评分：**${result.summary.score}/100**
+- Raw score：**${result.summary.score}/100**（全量 raw finding）
+- Adjusted score：**${result.summary.adjustedScore}/100**（${result.summary.scoreBasis}，基于 ${result.summary.adjustedIssueCount} 个可执行问题）
 - 安全评分：**${result.security.score}/100**（${result.security.status}）
 - API Contract：${result.apiContract.summary.endpointCount} endpoints / ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings
 - Realtime：GraphQL ${result.realtime.summary.graphqlOperationCount} / WS ${result.realtime.summary.webSocketCount} / SSE ${result.realtime.summary.sseCount}
@@ -1019,6 +1021,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
 - 严重 / 高 / 中 / 低 / 信息：${result.summary.criticalCount} / ${result.summary.highCount} / ${result.summary.mediumCount} / ${result.summary.lowCount} / ${result.summary.infoCount}
+- 评分说明：${result.summary.scoreNotes.map(markdownEscape).join('；')}
 
 ${formatPhaseErrors(result)}
 

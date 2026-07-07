@@ -8,7 +8,7 @@ import { EvidenceCollector } from './evidence/evidenceCollector.js';
 import { PageExplorer } from './explorer/pageExplorer.js';
 import { analyzeAll } from './analyzers/index.js';
 import { writeReports } from './reporter.js';
-import { buildSummary } from './summary.js';
+import { applyAdjustedScore, buildSummary } from './summary.js';
 import { SafeInteractionTester } from './interactions/safeInteractionTester.js';
 import { ResponsiveTester } from './responsive/responsiveTester.js';
 import { ExceptionTester } from './exceptions/exceptionTester.js';
@@ -754,9 +754,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     qaSignoff,
     regressionPlan
   });
-
-  const result: QaResult = {
-    summary: buildSummary({
+  const summary = applyAdjustedScore(
+    buildSummary({
       url: redactUrl(config.target.url),
       title: pageModel.title,
       issues,
@@ -764,6 +763,12 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
       browser: config.browser.name,
       viewport: config.browser.viewport
     }),
+    issues,
+    issueDisposition
+  );
+
+  const result: QaResult = {
+    summary,
     pageModel,
     issues,
     network: {

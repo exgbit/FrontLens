@@ -152,28 +152,6 @@ export async function runAiAnalyzer(context: AnalyzerContext, issues: Issue[]): 
     contextPath,
     summary: heuristic.summary,
     suggestions: heuristic.suggestions,
-    issues: [
-      normalizeIssueLike({
-        id: 'AI-001',
-        title: 'AI 综合分析摘要',
-        category: 'unknown',
-        severity: 'info',
-        confidence: 0.7,
-        description: heuristic.summary,
-        evidence: {
-          details: {
-            contextPath
-          }
-        },
-        reproduceSteps: ['运行 FrontLens QA', '查看 aiAnalysis 和 ai-context.json'],
-        reason: '基于页面结构、问题列表、Network、Console、性能和交互测试结果进行综合归纳。',
-        suggestion: {
-          frontend: heuristic.suggestions.join(' '),
-          test: '修复后重新运行 FrontLens，对比 result.json 中的问题变化。',
-          priority: 'P3'
-        },
-        source: 'ai'
-      })
-    ]
+    issues: []
   };
 }

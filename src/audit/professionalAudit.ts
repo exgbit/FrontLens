@@ -8,6 +8,7 @@ export type ProfessionalAuditCategory =
   | 'claim-guard'
   | 'qa-signoff'
   | 'overclaim'
+  | 'coverage'
   | 'fix-queue'
   | 'source-evidence'
   | 'scope'
@@ -81,6 +82,36 @@ function auditOverclaims(result: QaResult, findings: ProfessionalAuditFinding[])
       title: 'qaSignoff says runtime-verified while claimGuard limits business-validation wording.',
       evidenceRefs: ['qaSignoff', 'claimGuard.items[business-validation]'],
       recommendation: 'Align qaSignoff with claimGuard; keep the final wording limited until required inputs are supplied.'
+    });
+  }
+}
+
+function auditCoverageBoundary(result: QaResult, findings: ProfessionalAuditFinding[]): void {
+  const coverage = result.qaCoverage;
+  const gapCount = coverage.summary.partialCount + coverage.summary.skippedCount + coverage.summary.needsInputCount + coverage.summary.failedCount;
+  const failedRows = coverage.items.filter((item) => item.status === 'failed');
+  const acceptanceLikeSignoff = result.qaSignoff.status === 'pass' || result.qaSignoff.businessValidationConfidence === 'runtime-verified';
+  const businessClaimAllowed = result.claimGuard.items.find((item) => item.claim === 'business-validation')?.status === 'allowed';
+
+  if (coverage.status !== 'sufficient') {
+    add(findings, {
+      severity: acceptanceLikeSignoff || businessClaimAllowed || coverage.status === 'insufficient' && failedRows.length > 0 ? 'blocker' : 'warning',
+      category: 'coverage',
+      title: `QA coverage is ${coverage.status}; ${gapCount} dimension(s) are partial/skipped/needs-input/failed.`,
+      evidenceRefs: ['qaCoverage', ...coverage.items.filter((item) => item.status !== 'covered').slice(0, 6).map((item) => item.id)],
+      recommendation: acceptanceLikeSignoff || businessClaimAllowed
+        ? 'Downgrade acceptance/business-validation wording until qaCoverage is sufficient, or close the listed coverage gaps with PRD-backed runtime evidence.'
+        : 'Surface these rows as coverage gaps in the final answer; do not describe skipped or needs-input dimensions as passed.'
+    });
+  }
+
+  if (failedRows.length > 0 && result.qaSignoff.status !== 'fail' && result.qaSignoff.status !== 'blocked') {
+    add(findings, {
+      severity: 'blocker',
+      category: 'coverage',
+      title: `QA coverage contains failed dimension(s) while QA sign-off is ${result.qaSignoff.status}.`,
+      evidenceRefs: ['qaCoverage.items[failed]', 'qaSignoff.status', ...failedRows.slice(0, 6).map((item) => item.id)],
+      recommendation: 'Align QA sign-off with failed coverage rows, or rerun/fix the failed dimension before presenting the report as professionally signable.'
     });
   }
 }
@@ -261,6 +292,7 @@ export function runProfessionalAudit(result: QaResult): ProfessionalAuditResult 
   const proofReadyIssueIds = issueIdsFromGroups(proofReadyGroups);
 
   auditEnvironmentAndScope(result, findings);
+  auditCoverageBoundary(result, findings);
   auditOverclaims(result, findings);
   auditFixQueue(result, findings, proofReadyIssueIds);
   auditSourceEvidence(result, findings, proofReadyGroups);
@@ -284,7 +316,7 @@ export function runProfessionalAudit(result: QaResult): ProfessionalAuditResult 
     },
     findings,
     notes: [
-      'Professional audit validates the report contract itself: no overclaiming, no non-proof-ready fix queue items, artifact integrity, source evidence, and scope/claim guard alignment.',
+      'Professional audit validates the report contract itself: coverage boundaries, no overclaiming, no non-proof-ready fix queue items, artifact integrity, source evidence, and scope/claim guard alignment.',
       'A warning result can still be useful for exploratory QA, but user-facing conclusions must include the listed limitations.'
     ]
   };

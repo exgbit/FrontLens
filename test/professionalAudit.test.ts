@@ -59,6 +59,18 @@ test('professional audit blocks runtime-verified business overclaim without requ
   assert.equal(audit.findings.some((item) => item.category === 'overclaim'), true);
 });
 
+test('professional audit surfaces qa coverage gaps and blocks acceptance wording when coverage is insufficient', () => {
+  const exploratory = baseResult();
+  const exploratoryAudit = runProfessionalAudit(exploratory);
+  assert.equal(exploratoryAudit.findings.some((item) => item.category === 'coverage' && item.severity === 'warning'), true);
+
+  const overSigned = baseResult();
+  overSigned.qaSignoff.status = 'pass';
+  const signedAudit = runProfessionalAudit(overSigned);
+  assert.equal(signedAudit.status, 'failed');
+  assert.equal(signedAudit.findings.some((item) => item.category === 'coverage' && item.severity === 'blocker'), true);
+});
+
 test('professional audit warns when source-enabled proof-ready frontend group lacks file line', () => {
   const result = normalizeResult({
     summary: { url: 'https://example.com/app', title: 'App' },

@@ -4,6 +4,7 @@ export { runRoleMatrix, createRoleMatrixResult, writeRoleMatrixResult, loadRoleM
 export { saveAuthState } from './auth.js';
 export { recordJourney, buildRecordedJourneyConfig } from './journeys/journeyRecorder.js';
 export { buildJourneyAssertionAudit, formatJourneyAssertionAudit, createSkippedJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
+export { buildAssertionSuggestions, formatAssertionSuggestions } from './journeys/assertionSuggestions.js';
 export { loadConfig } from './config.js';
 export { createDefaultConfig } from './defaultConfig.js';
 export { normalizeResult, normalizeIssueLike, fingerprintIssue, RESULT_SCHEMA_VERSION } from './resultNormalizer.js';

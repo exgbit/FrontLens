@@ -13,6 +13,7 @@ import { buildProductContextSuggestion } from './product/productContextSuggestio
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
+import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -196,6 +197,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_qa_coverage',
         description: 'Read result.json and return a professional QA coverage matrix: covered, partial, skipped, needs-input, and failed QA dimensions.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_assertion_suggestions',
+        description: 'Read result.json and return concrete expectVisible/expectText/expectUrl/expectRequest suggestions for weak or path-only journeys.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -514,6 +520,10 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           headline: result.professionalSummary.headline,
           counts: result.professionalSummary.counts
         },
+        assertionSuggestions: {
+          status: result.assertionSuggestions.status,
+          summary: result.assertionSuggestions.summary
+        },
         testCases: {
           status: result.testCases.status,
           summary: result.testCases.summary
@@ -595,6 +605,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         professionalSummary: result.professionalSummary,
         qaPlan: result.qaPlan,
         qaCoverage: result.qaCoverage,
+        assertionSuggestions: result.assertionSuggestions,
         testCases: result.testCases,
         riskRegister: result.riskRegister,
         riskAcceptance: result.riskAcceptance,
@@ -693,6 +704,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildQaCoverageMatrix(result));
+    }
+    case 'frontlens_assertion_suggestions': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildAssertionSuggestions(result));
     }
     case 'frontlens_test_cases': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

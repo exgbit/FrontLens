@@ -25,6 +25,7 @@ import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js'
 import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
+import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
@@ -132,6 +133,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.qaIntake = buildQaIntake(result);
   result.qaPlan = buildQaExecutionPlan(result);
   result.qaCoverage = buildQaCoverageMatrix(result);
+  result.assertionSuggestions = buildAssertionSuggestions(result);
   result.testCases = buildTestCaseMatrix(result);
   result.riskRegister = buildRiskRegister(result);
   result.riskAcceptance = buildRiskAcceptance(result);
@@ -199,6 +201,7 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
     result.qaIntake = buildQaIntake(result);
     result.qaPlan = buildQaExecutionPlan(result);
     result.qaCoverage = buildQaCoverageMatrix(result);
+    result.assertionSuggestions = buildAssertionSuggestions(result);
     result.testCases = buildTestCaseMatrix(result);
     result.riskRegister = buildRiskRegister(result);
     result.riskAcceptance = buildRiskAcceptance(result);

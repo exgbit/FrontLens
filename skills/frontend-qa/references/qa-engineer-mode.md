@@ -15,10 +15,11 @@ A professional-test-engineer answer must include:
 3. **Execution evidence**: report-relative screenshot/DOM/network/console/download/source file references that exist; treat `artifactIntegrity.status === failed` as a report-quality defect.
 4. **Defect triage**: core defects by root cause, raw-finding disposition, severity, owner, reproduction, fix surface, and merged raw issue IDs. Do not list every raw issue as a separate bug.
 5. **Non-defect observations**: product decisions, style/design suggestions, skipped checks, environment/deployment tasks.
-6. **Formal test case matrix**: summarize `result.json.testCases` / `test-cases.md`, especially runtime-verified passed cases, failed/blocked cases, manual-required/needs-input rows, and high-priority open cases. Treat it as the execution ledger: it can prove scoped checks passed, but it cannot by itself prove 100% business validation without PRD, runtime assertions, roles, and test data.
-7. **Release risk register and acceptance**: summarize `result.json.riskRegister` / `risk-register.md` and `result.json.riskAcceptance` / `risk-acceptance.md`, especially release-blocking risks, must-mitigate items, acceptance-required items, required approvers, mitigation, and verification; do not confuse risk acceptance with defect closure.
-8. **Execution / regression pack**: use `result.json.qaPlan` first as the professional tester worklist, then `result.json.regressionPlan` for detailed repair verification; include exact FrontLens rerun commands, blocked/needs-input items, journey/requirement/download/environment checks, and focused verification steps after fixes.
-9. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
+6. **Assertion improvement pack**: summarize `result.json.assertionSuggestions` / `assertion-suggestions.md`, especially concrete expect* suggestions for path-only or weak journeys. Make clear these are draft assertions to add and rerun, not passed evidence.
+7. **Formal test case matrix**: summarize `result.json.testCases` / `test-cases.md`, especially runtime-verified passed cases, failed/blocked cases, manual-required/needs-input rows, and high-priority open cases. Treat it as the execution ledger: it can prove scoped checks passed, but it cannot by itself prove 100% business validation without PRD, runtime assertions, roles, and test data.
+8. **Release risk register and acceptance**: summarize `result.json.riskRegister` / `risk-register.md` and `result.json.riskAcceptance` / `risk-acceptance.md`, especially release-blocking risks, must-mitigate items, acceptance-required items, required approvers, mitigation, and verification; do not confuse risk acceptance with defect closure.
+9. **Execution / regression pack**: use `result.json.qaPlan` first as the professional tester worklist, then `result.json.regressionPlan` for detailed repair verification; include exact FrontLens rerun commands, blocked/needs-input items, journey/requirement/download/environment checks, and focused verification steps after fixes.
+10. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
 Use `result.json.professionalSummary` as the first human-facing triage summary, `professional-audit.md/json` as the report-contract, disposition-quality, and coverage-boundary self-check, `report-content-audit.md/json` as the generated Markdown wording/depth self-check, `journey-assertion-audit.md/json` as the business-flow assertion-quality self-check, `result.json.qaPlan` as the professional execution/acceptance worklist, `result.json.qaCoverage` as the coverage boundary, `result.json.testCases` as the formal test-case execution matrix, `result.json.riskRegister` as the release risk register, `result.json.riskAcceptance` as the risk-acceptance/must-mitigate gate, `result.json.claimGuard` as the anti-overclaim wording gate, `result.json.qaIntake` as the professional follow-up question list, `result.json.defectProof` as the root-cause proof-strength gate, and `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `claimGuard`, `qaIntake`, `defectProof`, `riskRegister`, `riskAcceptance`, `reportContentAudit`, `journeyAssertionAudit`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, scope questions, or relevant journeys are missing.
 
@@ -60,6 +61,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Environment**: inspect `environment.kind` and `environment.trust`; use dev server only for function/source correlation, local/private preview for pre-production checks, and production-like HTTPS for release security/performance sign-off.
 - **Performance**: use production build/preview for bundle/security conclusions; use dev server only for function/source correlation.
 - **Security passive checks**: separate frontend code issues from deployment headers/TLS/gateway work.
+- **Assertion suggestions**: inspect `assertionSuggestions.status`, `summary.totalCount`, and suggested `exampleStep` values. Use them to update journeys/requirements and rerun; never count them as passed evidence before rerun.
 - **Formal test cases**: inspect `testCases.status`, `summary.failedCount`, `summary.blockedCount`, `summary.needsInputCount`, `summary.runtimeVerifiedCount`, and high-priority open cases. Use failed/blocked cases to focus QA reproduction; use needs-input/manual-required cases as scope/test-data/requirement follow-ups, not automatic implementation defects.
 - **Release risk register**: inspect `riskRegister.status`, `summary.releaseBlockingCount`, and high/critical items. Treat blocked release risks and `riskAcceptance.status=blocked` must-mitigate items as sign-off blockers even when raw issue count looks small. If `riskAcceptance.status=needs-acceptance`, list required Product/QA/Release approvers and do not present the risk as fixed.
 - **Regression stability**: compare against previous reports with `frontlens diff`; use its Professional QA Diff (`adjustedScore`, `qaSignoff`, business-validation confidence, proof-ready fix workload) before raw added/resolved/persistent issues.
@@ -113,7 +115,7 @@ Default final answers should fit in one decision screen unless the user asks for
 - No export/download pass unless the saved file artifact exists, is non-empty, and has a usable content summary; a network request alone is runtime-partial.
 - No permission defect from role differences alone; require role requirements, expected allowed/forbidden contracts, or source/runtime confirmation.
 - No destructive-flow business pass without isolated test data and cleanup/rollback evidence; production writes without explicit authorization are release blockers.
-- No business pass from a recorded journey that only contains `click`/`fill`/`press`; add `expectVisible`/`expectText`/`expectUrl`/`expectRequest` or requirement evidence first.
+- No business pass from a recorded journey that only contains `click`/`fill`/`press`; add `expectVisible`/`expectText`/`expectUrl`/`expectRequest` or requirement evidence first. `assertionSuggestions` can propose candidates, but they are not evidence until executed.
 - No release sign-off solely from `summary.score` or `testCases.status=passed`; use `riskRegister`, `riskAcceptance`, `claimGuard`, `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
 - No final answer may use a phrase listed in `claimGuard.forbiddenClaims[]` as a positive conclusion.
 - No final answer may ignore `reportContentAudit.status=failed`; fix or explicitly scope the generated wording/depth problem before presenting it as a professional QA conclusion.
@@ -133,6 +135,12 @@ Default final answers should fit in one decision screen unless the user asks for
 ## Requirement coverage matrix
 | Requirement / capability | Evidence | Confidence | Result | Gap/next step |
 | --- | --- | --- | --- | --- |
+
+## Assertion suggestions
+- Status: ready | needs-input | skipped
+- Concrete expect* suggestions / weak journeys: ...
+| ID | Priority | Action | Target/value | Journey/requirement | Confidence | Example step |
+| --- | --- | --- | --- | --- | --- | --- |
 
 ## Test case matrix
 - Status: passed | failed | partial | blocked | skipped | needs-input
@@ -171,6 +179,7 @@ Default final answers should fit in one decision screen unless the user asks for
 - Status: ready | partial | blocked
 - QA execution plan: qaPlan.status, top requirements/journeys/product-context/environment/test-data/root-cause items
 - QA coverage matrix: qaCoverage.status, skipped/needs-input/failed areas
+- Assertion suggestions: assertionSuggestions.status, total suggestion count, weak journey count
 - Test cases: testCases.status, failed/blocked/needs-input/manual-required counts
 - Risk register: riskRegister.status, release-blocking count, top owner/mitigation
 - Risk acceptance: riskAcceptance.status, must-mitigate count, needs-acceptance count

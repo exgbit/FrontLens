@@ -43,6 +43,7 @@ import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
+import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
@@ -901,6 +902,19 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     defectProof,
     qaSignoff
   });
+  const assertionSuggestions = buildAssertionSuggestions({
+    pageModel,
+    network: {
+      requests: networkCollector.list(),
+      failedRequests: analysis.network.failedRequests,
+      slowRequests: analysis.network.slowRequests,
+      duplicatedRequests: analysis.network.duplicatedRequests,
+      suspiciousRequests: analysis.network.suspiciousRequests
+    },
+    requirementCoverage,
+    journeyTests,
+    journeyAssertionAudit
+  });
   const testCases = buildTestCaseMatrix({
     summary,
     requirementCoverage,
@@ -991,6 +1005,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     riskAcceptance,
     reportContentAudit: createSkippedReportContentAudit(resultConfig.report.profile),
     journeyAssertionAudit,
+    assertionSuggestions,
     professionalSummary,
     defectProof,
     claimGuard,

@@ -13,6 +13,7 @@ Default to a concise, decision-oriented answer. Respect `report.profile`: execut
 Summarize:
 
 - professionalSummary headline/status and must-fix/non-defect counts;
+- assertionSuggestions status, concrete suggestion count, weak/path-only journey count, `assertion-suggestions.md` path, and how to upgrade journeys with expect* steps;
 - testCases status, total/passed/failed/blocked/needs-input counts, `test-cases.md` path, and whether failures are runtime defects or manual-required coverage gaps;
 - riskRegister status, release-blocking count, top high/critical risks, `risk-register.md` path, riskAcceptance status, must-mitigate/needs-acceptance counts, and `risk-acceptance.md` path; if blocked/at-risk, report it before raw issue totals;
 - adjusted score, raw score, and issue counts;
@@ -51,6 +52,7 @@ Summarize:
 - risk-acceptance checklist from `result.json.riskAcceptance` and `risk-acceptance.md`; blocked must-mitigate items are not releasable, while needs-acceptance items require named Product/QA/Release approval and evidence before they can be treated as accepted risk.
 - generated-report content audit from `result.json.reportContentAudit` and `report-content-audit.md`; blockers mean the report text itself overclaims or violates the selected depth profile; compactness warnings mean the report should be summarized rather than copied into the final answer;
 - journey assertion audit from `result.json.journeyAssertionAudit` and `journey-assertion-audit.md`; path-only click/fill journeys are coverage gaps, not business passes;
+- assertion suggestions from `result.json.assertionSuggestions` and `assertion-suggestions.md`; suggestions are draft test improvements, not passed evidence until added to journey/requirements config and rerun;
 - skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;
 - for each retained critical/high issue: issue id, severity, category, evidence reference, reproduction step summary, and suggested owner/fix.
 

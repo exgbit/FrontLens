@@ -50,8 +50,9 @@ import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js'
 import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
+import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 
-export const RESULT_SCHEMA_VERSION = '1.66.0';
+export const RESULT_SCHEMA_VERSION = '1.67.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1327,6 +1328,13 @@ export function normalizeResult(raw: unknown): QaResult {
     ...artifactsRaw,
     outputDir: asString(artifactsRaw.outputDir)
   } as ArtifactIndex;
+  const assertionSuggestions = buildAssertionSuggestions({
+    pageModel,
+    network,
+    requirementCoverage,
+    journeyTests,
+    journeyAssertionAudit
+  });
   const qaPlan = buildQaExecutionPlan({
     summary,
     requirementCoverage,
@@ -1451,6 +1459,7 @@ export function normalizeResult(raw: unknown): QaResult {
     riskAcceptance,
     reportContentAudit,
     journeyAssertionAudit,
+    assertionSuggestions,
     professionalSummary,
     defectProof,
     claimGuard,

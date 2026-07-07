@@ -84,6 +84,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）
 - Report content audit: **${result.reportContentAudit.status}**（blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}）
 - Journey assertion audit: **${result.journeyAssertionAudit.status}**（runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}）
+- Assertion suggestions: **${result.assertionSuggestions.status}**（suggestions ${result.assertionSuggestions.summary.totalCount}, weak journeys ${result.assertionSuggestions.summary.weakJourneyCount}）
 - Claim guard: **${result.claimGuard.status}**；QA intake: **${result.qaIntake.status}**；Defect proof: **${result.defectProof.status}**
 - QA execution plan: **${result.qaPlan.status}** / confidence **${result.qaPlan.confidence}**
 - QA coverage matrix: **${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}**（covered ${result.qaCoverage.summary.coveredCount}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}）
@@ -115,6 +116,7 @@ ${forbidden.length ? ['以下结论当前不能正向使用：', ...forbidden].j
 - professional-audit.md: \`${markdownEscape(artifactPath(result, 'professionalAudit'))}\`
 - report-content-audit.md: \`${markdownEscape(artifactPath(result, 'reportContentAudit'))}\`
 - journey-assertion-audit.md: \`${markdownEscape(artifactPath(result, 'journeyAssertionAudit'))}\`
+- assertion-suggestions.md: \`${markdownEscape(artifactPath(result, 'assertionSuggestions'))}\`
 - product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\`
 - product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\`
 - qa-plan.md: \`${markdownEscape(artifactPath(result, 'qaPlan'))}\`

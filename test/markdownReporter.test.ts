@@ -46,6 +46,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   const audit = await readFile(result.artifacts.professionalAudit!, 'utf8');
   const reportContentAudit = await readFile(result.artifacts.reportContentAudit!, 'utf8');
   const journeyAssertionAudit = await readFile(result.artifacts.journeyAssertionAudit!, 'utf8');
+  const assertionSuggestions = await readFile(result.artifacts.assertionSuggestions!, 'utf8');
   const productContext = await readFile(result.artifacts.productContext!, 'utf8');
   const review = await readFile(result.artifacts.qaReview!, 'utf8');
   const evidence = await readFile(result.artifacts.evidenceReport!, 'utf8');
@@ -63,6 +64,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(reportContentAudit, /FrontLens Report Content Audit/);
   assert.match(reportContentAudit, /Status: \*\*(passed|warning|failed)\*\*/);
   assert.match(journeyAssertionAudit, /FrontLens Journey Assertion Audit/);
+  assert.match(assertionSuggestions, /FrontLens Assertion Suggestions/);
   assert.match(productContext, /FrontLens Product Context Suggestion/);
   assert.match(brief, /Core fixes/);
   assert.match(brief, /Professional audit:/);
@@ -71,6 +73,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(brief, /report-content-audit\.md/);
   assert.match(brief, /Journey assertion audit:/);
   assert.match(brief, /journey-assertion-audit\.md/);
+  assert.match(brief, /assertion-suggestions\.md/);
   assert.match(brief, /product-context\.md/);
   assert.match(brief, /product-context\.config\.json/);
   assert.match(brief, /qa-plan\.md/);
@@ -101,6 +104,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(qaIntake, /Top questions/);
   assert.match(defectProof, /Defect Proof \/ 缺陷证明强度/);
   assert.match(defectProof, /Proof status/);
+  assert.match(report, /Assertion suggestions/);
   assert.match(testCases, /FrontLens Test Case Matrix/);
   assert.match(riskRegister, /FrontLens Risk Register/);
   assert.match(riskAcceptance, /FrontLens Risk Acceptance/);
@@ -195,6 +199,8 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.reportContentAuditLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.journeyAssertionAudit' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.journeyAssertionAuditLog' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.assertionSuggestions' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.assertionSuggestionsLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContext' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextConfig' && entry.exists), true);

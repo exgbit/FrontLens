@@ -9,6 +9,7 @@ import { buildQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
 import { buildRiskRegister } from '../risk/riskRegister.js';
 import { buildRiskAcceptance } from '../risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from '../cases/testCases.js';
+import { buildAssertionSuggestions } from '../journeys/assertionSuggestions.js';
 
 export function assignJsonArtifactPaths(result: QaResult): void {
   const outputDir = result.artifacts.outputDir;
@@ -26,6 +27,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.professionalAuditLog = path.join(outputDir, 'professional-audit.json');
   result.artifacts.reportContentAuditLog = path.join(outputDir, 'report-content-audit.json');
   result.artifacts.journeyAssertionAuditLog = path.join(outputDir, 'journey-assertion-audit.json');
+  result.artifacts.assertionSuggestionsLog = path.join(outputDir, 'assertion-suggestions.json');
   result.artifacts.productContextLog = path.join(outputDir, 'product-context.json');
   result.artifacts.productContextConfig = path.join(outputDir, 'product-context.config.json');
   result.artifacts.qaPlanLog = path.join(outputDir, 'qa-plan.json');
@@ -60,6 +62,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     professionalAuditLog: string;
     reportContentAuditLog: string;
     journeyAssertionAuditLog: string;
+    assertionSuggestionsLog: string;
     productContextLog: string;
     productContextConfig: string;
     qaPlanLog: string;
@@ -92,6 +95,8 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   }
   await writeJson(artifacts.reportContentAuditLog, result.reportContentAudit);
   await writeJson(artifacts.journeyAssertionAuditLog, result.journeyAssertionAudit);
+  result.assertionSuggestions = buildAssertionSuggestions(result);
+  await writeJson(artifacts.assertionSuggestionsLog, result.assertionSuggestions);
   const productContextSuggestion = buildProductContextSuggestion(result);
   await writeJson(artifacts.productContextLog, productContextSuggestion);
   await writeJson(artifacts.productContextConfig, productContextSuggestion.usage.configSnippet);

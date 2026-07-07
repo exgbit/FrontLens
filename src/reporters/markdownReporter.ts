@@ -8,6 +8,7 @@ import { formatProfessionalBrief } from './briefReporter.js';
 import { formatProfessionalAudit, runProfessionalAudit } from '../audit/professionalAudit.js';
 import { formatReportContentAudit, runReportContentAudit } from '../audit/reportContentAudit.js';
 import { formatJourneyAssertionAudit } from '../journeys/journeyAssertionAudit.js';
+import { buildAssertionSuggestions, formatAssertionSuggestions } from '../journeys/assertionSuggestions.js';
 import { buildProductContextSuggestion, formatProductContextSuggestion } from '../product/productContextSuggestion.js';
 import { buildQaExecutionPlan, formatQaExecutionPlan } from '../plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix, formatQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
@@ -1071,6 +1072,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
 - Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
+- Assertion suggestions：**${result.assertionSuggestions.status}** / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount} / artifact ${artifactPath(result.artifacts.assertionSuggestions)}
 - Test cases：**${result.testCases.status}** / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount} / artifact ${artifactPath(result.artifacts.testCases)}
 - Risk register：**${result.riskRegister.status}** / total ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount} / artifact ${artifactPath(result.artifacts.riskRegister)}
 - Risk acceptance：**${result.riskAcceptance.status}** / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount} / artifact ${artifactPath(result.artifacts.riskAcceptance)}
@@ -1172,6 +1174,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const auditPath = path.join(result.artifacts.outputDir, 'professional-audit.md');
   const reportContentAuditPath = path.join(result.artifacts.outputDir, 'report-content-audit.md');
   const journeyAssertionAuditPath = path.join(result.artifacts.outputDir, 'journey-assertion-audit.md');
+  const assertionSuggestionsPath = path.join(result.artifacts.outputDir, 'assertion-suggestions.md');
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
   const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
@@ -1189,6 +1192,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.professionalAudit = auditPath;
   result.artifacts.reportContentAudit = reportContentAuditPath;
   result.artifacts.journeyAssertionAudit = journeyAssertionAuditPath;
+  result.artifacts.assertionSuggestions = assertionSuggestionsPath;
   result.artifacts.productContext = productContextPath;
   result.artifacts.qaPlan = qaPlanPath;
   result.artifacts.qaCoverage = qaCoveragePath;
@@ -1238,6 +1242,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
 - Regression Plan：${result.regressionPlan.status} / items ${result.regressionPlan.summary.itemCount} / blocked ${result.regressionPlan.summary.blockedCount}
+- Assertion Suggestions：${result.assertionSuggestions.status} / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount}
 - Test Cases：${result.testCases.status} / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount}
 - Risk Register：${result.riskRegister.status} / risks ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}
 - Risk Acceptance：${result.riskAcceptance.status} / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}
@@ -1371,6 +1376,7 @@ ${formatArtifactIntegrity(result)}
 ${formatArtifacts(result)}
 `;
 
+  result.assertionSuggestions = buildAssertionSuggestions(result);
   const reviewMarkdown = formatProfessionalReview(result);
   const professionalReportMarkdown = reviewMarkdown.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
   const executiveReportMarkdown = formatProfessionalBrief(result).replace('# FrontLens QA Brief', '# FrontLens Executive QA Report');
@@ -1384,6 +1390,7 @@ ${formatArtifacts(result)}
   await writeText(auditPath, formatProfessionalAudit(runProfessionalAudit(result)));
   await writeText(reportContentAuditPath, formatReportContentAudit(result.reportContentAudit));
   await writeText(journeyAssertionAuditPath, formatJourneyAssertionAudit(result.journeyAssertionAudit));
+  await writeText(assertionSuggestionsPath, formatAssertionSuggestions(result.assertionSuggestions));
   await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));
   result.qaPlan = buildQaExecutionPlan(result);
   await writeText(qaPlanPath, formatQaExecutionPlan(result.qaPlan));

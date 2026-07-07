@@ -19,9 +19,10 @@ import { buildProductContextSuggestion, formatProductContextSuggestion } from '.
 import { buildQaExecutionPlan, formatQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix, formatQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildTestCaseMatrix, formatTestCaseMatrix } from './cases/testCases.js';
+import { buildAssertionSuggestions, formatAssertionSuggestions } from './journeys/assertionSuggestions.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'qa-plan', 'qa-coverage', 'test-cases', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'test-cases', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -41,6 +42,7 @@ Usage:
   frontlens product-context --report <result.json>
   frontlens qa-plan --report <result.json>
   frontlens qa-coverage --report <result.json>
+  frontlens assertion-suggestions --report <result.json>
   frontlens test-cases --report <result.json>
   frontlens inspect --report <result.json>
   frontlens issues --report <result.json> [--severity high]
@@ -79,7 +81,7 @@ Options:
   --role <name=storageState[|sessionStorageState]>
                               Role matrix entry. Use name= for anonymous/no storage. Repeatable.
   --roles <path>              Role matrix JSON file: [{name, storageState, sessionStorageState, expectedAllowedTexts, expectedForbiddenTexts}].
-  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/qa-plan/qa-coverage/test-cases/suggestions.
+  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/qa-plan/qa-coverage/assertion-suggestions/test-cases/suggestions.
   --severity <level>          Filter issues by severity.
   --trace                     Enable Playwright trace.
   --no-trace                  Disable Playwright trace.
@@ -251,6 +253,7 @@ Exposed tools:
   frontlens_product_context
   frontlens_qa_plan
   frontlens_qa_coverage
+  frontlens_assertion_suggestions
   frontlens_test_cases
   frontlens_diff
   frontlens_suggestions
@@ -265,7 +268,7 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'qa-plan' | 'qa-coverage' | 'test-cases' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'test-cases' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
@@ -299,6 +302,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
             professionalSummary: result.professionalSummary,
             qaPlan: result.qaPlan,
             qaCoverage: result.qaCoverage,
+            assertionSuggestions: result.assertionSuggestions,
             testCases: result.testCases,
             qaSignoff: result.qaSignoff,
             claimGuard: result.claimGuard,
@@ -351,6 +355,15 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
     }
     return;
   }
+  if (command === 'assertion-suggestions') {
+    const suggestions = buildAssertionSuggestions(result);
+    if (parsed.values.json) {
+      console.log(JSON.stringify(suggestions, null, 2));
+    } else {
+      console.log(formatAssertionSuggestions(suggestions));
+    }
+    return;
+  }
   if (command === 'test-cases') {
     const cases = buildTestCaseMatrix(result);
     if (parsed.values.json) {
@@ -399,6 +412,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
           professionalSummary: result.professionalSummary,
           qaPlan: result.qaPlan,
           qaCoverage: result.qaCoverage,
+          assertionSuggestions: result.assertionSuggestions,
           testCases: result.testCases,
           regressionPlan: result.regressionPlan,
           qualityGate: result.qualityGate,
@@ -539,7 +553,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'qa-plan' || argv[0] === 'qa-coverage' || argv[0] === 'test-cases' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
+  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'qa-plan' || argv[0] === 'qa-coverage' || argv[0] === 'assertion-suggestions' || argv[0] === 'test-cases' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
     await handleResultCommand(argv[0], argv.slice(1));
     return;
   }
@@ -1237,6 +1251,10 @@ async function main(): Promise<void> {
             headline: result.professionalSummary.headline,
             counts: result.professionalSummary.counts
           },
+          assertionSuggestions: {
+            status: result.assertionSuggestions.status,
+            summary: result.assertionSuggestions.summary
+          },
           testCases: {
             status: result.testCases.status,
             summary: result.testCases.summary
@@ -1283,6 +1301,7 @@ async function main(): Promise<void> {
     console.log(`Fix tasks: ${result.fixTasks.length}`);
     console.log(`Professional Summary: ${result.professionalSummary.status}, must-fix ${result.professionalSummary.mustFix.length}, non-defect buckets ${result.professionalSummary.nonDefectObservations.length}`);
     console.log(`Regression Plan: ${result.regressionPlan.status}, items ${result.regressionPlan.summary.itemCount}, blocked ${result.regressionPlan.summary.blockedCount}`);
+    console.log(`Assertion Suggestions: ${result.assertionSuggestions.status}, suggestions ${result.assertionSuggestions.summary.totalCount}, weak journeys ${result.assertionSuggestions.summary.weakJourneyCount}`);
     console.log(`Test Cases: ${result.testCases.status}, total ${result.testCases.summary.totalCount}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}`);
     console.log(`Risk Register: ${result.riskRegister.status}, risks ${result.riskRegister.summary.totalCount}, release-blocking ${result.riskRegister.summary.releaseBlockingCount}`);
     console.log(`Risk Acceptance: ${result.riskAcceptance.status}, must-mitigate ${result.riskAcceptance.summary.mustMitigateCount}, needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}`);
@@ -1297,6 +1316,7 @@ async function main(): Promise<void> {
     console.log(`Defect Proof: ${result.artifacts.defectProof ?? '(disabled)'}`);
     console.log(`Report Content Audit: ${result.artifacts.reportContentAudit ?? '(disabled)'}`);
     console.log(`Journey Assertion Audit: ${result.artifacts.journeyAssertionAudit ?? '(disabled)'}`);
+    console.log(`Assertion Suggestions: ${result.artifacts.assertionSuggestions ?? '(disabled)'}`);
     console.log(`Test Cases: ${result.artifacts.testCases ?? '(disabled)'}`);
     console.log(`Risk Register: ${result.artifacts.riskRegister ?? '(disabled)'}`);
     console.log(`Risk Acceptance: ${result.artifacts.riskAcceptance ?? '(disabled)'}`);

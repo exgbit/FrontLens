@@ -867,6 +867,40 @@ export interface JourneyAssertionAuditResult {
   notes: string[];
 }
 
+export type AssertionSuggestionAction = 'expectVisible' | 'expectText' | 'expectUrl' | 'expectRequest';
+export type AssertionSuggestionSource = 'journey' | 'requirement' | 'page-model' | 'api';
+
+export interface AssertionSuggestionItem {
+  id: string;
+  source: AssertionSuggestionSource;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  action: AssertionSuggestionAction;
+  target: string;
+  value?: string;
+  journeyId?: string;
+  requirementId?: string;
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+  evidenceRefs: string[];
+  exampleStep: string;
+  notes: string[];
+}
+
+export interface AssertionSuggestionResult {
+  generatedAt: string;
+  status: 'ready' | 'needs-input' | 'skipped';
+  summary: {
+    totalCount: number;
+    journeySuggestionCount: number;
+    requirementSuggestionCount: number;
+    highConfidenceCount: number;
+    weakJourneyCount: number;
+    needsInputCount: number;
+  };
+  items: AssertionSuggestionItem[];
+  notes: string[];
+}
+
 export interface ResponsiveCheckResult {
   name: string;
   width: number;
@@ -2235,6 +2269,8 @@ export interface ArtifactIndex {
   reportContentAudit?: string;
   /** Journey assertion quality audit Markdown; separates path replay from business validation. */
   journeyAssertionAudit?: string;
+  /** Concrete expect* assertion suggestions for weak/path-only journeys. */
+  assertionSuggestions?: string;
   /** Reviewable productContext suggestion Markdown. */
   productContext?: string;
   /** Direct FrontLens config JSON containing the suggested/reviewed productContext snippet. */
@@ -2270,6 +2306,7 @@ export interface ArtifactIndex {
   professionalAuditLog?: string;
   reportContentAuditLog?: string;
   journeyAssertionAuditLog?: string;
+  assertionSuggestionsLog?: string;
   productContextLog?: string;
   qaPlanLog?: string;
   qaCoverageLog?: string;
@@ -2441,6 +2478,7 @@ export interface QaResult {
   riskAcceptance: RiskAcceptanceResult;
   reportContentAudit: ReportContentAuditResult;
   journeyAssertionAudit: JourneyAssertionAuditResult;
+  assertionSuggestions: AssertionSuggestionResult;
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
   claimGuard: ClaimGuardResult;

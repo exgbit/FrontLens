@@ -37,6 +37,10 @@ Options:
   --config <path>             Optional config file (.json/.js/.mjs).
   --requirements <path>       Optional requirements/acceptance criteria JSON file.
   --source-root <path>        Optional frontend source repository root for static source correlation.
+  --source-run-scripts        Run selected non-destructive source scripts during source health.
+  --source-scripts <list>     Comma-separated package.json scripts to run when --source-run-scripts is enabled. Default: typecheck,lint.
+  --source-script-timeout-ms <ms>
+                              Timeout per source script. Default: 120000.
   --output <dir>              Output report directory.
   --browser <name>            chromium | firefox | webkit. Default: chromium.
   --headed                    Run headed browser.
@@ -129,6 +133,21 @@ function requireSeverity(value: unknown, optionName: string): Severity | undefin
     throw new Error(`Invalid ${optionName}: ${String(value)}. Expected critical, high, medium, low, or info.`);
   }
   return severity;
+}
+
+function normalizeStringList(value: unknown): string[] | undefined {
+  if (typeof value !== 'string') return undefined;
+  const items = value.split(',').map((item) => item.trim()).filter(Boolean);
+  return items.length > 0 ? items : undefined;
+}
+
+function normalizePositiveNumber(value: unknown, optionName: string): number | undefined {
+  if (value === undefined) return undefined;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    throw new Error(`Invalid ${optionName}: ${String(value)}. Expected a positive number.`);
+  }
+  return numeric;
 }
 
 function printMcpHelp(): void {
@@ -571,6 +590,9 @@ async function main(): Promise<void> {
       config: { type: 'string' },
       requirements: { type: 'string' },
       'source-root': { type: 'string' },
+      'source-run-scripts': { type: 'boolean' },
+      'source-scripts': { type: 'string' },
+      'source-script-timeout-ms': { type: 'string' },
       output: { type: 'string' },
       browser: { type: 'string' },
       headed: { type: 'boolean' },
@@ -631,6 +653,9 @@ async function main(): Promise<void> {
     configPath: parsed.values.config,
     requirementsPath: parsed.values.requirements,
     sourceRoot: parsed.values['source-root'],
+    sourceRunScripts: parsed.values['source-run-scripts'],
+    sourceScripts: normalizeStringList(parsed.values['source-scripts']),
+    sourceScriptTimeoutMs: normalizePositiveNumber(parsed.values['source-script-timeout-ms'], '--source-script-timeout-ms'),
     outputDir: parsed.values.output,
     browser: normalizeBrowser(parsed.values.browser),
     headless: parsed.values.headed ? false : parsed.values.headless,
@@ -671,7 +696,8 @@ async function main(): Promise<void> {
           sourceHealth: {
             status: result.sourceHealth.status,
             syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
-            parsedFiles: result.sourceHealth.parsedFiles
+            parsedFiles: result.sourceHealth.parsedFiles,
+            scriptChecks: result.sourceHealth.scriptChecks.map((check) => ({ id: check.id, scriptName: check.scriptName, status: check.status, category: check.category, durationMs: check.durationMs }))
           },
           artifactIntegrity: result.artifactIntegrity,
           rootCauseGroups: {
@@ -698,7 +724,8 @@ async function main(): Promise<void> {
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);
     console.log(`Requirement coverage: ${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed, ${result.requirementCoverage.summary.highPriorityGapCount} high-priority gaps`);
-    console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}`);
+    const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
+    console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
     console.log(`Root causes: ${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total`);
     console.log(`Disposition: ${result.issueDisposition.summary.actionableCount} actionable, ${result.issueDisposition.summary.conditionalCount} conditional, ${result.issueDisposition.summary.nonActionableCount} non-actionable`);

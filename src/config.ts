@@ -240,6 +240,10 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
   assertFiniteNumber(config.source.maxBytesPerFile, 'source.maxBytesPerFile', 1024);
   assertStringArray(config.source.include, 'source.include');
   assertStringArray(config.source.exclude, 'source.exclude');
+  assertBoolean(config.source.runScripts, 'source.runScripts');
+  assertStringArray(config.source.scriptNames, 'source.scriptNames');
+  assertFiniteNumber(config.source.scriptTimeoutMs, 'source.scriptTimeoutMs', 1);
+  assertFiniteNumber(config.source.maxScriptOutputBytes, 'source.maxScriptOutputBytes', 256);
 
   assertBoolean(config.contract.enabled, 'contract.enabled');
   if (config.contract.schemaPath !== undefined) assert(typeof config.contract.schemaPath === 'string', 'contract.schemaPath must be a string.');
@@ -370,6 +374,15 @@ export async function loadConfig(input: QaRunInput): Promise<FrontLensConfig> {
   if (input.sourceRoot) {
     config.source.root = path.isAbsolute(input.sourceRoot) ? input.sourceRoot : path.resolve(process.cwd(), input.sourceRoot);
     config.source.enabled = true;
+  }
+  if (input.sourceRunScripts !== undefined) {
+    config.source.runScripts = input.sourceRunScripts;
+  }
+  if (input.sourceScripts !== undefined && input.sourceScripts.length > 0) {
+    config.source.scriptNames = input.sourceScripts;
+  }
+  if (input.sourceScriptTimeoutMs !== undefined) {
+    config.source.scriptTimeoutMs = input.sourceScriptTimeoutMs;
   }
 
   return validateConfig(config);

@@ -298,7 +298,9 @@ ${rows.length ? ['| ID | Network | Status | Confidence | Source matches | Compon
 function formatSourceHealth(result: QaResult): string {
   const health = result.sourceHealth;
   const scriptRows = health.packageScripts.slice(0, 20).map((script) => `| ${markdownEscape(script.name)} | ${markdownEscape(script.category)} | \`${markdownEscape(script.command)}\` |`);
+  const scriptCheckRows = health.scriptChecks.slice(0, 20).map((check) => `| ${markdownEscape(check.id)} | ${markdownEscape(check.scriptName)} | ${markdownEscape(check.category)} | ${markdownEscape(check.status)} | ${check.durationMs} | ${check.exitCode ?? '-'} | ${markdownEscape((check.error ?? check.stderrPreview ?? check.stdoutPreview ?? '-').slice(0, 180))} |`);
   const findingRows = health.findings.slice(0, 20).map((finding) => `| ${markdownEscape(finding.id)} | ${markdownEscape(finding.severity)} | ${markdownEscape(finding.file)}:${finding.line ?? '-'}:${finding.column ?? '-'} | ${markdownEscape(finding.message)} |`);
+  const failedScriptChecks = health.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
   return `## Source Health / 源码健康
 
 - Enabled：${health.enabled}
@@ -307,11 +309,16 @@ function formatSourceHealth(result: QaResult): string {
 - Package manager：${health.packageManager ?? '-'}
 - Scanned / Parsed / Skipped：${health.scannedFiles} / ${health.parsedFiles} / ${health.skippedFiles}
 - Syntax errors：${health.syntaxErrorCount}
+- Script checks：${health.scriptChecks.length}（failed/timed-out ${failedScriptChecks}）
 - Error：${markdownEscape(health.error ?? '-')}
 
 ### package.json scripts
 
 ${scriptRows.length ? ['| Script | Category | Command |', '| --- | --- | --- |', ...scriptRows, ''].join('\n') : '未识别到 package.json scripts。'}
+
+### Script checks
+
+${scriptCheckRows.length ? ['| ID | Script | Category | Status | Duration ms | Exit | Output/Error preview |', '| --- | --- | --- | --- | --- | --- | --- |', ...scriptCheckRows, ''].join('\n') : '未执行 source script checks。默认只识别脚本和解析语法；需要时使用 `--source-run-scripts`。'}
 
 ### Syntax findings
 

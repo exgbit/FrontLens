@@ -36,7 +36,7 @@ If missing, continue with best effort but mark coverage gaps:
 Use these categories to design/triage, but only retain findings with evidence:
 
 - **Navigation and route health**: direct URL load, refresh, login redirects, empty/error/loading states.
-- **Source health**: package scripts, syntax parse errors, build/typecheck/lint availability. Syntax errors are source-confirmed blockers; passing syntax health is not business validation.
+- **Source health**: package scripts, syntax parse errors, optional controlled `typecheck/lint` script checks, build/typecheck/lint availability. Syntax errors and failed/timed-out typecheck/build/test checks are source-confirmed blockers; passing source health is not business validation.
 - **Core business flows**: search/filter/sort/pagination/detail/modal/export/import/create/edit/delete only when present and safe/authorized.
 - **Data correctness**: bind one exact API response to one exact UI region; verify totals, rows/cards, field formatting, permissions, and stale refresh behavior. Prefer `sourceRuntimeCorrelation.links[]` as the API↔source↔UI binding evidence when available.
 - **Negative/resilience**: 401/403/404/500/timeout/offline, but classify synthetic probes separately from real backend behavior.
@@ -73,7 +73,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 ## Anti-overclaim rules
 
 - No `100% business validation` without PRD + runtime evidence for all listed requirements.
-- No business pass solely from `sourceHealth.status=passed`; it only means parsed source files had no syntax errors.
+- No business pass solely from `sourceHealth.status=passed`; it only means parsed source files had no syntax errors and any explicitly enabled source script checks passed.
 - No “API has data but UI empty” unless the exact list response is bound to the exact UI by DOM/source/E2E evidence; if `sourceRuntimeCorrelation.status=passed`, missing link or `confidence=none/low` means not a defect.
 - No style/design bug unless it violates an explicit design/ADR/accessibility requirement or blocks a task.
 - No production performance/security conclusion from Vite dev server artifacts.

@@ -248,6 +248,11 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     .slice(0, 50)
     .map((script) => `<tr><td>${escapeHtml(script.name)}</td><td>${escapeHtml(script.category)}</td><td><code>${escapeHtml(script.command)}</code></td></tr>`)
     .join('\n');
+  const sourceHealthCheckRows = result.sourceHealth.scriptChecks
+    .slice(0, 50)
+    .map((check) => `<tr><td>${escapeHtml(check.id)}</td><td>${escapeHtml(check.scriptName)}</td><td>${escapeHtml(check.category)}</td><td>${escapeHtml(check.status)}</td><td>${check.durationMs}</td><td>${escapeHtml(String(check.exitCode ?? '-'))}</td><td>${escapeHtml((check.error ?? check.stderrPreview ?? check.stdoutPreview ?? '-').slice(0, 240))}</td></tr>`)
+    .join('\n');
+  const failedSourceScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
   const phaseErrorRows = result.metadata.phaseErrors
     .map((item) => `<tr><td>${escapeHtml(item.phase)}</td><td>${escapeHtml(item.message)}</td><td>${escapeHtml(item.timestamp)}</td></tr>`)
     .join('\n');
@@ -439,11 +444,17 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Parsed</span><strong>${result.sourceHealth.parsedFiles}</strong></div>
           <div class="metric"><span>Skipped</span><strong>${result.sourceHealth.skippedFiles}</strong></div>
           <div class="metric"><span>Syntax errors</span><strong>${result.sourceHealth.syntaxErrorCount}</strong></div>
+          <div class="metric"><span>Script checks</span><strong>${result.sourceHealth.scriptChecks.length} / ${failedSourceScriptChecks} failed</strong></div>
         </div>
         <h3>package.json scripts</h3>
         <table>
           <thead><tr><th>Script</th><th>Category</th><th>Command</th></tr></thead>
           <tbody>${sourceHealthScriptRows || '<tr><td colspan="3">No package scripts detected</td></tr>'}</tbody>
+        </table>
+        <h3>Script checks</h3>
+        <table>
+          <thead><tr><th>ID</th><th>Script</th><th>Category</th><th>Status</th><th>Duration ms</th><th>Exit</th><th>Output/Error preview</th></tr></thead>
+          <tbody>${sourceHealthCheckRows || '<tr><td colspan="7">No source script checks executed</td></tr>'}</tbody>
         </table>
         <h3>Syntax findings</h3>
         <table>

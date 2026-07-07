@@ -76,7 +76,11 @@ export function createDefaultConfig(url = 'about:blank'): FrontLensConfig {
       maxFiles: 1200,
       maxBytesPerFile: 250_000,
       include: ['src', 'app', 'pages', 'views', 'components', 'router', 'routes'],
-      exclude: ['node_modules', 'dist', 'build', '.git', 'coverage', 'reports', '.next', '.nuxt', '.output']
+      exclude: ['node_modules', 'dist', 'build', '.git', 'coverage', 'reports', '.next', '.nuxt', '.output'],
+      runScripts: false,
+      scriptNames: ['typecheck', 'lint'],
+      scriptTimeoutMs: 120_000,
+      maxScriptOutputBytes: 12_000
     },
     contract: {
       enabled: true,

@@ -35,7 +35,7 @@ Add an **evidence confidence** label to any business-function conclusion:
 - `runtime-partial`: the page booted but login, permissions, downloads, destructive safety policy, or missing data prevented full verification.
 - `static-source-only`: conclusion is based only on source/chunk/code inspection; useful for syntax/import/config issues, but not enough to say the user-facing business flow passed.
 - `not-verified`: the runtime path was not reached. Do not say business validation passed or use 100% confidence.
-- `source-health-failed`: sourceHealth found syntax errors; treat as source-confirmed build blocker, but still avoid claiming which runtime business flow is broken unless runtime evidence reaches it.
+- `source-health-failed`: sourceHealth found syntax errors or failed/timed-out explicitly enabled source script checks; treat as source-confirmed blocker, but still avoid claiming which runtime business flow is broken unless runtime evidence reaches it.
 
 For product/design/style findings, default to **Product decision / optional** unless there is evidence that the style blocks a core task, violates an explicit ADR/accessibility requirement, or causes measurable usability failure. Avoid turning subjective visual density or color hierarchy into mandatory defects.
 
@@ -98,7 +98,7 @@ When the repository or source files are available, verify high-impact findings a
 - Loading/empty distinction: can users distinguish loading, empty, permission denied, and failed API states?
 - Shared error-handling pattern: if the same composable/http/store pattern is reused by sibling pages, mention it as an adjacent-risk sweep, but do not file it as a defect for the current page without source evidence.
 - Business requirement validation: distinguish runtime proof from source-only proof. Static source/chunk evidence can detect syntax errors, missing imports, missing columns, or unreachable code, but it cannot prove API data correctness, export file contents, permissions, or full business workflow success.
-- Source health: if `sourceHealth.status=failed`, put syntax errors near the top of the core defect list as P1 source-confirmed blockers. If it passed, report it as source-health evidence only, not as business-function pass.
+- Source health: if `sourceHealth.status=failed`, put syntax errors and failed/timed-out `sourceHealth.scriptChecks[]` near the top of the core defect list as source-confirmed blockers. If it passed, report it as source-health evidence only, not as business-function pass.
 - Accessibility: do icon-only buttons have `aria-label` or visible text? Are tap targets large enough on mobile?
 - API calls: is `load()` triggered once per mount, or repeated by watchers/effects? Are retries/debounces intentional?
 - API/UI binding: if `sourceRuntimeCorrelation.links[]` exists, cite the specific link id and confidence. Do not retain “接口有数据但页面空” when the link is missing or `confidence=none/low`.

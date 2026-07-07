@@ -117,9 +117,9 @@ Use a fresh worker prompt like:
 如果提供了源码路径或存在已知项目映射，必须读取 skills/frontend-qa/references/source-code-correlation.md，并做源码关联复核。
 如果用户要求“替代专业测试工程师 / 完整验收 / 业务功能验证 / release sign-off / 复盘 skill 能力”，必须读取 skills/frontend-qa/references/qa-engineer-mode.md，并按其中的 QA sign-off、需求覆盖矩阵、核心缺陷根因表、非缺陷观察项输出。
 如果需要部署/刷新本地页面：先在源码目录检查 package.json；页面不可达或用户要求部署时，按 source-code-correlation.md 自动安装缺失依赖、构建、启动 Vite dev/preview 服务；服务可达后再运行 FrontLens。不要修改业务代码。
-先运行 npm run build，再按模块选择生成配置并执行 QA 命令。
+先运行 npm run build，再按模块选择生成配置并执行 QA 命令；若是专业 QA/sign-off 且提供了源码路径，在依赖已安装且脚本存在时追加 `--source-run-scripts --source-scripts "typecheck,lint"`，把 typecheck/lint 的真实通过/失败写入 `sourceHealth.scriptChecks`。
 如果 Chromium 或私网访问被沙箱限制，使用 escalated 执行；仍失败则输出诊断。
-读取 report.md/result.json，优先查看 qaSignoff、qualityGate、requirementCoverage、sourceHealth、artifactIntegrity、issueDisposition 和 rootCauseGroups，并按 skills/frontend-qa/references/triage-guidelines.md 做二次校准。若有源码路径，逐项核对相关 router/view/composable/store/api/component/vite/ADR 文件，为每个保留的前端问题给出 file:line 证据；若 sourceHealth 发现语法错误，优先作为 source-confirmed P1 阻断处理；对误报给出被源码、部署归属、异常模拟或扫描阶段反驳的理由。降级 dev/synthetic raw issue 后仍要继续做源码归因；若源码或 dev 模块图揭示真实设计缺陷（如路由静态导入导致非当前页面代码进入首屏），必须以 source-discovered/frontend fix 单独保留。
+读取 report.md/result.json，优先查看 qaSignoff、qualityGate、requirementCoverage、sourceHealth、artifactIntegrity、issueDisposition 和 rootCauseGroups，并按 skills/frontend-qa/references/triage-guidelines.md 做二次校准。若有源码路径，逐项核对相关 router/view/composable/store/api/component/vite/ADR 文件，为每个保留的前端问题给出 file:line 证据；若 sourceHealth 发现语法错误或 `scriptChecks` 失败/超时，优先作为 source-confirmed 阻断处理；对误报给出被源码、部署归属、异常模拟或扫描阶段反驳的理由。降级 dev/synthetic raw issue 后仍要继续做源码归因；若源码或 dev 模块图揭示真实设计缺陷（如路由静态导入导致非当前页面代码进入首屏），必须以 source-discovered/frontend fix 单独保留。
 优先使用 `result.json.issueDisposition` 过滤可执行/条件性/非缺陷项，再用 `result.json.rootCauseGroups` 合并工作量，并按源码复核补充/修正；必须按“实现根因”合并 raw issue：同一视图/组件/组合函数导致的 500/401/403/404/timeout 无反馈，只作为一个可执行前端修复输出，并列出支持它的 raw issue / EX-*；不要把 raw issue 数量或 fixTasks 数量当成工作量。若报告建议与问题类别不匹配（例如触控尺寸却建议表格分页接口），标记为模板噪音并改写建议。
 必须做可执行性过滤：核心问题只保留运行时错误、核心旅程失败、真实接口失败无反馈、硬性 a11y、源码确认的数据绑定/性能问题；样式密度、按钮层级、刷新/导出/分页/SEO 等默认放“产品决策/参考观察”，不要生成修复任务。不要展开大量参考项的逐 selector 细节。
 “接口有数据但页面为空”属于高风险推断：只有在具体列表响应、当前可见 DOM 为空、且源码/E2E 能证明该响应绑定该 UI 时才保留；否则写成未验证/证据不足/误报，不要猜测字段映射错误。

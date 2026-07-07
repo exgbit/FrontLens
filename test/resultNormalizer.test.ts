@@ -45,6 +45,7 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.equal(result.realtime.summary.graphqlOperationCount, 0);
   assert.equal(result.sourceHealth.status, 'skipped');
   assert.equal(result.sourceHealth.syntaxErrorCount, 0);
+  assert.equal(result.sourceHealth.scriptChecks.length, 0);
   assert.equal(result.fixTasks.length, 1);
   assert.equal(result.rootCauseGroups.length, 1);
   assert.equal(result.rootCauseGroups[0].issueCount, 1);
@@ -58,6 +59,41 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.equal(result.qualityGate.blockingIssueCount, 1);
   assert.equal(result.qaSignoff.status, 'fail');
   assert.equal(result.qaSignoff.businessValidationConfidence, 'not-verified');
+});
+
+test('normalizeResult preserves sourceHealth script checks from reports', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com' },
+    sourceHealth: {
+      enabled: true,
+      status: 'failed',
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      packageManager: 'npm',
+      packageScripts: [{ name: 'typecheck', command: 'vue-tsc --noEmit', category: 'typecheck' }],
+      scriptChecks: [
+        {
+          id: 'SRC-SCRIPT-001',
+          scriptName: 'typecheck',
+          command: 'npm run typecheck',
+          category: 'typecheck',
+          status: 'timed-out',
+          durationMs: 120000,
+          signal: 'SIGTERM',
+          stderrPreview: 'timeout'
+        }
+      ],
+      scannedFiles: 1,
+      parsedFiles: 1,
+      skippedFiles: 0,
+      syntaxErrorCount: 0,
+      findings: []
+    }
+  });
+
+  assert.equal(result.sourceHealth.scriptChecks.length, 1);
+  assert.equal(result.sourceHealth.scriptChecks[0].status, 'timed-out');
+  assert.equal(result.sourceHealth.scriptChecks[0].category, 'typecheck');
+  assert.equal(result.sourceHealth.scriptChecks[0].signal, 'SIGTERM');
 });
 
 test('normalizeResult recalculates missing score and normalizes P2 child records', () => {

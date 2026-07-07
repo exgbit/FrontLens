@@ -69,6 +69,9 @@ export function buildQaSignoff(input: {
   const passedInteractionCount = passedCount(input.interactionTests);
   const failedInteractionCount = failedCount(input.interactionTests);
   const failedExceptionCount = failedCount(input.exceptionSimulations);
+  const passedSourceScriptChecks = input.sourceHealth.scriptChecks.filter((check) => check.status === 'passed').length;
+  const failedSourceScriptChecks = input.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out');
+  const skippedSourceScriptChecks = input.sourceHealth.scriptChecks.filter((check) => check.status === 'skipped');
   const destructiveActionsAllowed = Boolean(
     input.config.safety.allowCreate ||
     input.config.safety.allowEdit ||
@@ -88,9 +91,13 @@ export function buildQaSignoff(input: {
   if (passedJourneyCount > 0) evidence.push(`${passedJourneyCount} journey(s) passed`);
   if (passedInteractionCount > 0) evidence.push(`${passedInteractionCount} interaction check(s) passed`);
   if (input.sourceHealth.status === 'passed') evidence.push(`sourceHealth passed (${input.sourceHealth.parsedFiles} parsed files)`);
+  if (passedSourceScriptChecks > 0) evidence.push(`${passedSourceScriptChecks} source script check(s) passed`);
   if (input.artifactIntegrity.status === 'passed' || input.artifactIntegrity.status === 'warning') evidence.push(`artifactIntegrity ${input.artifactIntegrity.status}`);
 
-  if (input.sourceHealth.status === 'failed') blockers.push(`sourceHealth failed: ${input.sourceHealth.syntaxErrorCount} syntax error(s).`);
+  if (input.sourceHealth.status === 'failed') {
+    if (input.sourceHealth.syntaxErrorCount > 0) blockers.push(`sourceHealth failed: ${input.sourceHealth.syntaxErrorCount} syntax error(s).`);
+    if (failedSourceScriptChecks.length > 0) blockers.push(`sourceHealth script checks failed: ${failedSourceScriptChecks.map((check) => `${check.scriptName}(${check.status})`).join(', ')}.`);
+  }
   if (input.artifactIntegrity.status === 'failed') risks.push(`artifactIntegrity failed: ${input.artifactIntegrity.missingCount} missing artifact reference(s).`);
   if (providedRequirementCount === 0) {
     gaps.push('未提供 PRD/验收标准；只能进行页面能力推断，不能给出完整业务通过结论。');
@@ -110,8 +117,11 @@ export function buildQaSignoff(input: {
   if (!destructiveActionsAllowed && input.requirementCoverage.items.some((item) => /创建|新增|编辑|删除|上传|提交|下载|导出|create|edit|delete|upload|submit|download|export/i.test(`${item.title} ${item.description ?? ''}`))) {
     gaps.push('默认非破坏策略阻止创建/编辑/删除/上传/提交/下载类验证，相关业务流只能部分验证。');
   }
-  if (input.sourceHealth.packageScripts.some((script) => script.category === 'build' || script.category === 'typecheck' || script.category === 'lint')) {
+  if (input.sourceHealth.scriptChecks.length === 0 && input.sourceHealth.packageScripts.some((script) => script.category === 'build' || script.category === 'typecheck' || script.category === 'lint')) {
     followups.push('运行 package.json 中的 build/typecheck/lint 脚本，确认源码健康不只停留在语法解析层。');
+  }
+  if (skippedSourceScriptChecks.length > 0) {
+    followups.push(`补跑 skipped 的源码脚本检查：${skippedSourceScriptChecks.map((check) => check.scriptName).join(', ')}。`);
   }
 
   const businessConfidence = businessValidationConfidence({

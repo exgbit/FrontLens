@@ -196,6 +196,62 @@ const value =
   assert.equal(result.syntaxErrorCount >= 2, true);
   assert.equal(result.findings.some((finding) => finding.file === 'src/bad.ts'), true);
   assert.equal(result.findings.some((finding) => finding.file === 'src/BadView.vue'), true);
+  assert.equal(result.scriptChecks.length, 0);
   assert.equal(issues.length, 1);
+  assert.equal(issues[0].category, 'frontend-source-health');
+});
+
+test('source health can run selected safe package scripts and record passes', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-source-script-pass-'));
+  await mkdir(path.join(dir, 'src'), { recursive: true });
+  await writeFile(
+    path.join(dir, 'package.json'),
+    JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"', lint: 'node -e "process.exit(0)"' } }),
+    'utf8'
+  );
+  await writeFile(path.join(dir, 'package-lock.json'), '{}', 'utf8');
+  await writeFile(path.join(dir, 'src/good.ts'), 'export const ok = 1;\n', 'utf8');
+
+  const config = createDefaultConfig('https://example.com/users');
+  config.source.root = dir;
+  config.source.runScripts = true;
+  config.source.scriptNames = ['typecheck'];
+  config.source.scriptTimeoutMs = 30_000;
+
+  const { result, issues } = await analyzeSourceHealth(config);
+
+  assert.equal(result.status, 'passed');
+  assert.equal(result.scriptChecks.length, 1);
+  assert.equal(result.scriptChecks[0].scriptName, 'typecheck');
+  assert.equal(result.scriptChecks[0].status, 'passed');
+  assert.equal(issues.length, 0);
+});
+
+test('source health turns failed selected package scripts into actionable source issues', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-source-script-fail-'));
+  await mkdir(path.join(dir, 'src'), { recursive: true });
+  await writeFile(
+    path.join(dir, 'package.json'),
+    JSON.stringify({ scripts: { lint: 'node -e "process.stderr.write(\\\"lint failed\\\"); process.exit(2)"' } }),
+    'utf8'
+  );
+  await writeFile(path.join(dir, 'package-lock.json'), '{}', 'utf8');
+  await writeFile(path.join(dir, 'src/good.ts'), 'export const ok = 1;\n', 'utf8');
+
+  const config = createDefaultConfig('https://example.com/users');
+  config.source.root = dir;
+  config.source.runScripts = true;
+  config.source.scriptNames = ['lint'];
+  config.source.scriptTimeoutMs = 30_000;
+
+  const { result, issues } = await analyzeSourceHealth(config);
+
+  assert.equal(result.status, 'failed');
+  assert.equal(result.syntaxErrorCount, 0);
+  assert.equal(result.scriptChecks.length, 1);
+  assert.equal(result.scriptChecks[0].status, 'failed');
+  assert.match(result.scriptChecks[0].stderrPreview ?? '', /lint failed/);
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].id, 'SOURCE-HEALTH-SCRIPT');
   assert.equal(issues[0].category, 'frontend-source-health');
 });

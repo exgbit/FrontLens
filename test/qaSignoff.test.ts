@@ -51,6 +51,7 @@ function sourceHealth(overrides: Partial<SourceHealthResult> = {}): SourceHealth
     root: '/repo',
     packageManager: 'npm',
     packageScripts: [{ name: 'build', command: 'vite build', category: 'build' }],
+    scriptChecks: [],
     scannedFiles: 1,
     parsedFiles: 1,
     skippedFiles: 0,
@@ -166,4 +167,37 @@ test('qa signoff fails on source health syntax blockers', () => {
 
   assert.equal(result.status, 'fail');
   assert.equal(result.blockers.some((item) => item.includes('sourceHealth failed')), true);
+});
+
+test('qa signoff fails on explicitly executed source script blockers', () => {
+  const result = buildQaSignoff({
+    config: createDefaultConfig('https://example.com'),
+    qualityGate: qualityGate(),
+    requirementCoverage: requirements(),
+    sourceHealth: sourceHealth({
+      status: 'failed',
+      packageScripts: [{ name: 'typecheck', command: 'vue-tsc --noEmit', category: 'typecheck' }],
+      scriptChecks: [
+        {
+          id: 'SRC-SCRIPT-001',
+          scriptName: 'typecheck',
+          command: 'npm run typecheck',
+          category: 'typecheck',
+          status: 'failed',
+          durationMs: 100,
+          exitCode: 2,
+          stderrPreview: 'type error'
+        }
+      ]
+    }),
+    artifactIntegrity: artifacts(),
+    journeyTests: [journey('passed')],
+    interactionTests: [],
+    exceptionSimulations: [],
+    pageDomNodes: 100
+  });
+
+  assert.equal(result.status, 'fail');
+  assert.equal(result.blockers.some((item) => item.includes('sourceHealth script checks failed')), true);
+  assert.equal(result.requiredFollowups.some((item) => item.includes('build/typecheck/lint')), false);
 });

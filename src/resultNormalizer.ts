@@ -30,7 +30,7 @@ import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
 
-export const RESULT_SCHEMA_VERSION = '1.13.0';
+export const RESULT_SCHEMA_VERSION = '1.14.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -750,6 +750,7 @@ function normalizeSourceHealth(raw: unknown): QaResult['sourceHealth'] {
     status: 'skipped',
     checkedAt: new Date().toISOString(),
     packageScripts: [],
+    scriptChecks: [],
     scannedFiles: 0,
     parsedFiles: 0,
     skippedFiles: 0,
@@ -769,6 +770,19 @@ function normalizeSourceHealth(raw: unknown): QaResult['sourceHealth'] {
       name: asString(script.name),
       command: asString(script.command),
       category: script.category === 'build' || script.category === 'typecheck' || script.category === 'lint' || script.category === 'test' || script.category === 'e2e' || script.category === 'coverage' || script.category === 'other' ? script.category : 'other'
+    })),
+    scriptChecks: asArray(raw.scriptChecks).filter(isRecord).map((check) => ({
+      id: asString(check.id),
+      scriptName: asString(check.scriptName),
+      command: asString(check.command),
+      category: check.category === 'build' || check.category === 'typecheck' || check.category === 'lint' || check.category === 'test' || check.category === 'e2e' || check.category === 'coverage' || check.category === 'other' ? check.category : 'other',
+      status: check.status === 'passed' || check.status === 'failed' || check.status === 'skipped' || check.status === 'timed-out' ? check.status : 'skipped',
+      durationMs: asNumber(check.durationMs),
+      exitCode: optionalNumber(check.exitCode),
+      signal: optionalString(check.signal),
+      stdoutPreview: optionalString(check.stdoutPreview),
+      stderrPreview: optionalString(check.stderrPreview),
+      error: optionalString(check.error)
     })),
     scannedFiles: asNumber(raw.scannedFiles),
     parsedFiles: asNumber(raw.parsedFiles),

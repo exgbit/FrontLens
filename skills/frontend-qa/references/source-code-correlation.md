@@ -42,11 +42,11 @@ When the user provides `sourceRoot`, a professional QA pass should include sourc
 
 - package manager and lockfile detected
 - build/typecheck/lint/unit/e2e scripts discovered
-- commands run, pass/fail/skipped, and log excerpts
+- commands run, pass/fail/skipped, and log excerpts; prefer `--source-run-scripts --source-scripts "typecheck,lint"` for professional sign-off so the evidence lands in `result.json.sourceHealth.scriptChecks`
 - whether the tested URL appears to match the inspected source branch/build
 - `result.json.sourceAnalysis.status`, route/import findings, API call index, and loading/error/empty/retry state signals
 - `result.json.sourceRuntimeCorrelation.status`, `links[]`, link confidence, source matches, component ids, and list-response hints
-- `result.json.sourceHealth.status`, package scripts, syntax findings, and source-health issue IDs
+- `result.json.sourceHealth.status`, package scripts, scriptChecks, syntax findings, and source-health issue IDs
 
 Do not mark business functionality as passed just because source-health commands pass. Treat them as one layer of evidence.
 
@@ -54,7 +54,7 @@ Use `sourceAnalysis` before manual grep:
 
 1. If `sourceAnalysis.status=passed`, inspect `sourceAnalysis.findings[]` for route-level eager imports and heavy dependencies.
 2. Use `sourceRuntimeCorrelation.links[]` first when available. For “接口有数据但页面为空/表格为空”类结论，只有相关 `networkRequestId` 的 `confidence` 达到 `medium/high` 才能保留为缺陷候选；`none` 代表全局 Network 响应没有证明绑定到当前页面源码/UI，`low` 代表弱关键词匹配，证据不足。
-3. If `sourceHealth.status=failed`, inspect `sourceHealth.findings[]` first. Syntax errors are source-confirmed P1 build blockers and may explain broken runtime routes; do not bury them under secondary UI symptoms.
+3. If `sourceHealth.status=failed`, inspect `sourceHealth.findings[]` and `sourceHealth.scriptChecks[]` first. Syntax errors and failed/timed-out typecheck/build/test script checks are source-confirmed blockers and may explain broken runtime routes; do not bury them under secondary UI symptoms.
 4. Use `sourceAnalysis.apiCalls[]` to map network endpoints to source files before claiming API/UI binding issues.
 5. Use `sourceAnalysis.stateSignals[]` as a starting map for loading/error/empty/retry triage; still verify the actual rendered view before filing a bug.
 6. If `sourceAnalysis.status=skipped`, mention that no source root was provided or indexing was disabled.

@@ -93,6 +93,9 @@ function listTools(): Record<string, unknown> {
             requirementsPath: { type: 'string', description: 'Optional requirements/acceptance criteria JSON path.' },
             requirements: { type: 'string', description: 'Alias for requirementsPath.' },
             sourceRoot: { type: 'string', description: 'Optional frontend source repository root for static source correlation.' },
+            sourceRunScripts: { type: 'boolean', description: 'Run selected non-destructive package.json scripts during source health.' },
+            sourceScripts: { type: 'array', items: { type: 'string' }, description: 'package.json script names to run when sourceRunScripts is true.' },
+            sourceScriptTimeoutMs: { type: 'number', description: 'Timeout per source script in milliseconds.' },
             browser: { type: 'string', enum: ['chromium', 'firefox', 'webkit'] },
             headless: { type: 'boolean' },
             storageState: { type: 'string' },
@@ -225,7 +228,7 @@ function requireString(args: Record<string, unknown>, key: string): string {
 async function callTool(params: ToolCallParams): Promise<Record<string, unknown>> {
   switch (params.name) {
     case 'frontlens_qa': {
-      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
+      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
       const url = requireString(args, 'url');
       const input: QaRunInput = {
         url,
@@ -233,6 +236,9 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         configPath: typeof args.configPath === 'string' ? args.configPath : typeof args.config === 'string' ? args.config : undefined,
         requirementsPath: typeof args.requirementsPath === 'string' ? args.requirementsPath : typeof args.requirements === 'string' ? args.requirements : undefined,
         sourceRoot: typeof args.sourceRoot === 'string' ? args.sourceRoot : undefined,
+        sourceRunScripts: typeof args.sourceRunScripts === 'boolean' ? args.sourceRunScripts : undefined,
+        sourceScripts: Array.isArray(args.sourceScripts) && args.sourceScripts.every((item) => typeof item === 'string') ? args.sourceScripts : undefined,
+        sourceScriptTimeoutMs: typeof args.sourceScriptTimeoutMs === 'number' && Number.isFinite(args.sourceScriptTimeoutMs) ? args.sourceScriptTimeoutMs : undefined,
         browser: normalizeBrowser(args.browser),
         headless: typeof args.headless === 'boolean' ? args.headless : undefined,
         storageState: typeof args.storageState === 'string' ? args.storageState : undefined,
@@ -273,7 +279,8 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         sourceHealth: {
           status: result.sourceHealth.status,
           syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
-          parsedFiles: result.sourceHealth.parsedFiles
+          parsedFiles: result.sourceHealth.parsedFiles,
+          scriptChecks: result.sourceHealth.scriptChecks.map((check) => ({ id: check.id, scriptName: check.scriptName, status: check.status, category: check.category, durationMs: check.durationMs }))
         },
         artifactIntegrity: result.artifactIntegrity,
         rootCauseGroups: {

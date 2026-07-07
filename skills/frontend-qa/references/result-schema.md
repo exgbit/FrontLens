@@ -14,7 +14,7 @@ Use this reference when consuming QA results from another skill.
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health when older reports do not contain them.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health when older reports do not contain them.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -355,7 +355,7 @@ interface ExceptionSimulationResult {
 
 ## API Contract, Realtime, Requirement Coverage, Product Context, Source Analysis, Source Runtime Correlation, Source Health, P2, Root Cause Groups, Issue Disposition, Fix Tasks, QA Sign-off, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`; `metadata.schemaVersion >= 1.12.0` includes `sourceHealth`; `metadata.schemaVersion >= 1.13.0` includes `qaSignoff`.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`; `metadata.schemaVersion >= 1.12.0` includes `sourceHealth`; `metadata.schemaVersion >= 1.13.0` includes `qaSignoff`; `metadata.schemaVersion >= 1.14.0` includes optional source script execution results under `sourceHealth.scriptChecks[]`.
 
 ```ts
 interface ApiContractResult {
@@ -642,7 +642,7 @@ interface SourceRuntimeCorrelationResult {
 
 When `sourceRuntimeCorrelation.status=passed`, downstream triage should only treat API/UI data mismatch as a frontend defect when the relevant `networkRequestId` has `medium` or `high` correlation. `high` means source API + UI component + state/list evidence aligned; `medium` means direct source API plus at least one runtime/UI/list signal aligned; `low` means only weak token matching and is not enough for a data-mismatch defect; `none` means the runtime response is not proven to feed the current page.
 
-`sourceHealth` is a non-destructive source-health layer. It detects package-manager/scripts from `package.json` and parses TS/JS/Vue `<script>` blocks for syntax errors without running target-app scripts. It can prove build-blocking syntax problems, but it does not replace full project `typecheck`/`build`/`lint`.
+`sourceHealth` is a source-health layer. It always detects package-manager/scripts from `package.json` and parses TS/JS/Vue `<script>` blocks for syntax errors. It only runs target-app scripts when explicitly enabled through `source.runScripts=true`, CLI `--source-run-scripts`, or MCP `sourceRunScripts=true`; default script names are `typecheck,lint`, timeout is per script, and output is preview-limited. It can prove build-blocking syntax and type/lint/test problems, but it still does not replace complete business validation.
 
 ```ts
 interface SourceHealthResult {
@@ -654,6 +654,19 @@ interface SourceHealthResult {
     name: string;
     command: string;
     category: 'build' | 'typecheck' | 'lint' | 'test' | 'e2e' | 'coverage' | 'other';
+  }>;
+  scriptChecks: Array<{
+    id: string;
+    scriptName: string;
+    command: string;
+    category: 'build' | 'typecheck' | 'lint' | 'test' | 'e2e' | 'coverage' | 'other';
+    status: 'passed' | 'failed' | 'skipped' | 'timed-out';
+    durationMs: number;
+    exitCode?: number;
+    signal?: string;
+    stdoutPreview?: string;
+    stderrPreview?: string;
+    error?: string;
   }>;
   scannedFiles: number;
   parsedFiles: number;
@@ -673,7 +686,7 @@ interface SourceHealthResult {
 }
 ```
 
-If `sourceHealth.status=failed`, treat `frontend-source-health` issues as source-confirmed P1 build blockers. Still do not claim business validation passed solely because `sourceHealth.status=passed`; it only proves parsed source files had no syntax errors and lists scripts that can be used for deeper verification.
+If `sourceHealth.status=failed`, treat `frontend-source-health` issues as source-confirmed blockers. Syntax errors and failed/timed-out `build`, `typecheck`, `test`, or `e2e` checks are P1/P2 release blockers depending on project policy; lint-only failures are usually P2 unless the team treats lint as blocking. Still do not claim business validation passed solely because `sourceHealth.status=passed`; it only proves parsed source files had no syntax errors and any explicitly enabled script checks passed.
 
 `qualityGate` is the machine-readable professional QA gate. Use it for release/sign-off conversations, but still inspect `issues[]` and evidence before deciding whether to ship:
 

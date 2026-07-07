@@ -29,6 +29,10 @@ test('default config enables complete non-destructive QA capabilities', () => {
   assert.equal(config.productContext.enabled, true);
   assert.equal(config.productContext.deviceScope, 'unknown');
   assert.equal(config.productContext.accessibilityTarget, 'basic');
+  assert.equal(config.source.enabled, true);
+  assert.equal(config.source.runScripts, false);
+  assert.deepEqual(config.source.scriptNames, ['typecheck', 'lint']);
+  assert.equal(config.source.scriptTimeoutMs, 120_000);
 
   assert.equal(config.safety.blockMutatingRequests, true);
   assert.equal(config.safety.allowCreate, false);

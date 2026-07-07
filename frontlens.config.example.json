@@ -204,7 +204,14 @@
       ".next",
       ".nuxt",
       ".output"
-    ]
+    ],
+    "runScripts": false,
+    "scriptNames": [
+      "typecheck",
+      "lint"
+    ],
+    "scriptTimeoutMs": 120000,
+    "maxScriptOutputBytes": 12000
   },
   "contract": {
     "enabled": true,

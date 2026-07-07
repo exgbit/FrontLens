@@ -1,7 +1,8 @@
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import { access, readdir, readFile, stat } from 'node:fs/promises';
 import ts from 'typescript';
-import type { FrontLensConfig, Issue, SourceHealthFinding, SourceHealthResult, SourceHealthScript } from '../types.js';
+import type { FrontLensConfig, Issue, SourceHealthFinding, SourceHealthResult, SourceHealthScript, SourceScriptCheck } from '../types.js';
 
 const PARSE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.vue']);
 
@@ -12,6 +13,7 @@ export function createEmptySourceHealth(config: FrontLensConfig, status: SourceH
     checkedAt: new Date().toISOString(),
     root: config.source.root,
     packageScripts: [],
+    scriptChecks: [],
     scannedFiles: 0,
     parsedFiles: 0,
     skippedFiles: 0,
@@ -99,6 +101,129 @@ async function readPackageScripts(root: string): Promise<SourceHealthScript[]> {
   } catch {
     return [];
   }
+}
+
+function normalizeScriptNames(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function invocationFor(packageManager: SourceHealthResult['packageManager'], scriptName: string): { command: string; args: string[]; display: string } {
+  const runner = packageManager && packageManager !== 'unknown' ? packageManager : 'npm';
+  if (runner === 'yarn') return { command: 'yarn', args: ['run', scriptName], display: `yarn run ${scriptName}` };
+  if (runner === 'bun') return { command: 'bun', args: ['run', scriptName], display: `bun run ${scriptName}` };
+  if (runner === 'pnpm') return { command: 'pnpm', args: ['run', scriptName], display: `pnpm run ${scriptName}` };
+  return { command: 'npm', args: ['run', scriptName], display: `npm run ${scriptName}` };
+}
+
+function appendLimited(current: string, chunk: Buffer | string, maxBytes: number): string {
+  if (current.length >= maxBytes) return current;
+  const text = Buffer.isBuffer(chunk) ? chunk.toString('utf8') : chunk;
+  const next = current + text.slice(0, Math.max(0, maxBytes - current.length));
+  return next.length >= maxBytes && text.length > maxBytes - current.length ? `${next}\n...[truncated]` : next;
+}
+
+function chooseScriptsToRun(scripts: SourceHealthScript[], config: FrontLensConfig): { selected: SourceHealthScript[]; missing: string[] } {
+  if (!config.source.runScripts) return { selected: [], missing: [] };
+  const explicitNames = normalizeScriptNames(config.source.scriptNames);
+  if (explicitNames.length > 0) {
+    const selected = scripts.filter((script) => explicitNames.includes(script.name));
+    const selectedNames = new Set(selected.map((script) => script.name));
+    return {
+      selected,
+      missing: explicitNames.filter((name) => !selectedNames.has(name))
+    };
+  }
+  return {
+    selected: scripts.filter((script) => script.category === 'typecheck' || script.category === 'lint'),
+    missing: []
+  };
+}
+
+function skippedScriptCheck(id: number, scriptName: string, reason: string): SourceScriptCheck {
+  return {
+    id: `SRC-SCRIPT-${String(id).padStart(3, '0')}`,
+    scriptName,
+    command: '',
+    category: 'other',
+    status: 'skipped',
+    durationMs: 0,
+    error: reason
+  };
+}
+
+async function runSourceScriptCheck(
+  id: number,
+  root: string,
+  packageManager: SourceHealthResult['packageManager'],
+  script: SourceHealthScript,
+  config: FrontLensConfig
+): Promise<SourceScriptCheck> {
+  const invocation = invocationFor(packageManager, script.name);
+  const started = Date.now();
+  return await new Promise<SourceScriptCheck>((resolve) => {
+    let stdoutPreview = '';
+    let stderrPreview = '';
+    let timedOut = false;
+    let settled = false;
+    let forceKillTimer: NodeJS.Timeout | undefined;
+
+    const finish = (patch: Partial<SourceScriptCheck>): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (forceKillTimer) clearTimeout(forceKillTimer);
+      resolve({
+        id: `SRC-SCRIPT-${String(id).padStart(3, '0')}`,
+        scriptName: script.name,
+        command: invocation.display,
+        category: script.category,
+        durationMs: Date.now() - started,
+        stdoutPreview: stdoutPreview || undefined,
+        stderrPreview: stderrPreview || undefined,
+        ...patch,
+        status: patch.status ?? 'failed'
+      });
+    };
+
+    const child = spawn(invocation.command, invocation.args, {
+      cwd: root,
+      env: { ...process.env, CI: '1' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false
+    });
+
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGTERM');
+      forceKillTimer = setTimeout(() => child.kill('SIGKILL'), 5_000);
+      forceKillTimer.unref?.();
+    }, config.source.scriptTimeoutMs);
+    timeout.unref?.();
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdoutPreview = appendLimited(stdoutPreview, chunk, config.source.maxScriptOutputBytes);
+    });
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderrPreview = appendLimited(stderrPreview, chunk, config.source.maxScriptOutputBytes);
+    });
+    child.on('error', (error) => {
+      const code = (error as NodeJS.ErrnoException).code;
+      finish({
+        status: code === 'ENOENT' ? 'skipped' : 'failed',
+        error: code === 'ENOENT'
+          ? `Script runner not found for ${invocation.display}: ${error.message}`
+          : error.message
+      });
+    });
+    child.on('close', (code, signal) => {
+      finish({
+        status: timedOut ? 'timed-out' : code === 0 ? 'passed' : 'failed',
+        exitCode: code ?? undefined,
+        signal: signal ?? undefined,
+        error: timedOut ? `Timed out after ${config.source.scriptTimeoutMs}ms.` : undefined
+      });
+    });
+  });
 }
 
 function scriptKindFor(file: string, lang?: string): ts.ScriptKind {
@@ -212,6 +337,51 @@ function syntaxIssue(result: SourceHealthResult, config: FrontLensConfig): Issue
   };
 }
 
+function scriptCheckIssue(result: SourceHealthResult): Issue | undefined {
+  const failedChecks = result.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out');
+  if (failedChecks.length === 0) return undefined;
+  const blocking = failedChecks.some((check) => check.category === 'build' || check.category === 'typecheck' || check.category === 'test' || check.category === 'e2e');
+  const first = failedChecks[0];
+  return {
+    id: 'SOURCE-HEALTH-SCRIPT',
+    title: `源码脚本检查失败 ${failedChecks.length} 项`,
+    category: 'frontend-source-health',
+    severity: blocking ? 'high' : 'medium',
+    confidence: 0.98,
+    description: `Source Health 执行 package.json 脚本时发现 ${failedChecks.length} 项失败或超时，说明源码健康不只停留在静态语法层，发布前存在可复现阻断或质量风险。`,
+    evidence: {
+      details: {
+        sourceHealthStatus: result.status,
+        packageManager: result.packageManager,
+        failedScriptChecks: failedChecks.map((check) => ({
+          id: check.id,
+          scriptName: check.scriptName,
+          command: check.command,
+          category: check.category,
+          status: check.status,
+          durationMs: check.durationMs,
+          exitCode: check.exitCode,
+          signal: check.signal,
+          error: check.error,
+          stderrPreview: check.stderrPreview?.slice(0, 2000),
+          stdoutPreview: check.stdoutPreview?.slice(0, 2000)
+        }))
+      }
+    },
+    reproduceSteps: [
+      `进入源码目录 ${result.root ?? '(unknown)'}`,
+      `运行 ${first?.command ?? 'package.json script'}`
+    ],
+    reason: 'typecheck/lint/test 等源码脚本失败是可复现的工程质量信号，能补足浏览器扫描漏掉的编译、类型、规范和单测问题。',
+    suggestion: {
+      frontend: `修复失败脚本：${failedChecks.map((check) => `${check.scriptName}(${check.status})`).join(', ')}；优先处理 typecheck/build/test 阻断，再处理 lint 规范问题。`,
+      test: '将这些脚本纳入 CI 或 FrontLens 专业 QA 命令，修复后重新运行 sourceHealth 脚本检查。',
+      priority: blocking ? 'P1' : 'P2'
+    },
+    source: 'rule'
+  };
+}
+
 export async function analyzeSourceHealth(config: FrontLensConfig): Promise<{ result: SourceHealthResult; issues: Issue[] }> {
   if (!config.source.enabled) return { result: createEmptySourceHealth(config, 'skipped', 'Source analysis disabled.'), issues: [] };
   if (!config.source.root) return { result: createEmptySourceHealth(config, 'skipped', 'No source.root/sourceRoot was provided.'), issues: [] };
@@ -252,11 +422,19 @@ export async function analyzeSourceHealth(config: FrontLensConfig): Promise<{ re
     }
   }
   result.syntaxErrorCount = result.findings.length;
-  result.status = result.syntaxErrorCount > 0 ? 'failed' : 'passed';
+  const { selected, missing } = chooseScriptsToRun(result.packageScripts, config);
+  for (const name of missing) {
+    result.scriptChecks.push(skippedScriptCheck(result.scriptChecks.length + 1, name, 'Script not found in package.json.'));
+  }
+  for (const script of selected) {
+    result.scriptChecks.push(await runSourceScriptCheck(result.scriptChecks.length + 1, root, result.packageManager, script, config));
+  }
+  const failedScriptCount = result.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
+  result.status = result.syntaxErrorCount > 0 || failedScriptCount > 0 ? 'failed' : 'passed';
 
-  const issue = syntaxIssue(result, config);
+  const issues = [syntaxIssue(result, config), scriptCheckIssue(result)].filter((issue): issue is Issue => Boolean(issue));
   return {
     result,
-    issues: issue ? [issue] : []
+    issues
   };
 }

@@ -166,6 +166,10 @@ export interface SourceAnalysisConfig {
   maxBytesPerFile: number;
   include: string[];
   exclude: string[];
+  runScripts: boolean;
+  scriptNames: string[];
+  scriptTimeoutMs: number;
+  maxScriptOutputBytes: number;
 }
 
 export interface ContractConfig {
@@ -307,6 +311,9 @@ export interface QaRunInput {
   p2?: boolean;
   requirementsPath?: string;
   sourceRoot?: string;
+  sourceRunScripts?: boolean;
+  sourceScripts?: string[];
+  sourceScriptTimeoutMs?: number;
 }
 
 export interface BoundingBox {
@@ -857,6 +864,20 @@ export interface SourceHealthFinding {
   code?: number;
 }
 
+export interface SourceScriptCheck {
+  id: string;
+  scriptName: string;
+  command: string;
+  category: SourceHealthScript['category'];
+  status: 'passed' | 'failed' | 'skipped' | 'timed-out';
+  durationMs: number;
+  exitCode?: number;
+  signal?: string;
+  stdoutPreview?: string;
+  stderrPreview?: string;
+  error?: string;
+}
+
 export interface SourceHealthResult {
   enabled: boolean;
   status: 'passed' | 'skipped' | 'failed';
@@ -864,6 +885,7 @@ export interface SourceHealthResult {
   root?: string;
   packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun' | 'unknown';
   packageScripts: SourceHealthScript[];
+  scriptChecks: SourceScriptCheck[];
   scannedFiles: number;
   parsedFiles: number;
   skippedFiles: number;

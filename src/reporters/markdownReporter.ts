@@ -86,7 +86,22 @@ export function reportArtifactPath(outputDir: string | undefined, filePath: stri
 }
 
 function reportPath(result: QaResult, filePath: string | undefined): string | undefined {
-  return reportArtifactPath(result.artifacts.outputDir, filePath);
+  const rendered = reportArtifactPath(result.artifacts.outputDir, filePath);
+  if (!rendered || !filePath || !result.artifactIntegrity.entries.length) return rendered;
+  const renderedCandidates = new Set(
+    [filePath, portablePath(filePath)]
+      .map((item) => reportArtifactPath(result.artifacts.outputDir, item) ?? portablePath(item))
+  );
+  const entry = result.artifactIntegrity.entries.find((item) => {
+    const candidates = [item.path, item.absolutePath].filter((value): value is string => Boolean(value));
+    return candidates.some((candidate) => {
+      const candidateRendered = reportArtifactPath(result.artifacts.outputDir, candidate) ?? portablePath(candidate);
+      return renderedCandidates.has(candidateRendered) || portablePath(candidate) === portablePath(filePath);
+    });
+  });
+  if (!entry) return rendered;
+  if (!entry.expected || !entry.absolutePath) return `${rendered} (unchecked artifact)`;
+  return entry.exists ? rendered : `${rendered} (missing artifact)`;
 }
 
 function formatIssueTable(issues: Issue[]): string {

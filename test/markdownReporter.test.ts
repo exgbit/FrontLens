@@ -112,3 +112,51 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.match(evidence, /- Artifact Integrity：passed（missing 0）/);
   assert.match(html, /<span>Artifacts<\/span><strong>passed<\/strong>/);
 });
+
+test('markdown reporter annotates missing local artifact references inline', async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), 'frontlens-missing-artifact-'));
+  const missingScreenshot = path.join(outputDir, 'screenshots', 'missing.png');
+  const result = normalizeResult({
+    summary: {
+      url: 'https://example.com/orders',
+      title: 'Orders',
+      testedAt: '2026-07-07T00:00:00.000Z',
+      browser: 'chromium',
+      viewport: { width: 1440, height: 900 }
+    },
+    metadata: {
+      config: {
+        report: { formats: ['json', 'markdown'] }
+      }
+    },
+    artifacts: { outputDir },
+    pageModel: {
+      url: 'https://example.com/orders',
+      title: 'Orders',
+      stats: { domNodes: 10, visibleTextLength: 40, bodyTextSample: 'Orders' }
+    },
+    issues: [
+      {
+        title: '截图证据路径不存在',
+        category: 'frontend-ui',
+        severity: 'medium',
+        confidence: 0.8,
+        description: 'The report references a missing screenshot.',
+        evidence: { screenshot: missingScreenshot },
+        reproduceSteps: ['Open report'],
+        reason: 'Missing evidence should be visible in the human report.',
+        suggestion: { test: '重新采集截图或移除不可用证据路径。', priority: 'P2' }
+      }
+    ]
+  });
+
+  await writeReports(result);
+
+  const report = await readFile(result.artifacts.markdownReport!, 'utf8');
+  const evidence = await readFile(result.artifacts.evidenceReport!, 'utf8');
+
+  assert.equal(result.artifactIntegrity.status, 'failed');
+  assert.equal(result.artifactIntegrity.missing.some((entry) => entry.source === 'issues.ISSUE-001.evidence.screenshot'), true);
+  assert.match(report, /Artifact integrity：failed（missing 1）/);
+  assert.match(evidence, /screenshots\/missing\.png \(missing artifact\)/);
+});

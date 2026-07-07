@@ -147,6 +147,59 @@ export function UsersPage() {
   assert.match(JSON.stringify(findings[0].details.samples), /No data/);
 });
 
+test('source analysis detects multi-line icon buttons without accessible names', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-source-a11y-multiline-'));
+  await mkdir(path.join(dir, 'src/components'), { recursive: true });
+  await writeFile(
+    path.join(dir, 'src/components/VueActions.vue'),
+    `<template>
+  <el-button
+    :icon="Edit"
+    circle
+    @click="rename"
+  />
+  <el-button
+    :icon="Delete"
+    circle
+    aria-label="删除"
+  />
+</template>`,
+    'utf8'
+  );
+  await writeFile(
+    path.join(dir, 'src/components/ReactActions.tsx'),
+    `
+export function ReactActions() {
+  return (
+    <div>
+      <IconButton
+        className="act-icon"
+        onClick={edit}
+      >
+        <EditIcon />
+      </IconButton>
+      <IconButton aria-label="Delete">
+        <DeleteIcon />
+      </IconButton>
+    </div>
+  );
+}
+`,
+    'utf8'
+  );
+
+  const config = createDefaultConfig('https://example.com/actions');
+  config.source.root = dir;
+  const { result } = await analyzeSource(config);
+
+  const uiFindings = result.findings.filter((finding) => finding.kind === 'ui-accessibility');
+  const locations = uiFindings.flatMap((finding) => finding.locations);
+  assert.equal(locations.length, 2);
+  assert.equal(locations.some((location) => location.file === 'src/components/VueActions.vue' && location.line === 2), true);
+  assert.equal(locations.some((location) => location.file === 'src/components/ReactActions.tsx' && location.line === 5), true);
+  assert.match(JSON.stringify(uiFindings.flatMap((finding) => finding.details.samples as unknown[])), /IconButton/);
+});
+
 test('source runtime correlation links network responses to source API and UI hints', () => {
   const sourceAnalysis: SourceAnalysisResult = {
     enabled: true,

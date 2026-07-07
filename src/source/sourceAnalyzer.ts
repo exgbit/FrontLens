@@ -210,33 +210,45 @@ function sourceSelectorHints(attrs: string): string[] {
   return hints.slice(0, 5);
 }
 
+function lineColumnFromOffset(content: string, offset: number): { line: number; column: number } {
+  const prefix = content.slice(0, offset);
+  const line = prefix.split(/\n/).length;
+  const lastNewline = prefix.lastIndexOf('\n');
+  return { line, column: lastNewline >= 0 ? offset - lastNewline - 1 : offset };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function parseUiAccessibilityFindings(rel: string, lines: string[]): SourceAnalysisResult['findings'] {
+  const content = lines.join('\n');
   const locations: SourceLocation[] = [];
   const samples: Array<Record<string, unknown>> = [];
-  const tagPattern = /<([A-Za-z][\w.-]*)([^<>]*)>/g;
-  for (const [index, line] of lines.entries()) {
-    if (!/<[A-Za-z][\w.-]*/.test(line)) continue;
-    for (const match of line.matchAll(tagPattern)) {
-      const tag = match[1];
-      const lowerTag = tag.toLowerCase();
-      const attrs = match[2] ?? '';
-      const isButtonLike = lowerTag === 'button' || lowerTag.endsWith('-button') || lowerTag.includes('button') || /\brole\s*=\s*["']button["']/.test(attrs);
-      if (!isButtonLike) continue;
-      const afterOpen = line.slice((match.index ?? 0) + match[0].length);
-      const sameLineInnerText = afterOpen.split(new RegExp(`</${tag}>`, 'i'))[0] ?? '';
-      if (hasAccessibleName(attrs, sameLineInnerText)) continue;
-      const iconOnlySignal = /(:?icon|icon\s*=|circle|round|text|link|svg|<\s*[A-Z][\w.]*Icon|class\s*=\s*["'][^"']*(icon|act-icon|btn-icon))/i.test(`${attrs} ${sameLineInnerText}`);
-      const selfClosing = /\/>\s*$/.test(match[0]) || /\/>\s*$/.test(line.trim());
-      if (!iconOnlySignal && !selfClosing) continue;
-      const location = { file: rel, line: index + 1, column: match.index };
-      locations.push(location);
-      samples.push({
-        ...location,
-        tag,
-        selectorHints: sourceSelectorHints(attrs),
-        snippet: redactText(line.trim()).slice(0, 240)
-      });
-    }
+  const tagPattern = /<([A-Za-z][\w.-]*)([^<>]*?)(\/?)>/gs;
+  for (const match of content.matchAll(tagPattern)) {
+    const tag = match[1];
+    const lowerTag = tag.toLowerCase();
+    const attrs = match[2] ?? '';
+    const isButtonLike = lowerTag === 'button' || lowerTag.endsWith('-button') || lowerTag.includes('button') || /\brole\s*=\s*["']button["']/.test(attrs);
+    if (!isButtonLike) continue;
+    const openEnd = (match.index ?? 0) + match[0].length;
+    const afterOpen = content.slice(openEnd, Math.min(content.length, openEnd + 800));
+    const closeMatch = new RegExp(`</${escapeRegExp(tag)}>`, 'i').exec(afterOpen);
+    const innerText = closeMatch ? afterOpen.slice(0, closeMatch.index) : '';
+    if (hasAccessibleName(attrs, innerText)) continue;
+    const iconOnlySignal = /(:?icon|icon\s*=|circle|round|text|link|svg|<\s*[A-Z][\w.]*Icon|class\s*=\s*["'][^"']*(icon|act-icon|btn-icon))/i.test(`${attrs} ${innerText}`);
+    const selfClosing = /\/>\s*$/.test(match[0]) || match[3] === '/';
+    if (!iconOnlySignal && !selfClosing) continue;
+    const position = lineColumnFromOffset(content, match.index ?? 0);
+    const location = { file: rel, line: position.line, column: position.column };
+    locations.push(location);
+    samples.push({
+      ...location,
+      tag,
+      selectorHints: sourceSelectorHints(attrs),
+      snippet: redactText(match[0].replace(/\s+/g, ' ').trim()).slice(0, 240)
+    });
   }
   if (locations.length === 0) return [];
   return [{

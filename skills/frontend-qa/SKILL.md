@@ -21,6 +21,7 @@ For every target-page QA run:
 5. After the run, read `references/triage-guidelines.md` and calibrate raw findings before reporting. Do not treat raw score or raw issue count as the final truth when findings are synthetic, skipped, deployment-only, or page-type mismatches.
 6. When the user provides a frontend source path, or when a known source mapping exists, source-aware triage is mandatory. Read `references/source-code-correlation.md`, pass the `sourceRoot` to the worker, and require file:line evidence for every retained frontend defect.
 7. When the target URL is local/private and the source path is available, the worker may build/start/refresh the local dev or preview server before running QA if the page is unreachable, stale, or the user asks to deploy first. Keep the server non-destructive and do not modify business code.
+8. When the user asks for professional-QA replacement, full acceptance, release sign-off, business validation, or skill quality review, read `references/qa-engineer-mode.md` and require a QA sign-off, requirement coverage matrix, defect root-cause table, non-defect observations, and regression commands. Never claim full business pass without requirements and runtime evidence.
 
 Recommended checklist to show the user:
 
@@ -67,7 +68,8 @@ If the user selects "all/default", run the full default QA command. If the user 
 8. The worker reads `result.json` for structured findings, `report.md` for narrative evidence, `references/triage-guidelines.md` for post-run calibration, and `references/source-code-correlation.md` when a source root is available.
 9. The worker must bucket findings into real frontend fixes, backend/API fixes, deployment/security config, product decisions, and false positives/tool limitations. For real frontend fixes, include source file paths and line numbers that confirm the defect and the likely fix surface. Source-aware triage must also retain source-discovered defects even when the raw browser finding was downgraded as dev-mode/synthetic noise; for example, a dev-server request-count finding may be false as a production metric but still reveal a real eager route import/code-splitting problem.
 10. Before returning fixes, group raw issues by implementation root cause. Do not treat raw issue count, heuristic AI issue count, or `fixTasks[]` length as workload. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
-11. Return the report path, JSON path, raw score, raw issue count, root-cause fix count, adjusted triage counts, selected modules, source-code correlation status, deployment/serve action taken, skipped-coverage caveats, and the highest-priority fixes.
+11. Apply the professional QA actionability gate: a bug needs user impact, evidence, reproducibility, and an owner/fix surface. Move style/product choices and single-signal guesses to non-defect observations.
+12. Return the report path, JSON path, raw score, raw issue count, root-cause fix count, adjusted triage counts, selected modules, source-code correlation status, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, and the highest-priority fixes.
 
 ## Safety Rules
 
@@ -292,6 +294,8 @@ Summarize:
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation;
 - raw score plus confidence/adjusted-risk note when score is distorted by skipped/synthetic/deployment-only findings;
 - raw issue count separated from implementation root-cause count;
+- requirement coverage / business-validation confidence when the user asks for acceptance or professional QA;
+- QA sign-off status (`pass`, `pass-with-risks`, `blocked`, or `fail`) when using professional QA mode;
 - skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;
 - for each retained critical/high issue: issue id, severity, category, evidence reference, reproduction step summary, and suggested owner/fix.
 

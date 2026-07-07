@@ -26,6 +26,7 @@ When `sourceRoot` exists and the user asks to deploy first, or the page is unrea
 2. Inspect the app scripts without changing business code:
    - `cat package.json`
    - prefer existing `dev`, `build`, and `preview` scripts.
+   - For professional QA/sign-off runs, also list available `lint`, `typecheck`, `test`, `e2e`, and `coverage` scripts. Run non-destructive source-health commands when they are fast and dependencies exist; otherwise report them as coverage gaps.
 3. Install dependencies only if required:
    - If `node_modules` is missing, run the package-manager install command implied by the lockfile (`npm install`, `pnpm install`, or `yarn install`).
 4. Start the local server in the source repo:
@@ -34,6 +35,17 @@ When `sourceRoot` exists and the user asks to deploy first, or the page is unrea
    - Keep the server session alive while running FrontLens.
 5. Recheck `deployUrl`. If still unreachable, report the server log and stop before issuing a misleading QA report.
 6. Never edit the business repo while doing QA unless the user explicitly asks for code fixes.
+
+### Source-health pass
+
+When the user provides `sourceRoot`, a professional QA pass should include source-health status:
+
+- package manager and lockfile detected
+- build/typecheck/lint/unit/e2e scripts discovered
+- commands run, pass/fail/skipped, and log excerpts
+- whether the tested URL appears to match the inspected source branch/build
+
+Do not mark business functionality as passed just because source-health commands pass. Treat them as one layer of evidence.
 
 If an existing server is already healthy, do not restart it unless the user asked for a fresh deployment or assets are clearly stale versus the source under review.
 

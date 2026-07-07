@@ -112,6 +112,7 @@ Use a fresh worker prompt like:
 本地部署/预览 URL：<DEPLOY_URL 或 与目标 URL 相同>。
 保持默认非破坏安全策略，不开启新增/编辑/删除/上传/真实提交，不使用 --allow-mutating-requests。
 如果提供了源码路径或存在已知项目映射，必须读取 skills/frontend-qa/references/source-code-correlation.md，并做源码关联复核。
+如果用户要求“替代专业测试工程师 / 完整验收 / 业务功能验证 / release sign-off / 复盘 skill 能力”，必须读取 skills/frontend-qa/references/qa-engineer-mode.md，并按其中的 QA sign-off、需求覆盖矩阵、核心缺陷根因表、非缺陷观察项输出。
 如果需要部署/刷新本地页面：先在源码目录检查 package.json；页面不可达或用户要求部署时，按 source-code-correlation.md 自动安装缺失依赖、构建、启动 Vite dev/preview 服务；服务可达后再运行 FrontLens。不要修改业务代码。
 先运行 npm run build，再按模块选择生成配置并执行 QA 命令。
 如果 Chromium 或私网访问被沙箱限制，使用 escalated 执行；仍失败则输出诊断。
@@ -122,5 +123,6 @@ Use a fresh worker prompt like:
 业务功能/需求验证必须标注证据置信度：runtime-verified / runtime-partial / static-source-only / not-verified。除非有完整运行时页面、DOM/截图、API 响应和必要下载文件证据，否则不要写“业务功能验证 100% 通过”。样式风格、按钮层级、是否需要刷新/导出等默认归为产品决策/可选，除非有 ADR、a11y 或核心任务阻塞证据。
 证据路径必须优先使用报告目录相对路径，并检查截图、视频、trace、下载文件是否真实存在；不存在的路径要标记为报告/工具问题，不要作为证据。
 返回 Markdown 摘要：页面信息、部署/服务动作、原始分数、调整后风险判断、问题计数（raw issue 与根因计数分开）、业务验证置信度表、已启用模块、triage 分桶（真实前端 / 后端API / 部署安全 / 产品决策 / 误报或工具局限）、源码关联复核表、根因合并表、核心问题、前端问题、后端/API问题、安全问题、性能/P2、用户旅程（特别标注 skipped 覆盖缺口）、异常模拟、AI结论、证据路径、修改建议和复测命令。
+若使用专业 QA 模式，最后必须给出 sign-off：pass / pass-with-risks / blocked / fail，以及 confidence high/medium/low。缺少 PRD、登录态、测试数据、角色矩阵、导出文件或破坏性动作授权时，不能给高置信通过。
 不要修改业务代码。
 ```

@@ -199,15 +199,15 @@ export class P2Tester {
     }
     for (const item of result.networkProfiles.filter((entry) => entry.status === 'warning' || entry.status === 'failed')) {
       issues.push(factory.create({
-        title: `弱网/断网场景缺少明确反馈：${item.profile}`,
+        title: `弱网/断网场景反馈待人工确认：${item.profile}`,
         category: 'frontend-interaction',
-        severity: 'medium',
-        confidence: 0.7,
-        description: `${item.profile} 场景未观察到明确的错误、重试或离线提示。`,
+        severity: 'info',
+        confidence: 0.5,
+        description: `${item.profile} 场景未观察到明确的错误、重试或离线提示；该项默认作为韧性测试观察，不作为必须修改缺陷。`,
         evidence: { screenshot: item.screenshot, details: item },
         reproduceSteps: ['启用 p2.networkProfiles', `模拟 ${item.profile}`, '观察页面是否有错误反馈和恢复入口'],
-        reason: '弱网/断网没有反馈会让用户误以为页面卡死。',
-        suggestion: { frontend: '为接口失败、断网和超时提供错误提示、重试按钮和加载状态恢复。', test: '增加离线/慢网自动化回归。', priority: 'P2' }
+        reason: '弱网/断网体验是否必须优化取决于产品场景、PWA/离线要求和目标用户网络环境；不能仅凭一次网络模拟上升为代码缺陷。',
+        suggestion: { product: '若该页面有弱网/离线体验要求，再定义错误提示、重试和恢复标准。', test: '有明确要求后补充离线/慢网自动化回归。', priority: 'P3' }
       }));
     }
     return { result, issues };

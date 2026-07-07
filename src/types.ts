@@ -1660,6 +1660,57 @@ export interface QaExecutionPlanResult {
   notes: string[];
 }
 
+export type RiskRegisterCategory =
+  | 'defect'
+  | 'coverage'
+  | 'environment'
+  | 'test-data'
+  | 'source-health'
+  | 'artifact'
+  | 'product-scope'
+  | 'permission'
+  | 'release';
+
+export type RiskRegisterImpact = 'critical' | 'high' | 'medium' | 'low';
+export type RiskRegisterLikelihood = 'high' | 'medium' | 'low';
+export type RiskRegisterStatus = 'open' | 'blocked' | 'accepted' | 'mitigated';
+
+export interface RiskRegisterItem {
+  id: string;
+  category: RiskRegisterCategory;
+  title: string;
+  impact: RiskRegisterImpact;
+  likelihood: RiskRegisterLikelihood;
+  exposure: number;
+  level: 'critical' | 'high' | 'medium' | 'low';
+  status: RiskRegisterStatus;
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  blocksRelease: boolean;
+  evidenceRefs: string[];
+  trigger: string;
+  mitigation: string;
+  verification: string;
+}
+
+export interface RiskRegisterResult {
+  generatedAt: string;
+  status: 'clear' | 'monitor' | 'at-risk' | 'blocked';
+  summary: {
+    totalCount: number;
+    criticalCount: number;
+    highCount: number;
+    mediumCount: number;
+    lowCount: number;
+    openCount: number;
+    blockedCount: number;
+    acceptedCount: number;
+    mitigatedCount: number;
+    releaseBlockingCount: number;
+  };
+  items: RiskRegisterItem[];
+  notes: string[];
+}
+
 export type ProfessionalSummaryItemKind =
   | 'defect'
   | 'coverage-gap'
@@ -2097,6 +2148,8 @@ export interface ArtifactIndex {
   qaPlan?: string;
   /** Professional QA coverage matrix Markdown. */
   qaCoverage?: string;
+  /** Release risk register Markdown. */
+  riskRegister?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -2121,6 +2174,7 @@ export interface ArtifactIndex {
   productContextLog?: string;
   qaPlanLog?: string;
   qaCoverageLog?: string;
+  riskRegisterLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2281,6 +2335,7 @@ export interface QaResult {
   regressionPlan: RegressionPlanResult;
   qaPlan: QaExecutionPlanResult;
   qaCoverage: QaCoverageMatrixResult;
+  riskRegister: RiskRegisterResult;
   reportContentAudit: ReportContentAuditResult;
   journeyAssertionAudit: JourneyAssertionAuditResult;
   professionalSummary: ProfessionalSummaryResult;

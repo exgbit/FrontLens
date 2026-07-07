@@ -87,6 +87,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Claim guard: **${result.claimGuard.status}**；QA intake: **${result.qaIntake.status}**；Defect proof: **${result.defectProof.status}**
 - QA execution plan: **${result.qaPlan.status}** / confidence **${result.qaPlan.confidence}**
 - QA coverage matrix: **${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}**（covered ${result.qaCoverage.summary.coveredCount}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}）
+- Risk register: **${result.riskRegister.status}**（total ${result.riskRegister.summary.totalCount}, release-blocking ${result.riskRegister.summary.releaseBlockingCount}）
 
 ## Core fixes
 
@@ -116,6 +117,7 @@ ${forbidden.length ? ['以下结论当前不能正向使用：', ...forbidden].j
 - product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\`
 - qa-plan.md: \`${markdownEscape(artifactPath(result, 'qaPlan'))}\`
 - qa-coverage.md: \`${markdownEscape(artifactPath(result, 'qaCoverage'))}\`
+- risk-register.md: \`${markdownEscape(artifactPath(result, 'riskRegister'))}\`
 - qa-review.md: \`${markdownEscape(artifactPath(result, 'qaReview'))}\`
 - evidence-report.md: \`${markdownEscape(artifactPath(result, 'evidenceReport'))}\`
 - artifact integrity: **${result.artifactIntegrity.status}**（missing ${result.artifactIntegrity.missingCount}）

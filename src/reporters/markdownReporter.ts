@@ -11,6 +11,7 @@ import { formatJourneyAssertionAudit } from '../journeys/journeyAssertionAudit.j
 import { buildProductContextSuggestion, formatProductContextSuggestion } from '../product/productContextSuggestion.js';
 import { buildQaExecutionPlan, formatQaExecutionPlan } from '../plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix, formatQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
+import { buildRiskRegister, formatRiskRegister } from '../risk/riskRegister.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1068,6 +1069,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
 - Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
+- Risk register：**${result.riskRegister.status}** / total ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount} / artifact ${artifactPath(result.artifacts.riskRegister)}
 - Raw score：**${result.summary.score}/100**（原始扫描趋势分，不能直接等同页面质量或修复工作量）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
 - Proof-ready root causes：${actionableGroups.length} / actionable ${rawActionableGroupCount}（P0/P1 ${blockerGroups.length}）
@@ -1169,6 +1171,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
   const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
+  const riskRegisterPath = path.join(result.artifacts.outputDir, 'risk-register.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
@@ -1183,6 +1186,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.productContext = productContextPath;
   result.artifacts.qaPlan = qaPlanPath;
   result.artifacts.qaCoverage = qaCoveragePath;
+  result.artifacts.riskRegister = riskRegisterPath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
@@ -1226,6 +1230,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
 - Regression Plan：${result.regressionPlan.status} / items ${result.regressionPlan.summary.itemCount} / blocked ${result.regressionPlan.summary.blockedCount}
+- Risk Register：${result.riskRegister.status} / risks ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
@@ -1374,6 +1379,8 @@ ${formatArtifacts(result)}
   await writeText(qaPlanPath, formatQaExecutionPlan(result.qaPlan));
   result.qaCoverage = buildQaCoverageMatrix(result);
   await writeText(qaCoveragePath, formatQaCoverageMatrix(result.qaCoverage));
+  result.riskRegister = buildRiskRegister(result);
+  await writeText(riskRegisterPath, formatRiskRegister(result.riskRegister));
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);

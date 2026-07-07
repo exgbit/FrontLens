@@ -13,6 +13,7 @@ Default to a concise, decision-oriented answer. Respect `report.profile`: execut
 Summarize:
 
 - professionalSummary headline/status and must-fix/non-defect counts;
+- riskRegister status, release-blocking count, top high/critical risks, and `risk-register.md` path; if blocked/at-risk, report it before raw issue totals;
 - adjusted score, raw score, and issue counts;
 - in FrontLens 1.45+, lead with adjusted score/proof-ready root causes and mention raw score only as scanner trend context;
 - critical/high issues first;
@@ -20,7 +21,7 @@ Summarize:
 - top frontend fixes;
 - top backend/API fixes;
 - API contract / GraphQL / WebSocket / SSE findings;
-- machine-executable fix task count and important task IDs; regressionPlan status, blocked/needs-input counts, and top rerun commands;
+- machine-executable fix task count and important task IDs; regressionPlan status, blocked/needs-input counts, riskRegister status/release-blocking count, and top rerun commands;
 - generated artifact paths and artifact integrity status; in FrontLens 1.35+ expect report.md/report.html to reflect the final artifactIntegrity snapshot, not an early pre-human-report snapshot; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used; test-data lifecycle status when write/data-changing flows are in scope;
 - professional-audit status and `professional-audit.md` path; if it is `failed`, report the blocker before trusting any must-fix list or business/sign-off claim;
 - report-content-audit status and `report-content-audit.md` path; if it is `failed`, do not echo the generated conclusion until forbidden wording/raw-evidence leakage/profile-depth issues are fixed or explicitly scoped; if it is `warning` because the selected profile is too long/table-heavy, summarize from `brief.md`/`qa-review.md` and send selector-level detail to `evidence-report.md`;
@@ -44,6 +45,7 @@ Summarize:
 - if `qaPlan.items[]` or `regressionPlan.items[]` contains `type=role-matrix`, report it as a permission sign-off input gap until role storage states and expected allowed/forbidden contracts are provided;
 - if `qaPlan.items[]` or `regressionPlan.items[]` contains `type=source-health` for detected-but-unexecuted package scripts, report it as a source/CI sign-off gap until build/typecheck/test/e2e/lint evidence is attached or explicitly scoped out;
 - QA coverage matrix status/items from `result.json.qaCoverage` and `qa-coverage.md`; skipped and needs-input rows must be phrased as coverage gaps, not passes;
+- release-risk matrix from `result.json.riskRegister` and `risk-register.md`; separate implementation defects, coverage gaps, environment/source/test-data/artifact risks, and accepted product risks.
 - generated-report content audit from `result.json.reportContentAudit` and `report-content-audit.md`; blockers mean the report text itself overclaims or violates the selected depth profile; compactness warnings mean the report should be summarized rather than copied into the final answer;
 - journey assertion audit from `result.json.journeyAssertionAudit` and `journey-assertion-audit.md`; path-only click/fill journeys are coverage gaps, not business passes;
 - skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;

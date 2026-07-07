@@ -35,6 +35,8 @@ const FILE_ARTIFACT_KEYS = [
   'productContextConfig',
   'qaPlanLog',
   'qaCoverageLog',
+  'riskRegister',
+  'riskRegisterLog',
   'regressionPlanLog',
   'scopeReview',
   'scopeReviewLog',

@@ -22,6 +22,7 @@ import { buildDefectProof } from './proof/defectProof.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
+import { buildRiskRegister } from './risk/riskRegister.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
@@ -129,6 +130,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.qaIntake = buildQaIntake(result);
   result.qaPlan = buildQaExecutionPlan(result);
   result.qaCoverage = buildQaCoverageMatrix(result);
+  result.riskRegister = buildRiskRegister(result);
 }
 
 async function writeHumanReportsWithStableIntegrity(result: QaResult, formats: Set<string>): Promise<void> {
@@ -193,6 +195,7 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
     result.qaIntake = buildQaIntake(result);
     result.qaPlan = buildQaExecutionPlan(result);
     result.qaCoverage = buildQaCoverageMatrix(result);
+    result.riskRegister = buildRiskRegister(result);
     await writeHumanReportsWithStableIntegrity(result, formats);
     await writeJsonReports(result);
   }

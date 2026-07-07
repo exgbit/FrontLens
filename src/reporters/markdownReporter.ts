@@ -102,6 +102,10 @@ function formatIssueTable(issues: Issue[]): string {
   return ['| ID | 等级 | 类型 | 问题 | 置信度 |', '| --- | --- | --- | --- | --- |', ...rows, ''].join('\n');
 }
 
+function isActionableIssue(issue: Issue): boolean {
+  return issue.severity !== 'info';
+}
+
 function formatIssueDetails(result: QaResult, issues: Issue[]): string {
   if (issues.length === 0) {
     return '';
@@ -521,9 +525,10 @@ ${rows.length ? ['| 类型 | Total | Unused | Unused% | URL |', '| --- | --- | -
 }
 
 function formatOptimizationSummary(result: QaResult): string {
-  const frontend = result.issues.filter((issue) => issue.suggestion.frontend).slice(0, 12);
-  const backend = result.issues.filter((issue) => issue.suggestion.backend).slice(0, 12);
-  const test = result.issues.filter((issue) => issue.suggestion.test).slice(0, 12);
+  const actionableIssues = result.issues.filter(isActionableIssue);
+  const frontend = actionableIssues.filter((issue) => issue.suggestion.frontend).slice(0, 12);
+  const backend = actionableIssues.filter((issue) => issue.suggestion.backend).slice(0, 12);
+  const test = actionableIssues.filter((issue) => issue.suggestion.test).slice(0, 12);
 
   const formatList = (issues: Issue[], selector: (issue: Issue) => string | undefined): string =>
     issues.length
@@ -566,10 +571,12 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const outputPath = path.join(result.artifacts.outputDir, 'report.md');
   result.artifacts.markdownReport = outputPath;
 
-  const frontendIssues = result.issues.filter((issue) => issue.category.startsWith('frontend') || issue.category === 'resource-loading' || issue.category === 'resource-performance' || issue.category === 'console-error' || issue.category === 'seo');
-  const backendIssues = result.issues.filter((issue) => issue.category.startsWith('backend'));
-  const integrationIssues = result.issues.filter((issue) => issue.category.startsWith('integration'));
-  const securityIssues = result.issues.filter((issue) => issue.category === 'security');
+  const actionableIssues = result.issues.filter(isActionableIssue);
+  const referenceIssues = result.issues.filter((issue) => !isActionableIssue(issue));
+  const frontendIssues = actionableIssues.filter((issue) => issue.category.startsWith('frontend') || issue.category === 'resource-loading' || issue.category === 'resource-performance' || issue.category === 'console-error' || issue.category === 'seo');
+  const backendIssues = actionableIssues.filter((issue) => issue.category.startsWith('backend'));
+  const integrationIssues = actionableIssues.filter((issue) => issue.category.startsWith('integration'));
+  const securityIssues = actionableIssues.filter((issue) => issue.category === 'security');
 
   const markdown = `# FrontLens QA Report
 
@@ -589,13 +596,16 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Realtime：GraphQL ${result.realtime.summary.graphqlOperationCount} / WS ${result.realtime.summary.webSocketCount} / SSE ${result.realtime.summary.sseCount}
 - Fix Tasks：${result.fixTasks.length}
 - 问题总数：${result.summary.issueCount}
+- 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
 - 严重 / 高 / 中 / 低 / 信息：${result.summary.criticalCount} / ${result.summary.highCount} / ${result.summary.mediumCount} / ${result.summary.lowCount} / ${result.summary.infoCount}
 
 ${formatPhaseErrors(result)}
 
-## 核心问题列表
+## 核心可执行问题列表
 
-${formatIssueTable(result.issues)}
+${formatIssueTable(actionableIssues)}
+
+${referenceIssues.length ? `### 参考观察项（不计分、不生成 Fix Task）\n\n${formatIssueTable(referenceIssues)}` : ''}
 
 ${formatComponentSummary(result)}
 

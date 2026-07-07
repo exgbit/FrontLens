@@ -5,12 +5,8 @@ function hasButtonText(context: AnalyzerContext, pattern: RegExp): boolean {
   return context.pageModel.buttons.some((button) => pattern.test(`${button.label ?? ''} ${button.text ?? ''}`));
 }
 
-function hasComponentText(context: AnalyzerContext, pattern: RegExp): boolean {
-  return context.pageModel.components.some((component) => pattern.test(`${component.label ?? ''} ${component.text ?? ''} ${component.attributes.class ?? ''}`));
-}
-
 function isReliableDataTable(table: AnalyzerContext['pageModel']['tables'][number]): boolean {
-  return table.tagName === 'table' || table.role === 'grid' || (table.rowCount ?? 0) > 0 || (table.headers?.length ?? 0) > 0 || table.confidence >= 0.8;
+  return table.visible && (table.tagName === 'table' || table.role === 'grid' || (table.rowCount ?? 0) > 0 || (table.headers?.length ?? 0) > 0 || table.confidence >= 0.8);
 }
 
 export function analyzeCompleteness(context: AnalyzerContext, factory: IssueFactory): Issue[] {
@@ -19,34 +15,9 @@ export function analyzeCompleteness(context: AnalyzerContext, factory: IssueFact
   const hasTable = tables.length > 0;
 
   if (hasTable) {
-    const hasRefresh = hasButtonText(context, /刷新|重新加载|refresh|reload/i);
-    if (!hasRefresh) {
-      issues.push(
-        factory.create({
-          title: '数据列表缺少明显刷新能力',
-          category: 'frontend-table',
-          severity: 'low',
-          confidence: 0.62,
-          description: '页面存在表格/数据网格，但未识别到刷新按钮。',
-          evidence: {
-            screenshot: context.artifacts.screenshot,
-            details: {
-              tableIds: tables.map((table) => table.id)
-            }
-          },
-          reason: '列表页通常需要让用户在不刷新整个页面的情况下重新拉取当前条件的数据。',
-          suggestion: {
-            frontend: '在表格工具栏增加刷新按钮，刷新时保持当前筛选/分页参数，并提供 Loading 或禁用状态。',
-            backend: '列表接口应支持幂等查询，便于前端按当前条件重复请求。',
-            priority: 'P3'
-          }
-        })
-      );
-    }
-
-
-    // Do not require export/download by default: many admin pages intentionally avoid
-    // exporting sensitive data. Treat export as a product-specific journey instead.
+    // Do not require refresh/export/download by default: these are product
+    // decisions and many admin pages intentionally avoid exporting sensitive
+    // data. Treat them as explicit journeys/requirements instead of defects.
 
 
     const hasSelection = tables.some((table) => table.hasSelection);
@@ -78,8 +49,8 @@ export function analyzeCompleteness(context: AnalyzerContext, factory: IssueFact
           factory.create({
             title: `表格缺少明确空状态：${table.id}`,
             category: 'frontend-table',
-            severity: 'medium',
-            confidence: 0.7,
+            severity: 'low',
+            confidence: 0.62,
             description: '表格当前未识别到数据行，也未识别到“暂无数据/Empty”等空状态文本。',
             evidence: {
               screenshot: context.artifacts.screenshot,
@@ -89,29 +60,6 @@ export function analyzeCompleteness(context: AnalyzerContext, factory: IssueFact
             reason: '没有空状态会让用户无法区分“加载失败”“没有权限”“筛选无结果”和“确实没有数据”。',
             suggestion: {
               frontend: '为空列表提供明确 Empty 状态；筛选无结果时提示调整筛选条件；接口失败时展示错误状态。',
-              backend: '列表接口返回空数组时保持 total=0，并避免返回 null。',
-              priority: 'P2'
-            }
-          })
-        );
-      }
-
-      if (table.hasOperationColumn && !hasComponentText(context, /tooltip|提示|popconfirm|确认/i)) {
-        issues.push(
-          factory.create({
-            title: `表格操作列缺少辅助提示或确认组件：${table.id}`,
-            category: 'frontend-table',
-            severity: 'low',
-            confidence: 0.55,
-            description: '表格存在操作列，但未识别到 Tooltip/Popconfirm/确认类组件。',
-            evidence: {
-              screenshot: context.artifacts.screenshot,
-              selector: table.selector,
-              componentId: table.id
-            },
-            reason: '操作列通常包含高频和危险动作；辅助提示和确认能降低误操作。',
-            suggestion: {
-              frontend: '为图标按钮增加 Tooltip；为删除/禁用等危险动作增加 Popconfirm/Modal 二次确认。',
               priority: 'P3'
             }
           })

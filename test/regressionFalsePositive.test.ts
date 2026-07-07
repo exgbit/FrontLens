@@ -317,6 +317,98 @@ test('table analyzers ignore low-confidence CSS grid cards', () => {
   assert.equal(completenessIssues.length, 0);
 });
 
+test('subjective product design heuristics do not become actionable defects by default', () => {
+  const pageModel: PageModel = {
+    ...context().pageModel,
+    buttons: Array.from({ length: 40 }, (_, index) => ({
+      id: `BTN-${index}`,
+      type: 'button' as const,
+      label: index < 10 ? `新增 ${index}` : `按钮 ${index}`,
+      text: index < 10 ? `新增 ${index}` : `按钮 ${index}`,
+      selector: `button:nth-of-type(${index + 1})`,
+      tagName: 'button',
+      visible: true,
+      attributes: { class: index < 10 ? 'primary' : '' },
+      confidence: 0.95
+    })),
+    components: []
+  };
+  const issues = analyzePageQuality(context({ pageModel }), new IssueFactory());
+  assert.equal(issues.some((issue) => /主按钮过多|按钮数量偏多/.test(issue.title)), false);
+});
+
+test('integration mismatch ignores generic data arrays that are not tied to a list endpoint', () => {
+  const pageModel: PageModel = {
+    ...context().pageModel,
+    tables: [
+      {
+        id: 'TABLE-1',
+        type: 'table',
+        tagName: 'table',
+        visible: true,
+        attributes: {},
+        confidence: 0.95,
+        rowCount: 0,
+        headers: ['name'],
+        selector: 'table'
+      }
+    ],
+    components: []
+  };
+  const ctx = context({
+    pageModel,
+    networkRecords: [
+      networkRecord({
+        id: 'REQ-platforms',
+        url: 'http://example.test/v1/platforms',
+        resourceType: 'fetch',
+        status: 200,
+        ok: true,
+        contentType: 'application/json',
+        responseBodyPreview: JSON.stringify({ code: 0, data: [{ name: 'Amazon SP' }, { name: 'Amazon Ads' }], msg: 'success' })
+      })
+    ]
+  });
+  const issues = analyzeIntegration(ctx, new IssueFactory());
+  assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), false);
+});
+
+test('integration mismatch can report strong list response bound to a list-like endpoint', () => {
+  const pageModel: PageModel = {
+    ...context().pageModel,
+    tables: [
+      {
+        id: 'TABLE-1',
+        type: 'table',
+        tagName: 'table',
+        visible: true,
+        attributes: {},
+        confidence: 0.95,
+        rowCount: 0,
+        headers: ['name'],
+        selector: 'table'
+      }
+    ],
+    components: []
+  };
+  const ctx = context({
+    pageModel,
+    networkRecords: [
+      networkRecord({
+        id: 'REQ-list',
+        url: 'http://example.test/v1/users/list',
+        resourceType: 'fetch',
+        status: 200,
+        ok: true,
+        contentType: 'application/json',
+        responseBodyPreview: JSON.stringify({ code: 0, data: [{ name: 'A' }, { name: 'B' }], total: 2 })
+      })
+    ]
+  });
+  const issues = analyzeIntegration(ctx, new IssueFactory());
+  assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), true);
+});
+
 
 
 test('redactUrl preserves ordinary business path words while redacting real secrets', () => {

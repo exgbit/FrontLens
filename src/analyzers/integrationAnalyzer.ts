@@ -17,23 +17,38 @@ function parseJsonPreview(record: NetworkRecord): unknown | undefined {
   }
 }
 
-function findArrayLengths(value: unknown, lengths: number[] = [], depth = 0): number[] {
-  if (depth > 4 || value === null || value === undefined) {
-    return lengths;
-  }
+interface ListArrayCandidate {
+  path: string;
+  length: number;
+  sampleKeys: string[];
+}
+
+const listKeyPattern = /^(data|records|rows|list|items|results|pageData)$/i;
+const listUrlPattern = /list|page|search|query|table|records|rows|items|grid|datagrid/i;
+
+function findListArrayCandidates(value: unknown, path = '$', depth = 0, inheritedListKey = false, candidates: ListArrayCandidate[] = []): ListArrayCandidate[] {
+  if (depth > 4 || value === null || value === undefined) return candidates;
   if (Array.isArray(value)) {
-    lengths.push(value.length);
-    for (const item of value.slice(0, 3)) {
-      findArrayLengths(item, lengths, depth + 1);
+    const firstObject = value.find((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item));
+    const isObjectRows = value.length > 0 && Boolean(firstObject);
+    if (inheritedListKey && isObjectRows) {
+      candidates.push({
+        path,
+        length: value.length,
+        sampleKeys: Object.keys(firstObject ?? {}).slice(0, 20)
+      });
     }
-    return lengths;
+    for (const item of value.slice(0, 3)) {
+      findListArrayCandidates(item, `${path}[]`, depth + 1, false, candidates);
+    }
+    return candidates;
   }
   if (typeof value === 'object') {
-    for (const item of Object.values(value as Record<string, unknown>)) {
-      findArrayLengths(item, lengths, depth + 1);
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      findListArrayCandidates(item, `${path}.${key}`, depth + 1, listKeyPattern.test(key), candidates);
     }
   }
-  return lengths;
+  return candidates;
 }
 
 function isLikelyTelemetryOrHeartbeat(record: NetworkRecord): boolean {
@@ -53,7 +68,7 @@ function isSafetyBlockedMutation(context: AnalyzerContext, record: NetworkRecord
 }
 
 function isReliableDataTable(table: AnalyzerContext['pageModel']['tables'][number]): boolean {
-  return table.tagName === 'table' || table.role === 'grid' || (table.rowCount ?? 0) > 0 || (table.headers?.length ?? 0) > 0 || table.confidence >= 0.8;
+  return table.visible && (table.tagName === 'table' || table.role === 'grid' || (table.rowCount ?? 0) > 0 || (table.headers?.length ?? 0) > 0 || table.confidence >= 0.8);
 }
 
 export function analyzeIntegration(context: AnalyzerContext, factory: IssueFactory): Issue[] {
@@ -93,37 +108,51 @@ export function analyzeIntegration(context: AnalyzerContext, factory: IssueFacto
   const tables = context.pageModel.tables.filter(isReliableDataTable);
   if (tables.length > 0) {
     const jsonResponses = context.networkRecords
+      .filter((record) => record.resourceType === 'xhr' || record.resourceType === 'fetch')
       .filter((record) => record.status !== undefined && record.status >= 200 && record.status < 300)
       .map((record) => ({ record, data: parseJsonPreview(record) }))
       .filter((item): item is { record: NetworkRecord; data: unknown } => item.data !== undefined);
 
-    const maxReturnedArrayLength = Math.max(0, ...jsonResponses.flatMap((item) => findArrayLengths(item.data)));
+    const listCandidates = jsonResponses.flatMap((item) =>
+      findListArrayCandidates(item.data)
+        .filter((candidate) => candidate.length > 0)
+        .filter((candidate) => {
+          const lastKey = candidate.path.replace(/\[\]$/, '').split('.').pop() ?? '';
+          const strongListKey = /^(records|rows|list|items|results|pageData)$/i.test(lastKey);
+          const genericDataKey = /^data$/i.test(lastKey);
+          return strongListKey || (genericDataKey && listUrlPattern.test(item.record.url));
+        })
+        .map((candidate) => ({ ...candidate, record: item.record }))
+    );
+    const maxReturnedArrayLength = Math.max(0, ...listCandidates.map((item) => item.length));
     const maxTableRows = Math.max(0, ...tables.map((table) => table.rowCount ?? 0));
 
     if (maxReturnedArrayLength > 0 && maxTableRows === 0) {
-      const source = jsonResponses.find((item) => findArrayLengths(item.data).some((length) => length === maxReturnedArrayLength));
+      const source = listCandidates.find((item) => item.length === maxReturnedArrayLength);
       issues.push(
         factory.create({
           title: '接口返回疑似有列表数据，但页面表格为空',
           category: 'integration-data-mismatch',
           severity: 'medium',
-          confidence: 0.58,
-          description: `接口响应中识别到数组数据最大长度 ${maxReturnedArrayLength}，但页面表格行数为 0。`,
+          confidence: 0.66,
+          description: `在疑似列表接口响应的 ${source?.path ?? '列表字段'} 中识别到 ${maxReturnedArrayLength} 条对象数组数据，但当前可见表格行数为 0。`,
           evidence: {
             screenshot: context.artifacts.screenshot,
             networkRequestId: source?.record.id,
             details: {
               maxReturnedArrayLength,
               maxTableRows,
-              tableIds: tables.map((table) => table.id)
+              responsePath: source?.path,
+              sampleKeys: source?.sampleKeys,
+              tableIds: tables.map((table) => table.id),
+              guard: 'Only object arrays under list-like keys (data/records/rows/list/items/results) from XHR/fetch responses are considered. This finding still requires source-code correlation before being treated as a confirmed frontend defect.'
             }
           },
           reproduceSteps: ['打开目标页面', '查看列表接口响应', '对比页面表格行数'],
-          reason: '这可能表示字段映射、状态更新、接口选择或表格渲染条件存在问题；也可能是接口并非当前表格数据源。',
+          reason: '该规则只说明运行时存在“疑似列表响应”和“可见表格为空”的矛盾信号；接口未必是该表格的数据源，最终结论必须结合源码数据绑定或人工复验确认。',
           suggestion: {
-            frontend: '确认列表接口与表格数据源绑定关系，检查 setState/store 更新和字段映射逻辑。',
-            backend: '统一列表响应结构，例如 { records, total, page, pageSize }，减少前端推断成本。',
-            test: '补充“接口返回有数据时表格展示行数与字段正确”的自动化断言。',
+            frontend: '先核对源码中的表格数据源、字段映射和渲染条件；只有确认该接口绑定当前表格后再修复状态更新或字段映射。',
+            test: '补充绑定到具体接口和 DOM 行数的 E2E 断言，避免仅凭全局 Network 数组推断。',
             priority: 'P2'
           }
         })

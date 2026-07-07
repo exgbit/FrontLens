@@ -38,7 +38,10 @@ export function templateSuggestion(issue: Issue): IssueSuggestion {
     return merge(issue.suggestion, { frontend: '为表单字段补充必填、长度、格式、禁用重复提交和保存 loading 状态。', test: '补充表单校验和重复点击回归。', priority: 'P2' });
   }
   if (issue.category.startsWith('frontend-table') || /\btable\b|表格|分页|排序|筛选/.test(title)) {
-    return merge(issue.suggestion, { frontend: '统一表格 loading、空态、错误态、分页、排序、筛选和操作列反馈。', backend: '列表接口返回 records/total/page/pageSize 并支持稳定排序筛选参数。', test: '补充表格分页、排序、筛选和空态回归。', priority: 'P2' });
+    if (/分页|排序|筛选|参数|page|sort|filter/.test(issue.title)) {
+      return merge(issue.suggestion, { frontend: '核对表格分页、排序、筛选参数与 UI 状态同步；仅在页面需求包含这些能力时修复。', backend: '列表接口按页面需求提供稳定分页/排序/筛选参数和 total。', test: '补充具体分页、排序、筛选回归；无该产品需求时标记为不适用。', priority: issue.severity === 'low' ? 'P3' : 'P2' });
+    }
+    return merge(issue.suggestion, { frontend: '仅修复有明确用户影响的表格状态问题，例如 loading/empty/error 无法区分；产品设计项先确认需求。', test: '补充与当前页面真实需求绑定的表格状态回归。', priority: issue.severity === 'low' ? 'P3' : 'P2' });
   }
   if (issue.category === 'frontend-performance' || issue.category === 'resource-performance') {
     return merge(issue.suggestion, { frontend: '拆分首屏包、压缩图片、延迟非关键资源、减少长任务和重复渲染。', test: '设置性能预算并在 CI 中门禁。', priority: 'P2' });

@@ -21,22 +21,25 @@ function trimJsonContext(value: unknown, maxBytes: number): unknown {
 }
 
 function heuristicSummary(issues: Issue[]): { summary: string; suggestions: string[] } {
-  const high = issues.filter((issue) => issue.severity === 'critical' || issue.severity === 'high');
-  const backend = issues.filter((issue) => issue.category.startsWith('backend') || issue.category.startsWith('integration'));
-  const frontend = issues.filter((issue) => issue.category.startsWith('frontend') || issue.category === 'console-error');
-  const perf = issues.filter((issue) => issue.category.includes('performance') || issue.category === 'resource-performance');
-  const security = issues.filter((issue) => issue.category === 'security');
+  const actionable = issues.filter((issue) => issue.severity !== 'info' && issue.confidence >= 0.6);
+  const referenceOnly = issues.length - actionable.length;
+  const high = actionable.filter((issue) => issue.severity === 'critical' || issue.severity === 'high');
+  const backend = actionable.filter((issue) => issue.category.startsWith('backend') || issue.category.startsWith('integration'));
+  const frontend = actionable.filter((issue) => issue.category.startsWith('frontend') || issue.category === 'console-error');
+  const perf = actionable.filter((issue) => issue.category.includes('performance') || issue.category === 'resource-performance');
+  const security = actionable.filter((issue) => issue.category === 'security');
 
   const suggestions = [
-    high.length > 0 ? `优先处理 ${high.length} 个 Critical/High 问题，避免核心流程不可用或危险操作风险。` : '当前未发现 Critical/High 问题，优先处理体验和稳定性优化。',
-    backend.length > 0 ? `接口/前后端联动问题共 ${backend.length} 个，建议先统一错误码、分页/筛选参数和异常反馈。` : '接口层未发现明显高风险问题，可继续关注参数规范和异常反馈。',
-    frontend.length > 0 ? `前端 UI/交互/Console 问题共 ${frontend.length} 个，建议按可复现步骤逐项修复。` : '前端基础交互稳定性较好，继续补充回归测试。',
-    perf.length > 0 ? `性能/资源问题共 ${perf.length} 个，建议结合截图、resource timing 和 Network 优化首屏。` : '当前性能规则未发现明显高风险项。',
-    security.length > 0 ? `安全扫描问题共 ${security.length} 个，建议优先处理安全响应头、Cookie、敏感信息和接口泄露证据。` : '安全扫描未发现明显风险项，继续在 CI 中保持回归。'
+    high.length > 0 ? `优先处理 ${high.length} 个 Critical/High 可执行问题；逐项以截图、Network、Console 或源码证据复核。` : '当前未发现 Critical/High 可执行问题；不要把参考观察项当成必须修改。',
+    backend.length > 0 ? `接口/前后端联动可执行问题共 ${backend.length} 个；仅在证据能绑定具体接口与 UI 状态时下结论。` : '接口层未发现已确认的高风险联动问题；疑似数据不一致需继续用源码或 E2E 复核。',
+    frontend.length > 0 ? `前端 UI/交互/Console 可执行问题共 ${frontend.length} 个；优先修复运行时错误、可访问性硬性问题和阻塞流程。` : '前端基础交互未发现已确认阻塞项；样式/层级类观察默认归为产品决策。',
+    perf.length > 0 ? `性能/资源可执行问题共 ${perf.length} 个；结合构建产物、Coverage 和 Network 判断是否是当前页面真实成本。` : '当前性能规则未发现明显高风险项。',
+    security.length > 0 ? `安全扫描可执行问题共 ${security.length} 个；区分前端代码、部署响应头和测试环境噪音。` : '安全扫描未发现已确认的应用层高风险项。',
+    referenceOnly > 0 ? `${referenceOnly} 个信息/低置信项仅作参考，不进入修复任务。` : '无额外参考观察项。'
   ];
 
   return {
-    summary: `AI Heuristic 综合分析：基于 ${issues.length} 个非 AI 归一化问题，其中高优先级 ${high.length} 个、接口/联动 ${backend.length} 个、前端类 ${frontend.length} 个、性能类 ${perf.length} 个、安全类 ${security.length} 个。`,
+    summary: `AI Heuristic 综合分析：基于 ${actionable.length} 个可执行问题和 ${referenceOnly} 个参考观察项；高优先级 ${high.length} 个、接口/联动 ${backend.length} 个、前端类 ${frontend.length} 个、性能类 ${perf.length} 个、安全类 ${security.length} 个。`,
     suggestions
   };
 }

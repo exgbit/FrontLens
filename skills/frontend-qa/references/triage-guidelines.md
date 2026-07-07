@@ -14,6 +14,12 @@ Create a concise triage table with these buckets:
 
 Report raw score separately from adjusted risk. If many findings are skipped, synthetic, or deployment-only, say the score is low-confidence and prioritize the triaged fix list instead of repeating every issue.
 
+Apply an **actionability gate** before presenting final findings:
+
+- Keep as **core fixes** only defects with direct user impact and evidence: runtime error, broken route, failed core journey, API failure with missing visible error state, a11y violation with selectors, confirmed data binding mismatch, or source-confirmed performance/bundle issue.
+- Move to **reference/product decision** instead of fixes: visual density, color/style preference, number of primary buttons, manual refresh/export/pagination expectations, optional SEO on admin pages, small tap targets on PC-first products, or any feature that depends on product requirements.
+- Suppress repeated detail: summarize reference items in one row/table and do not expand them into per-selector fix tasks unless the user explicitly asks for design/a11y polish.
+
 Also add a **root-cause grouping** before the final fix list:
 
 - Group multiple raw issue IDs that point to the same implementation defect, such as 500/401/403/404/timeout all rendering the same false empty state.
@@ -45,6 +51,7 @@ For product/design/style findings, default to **Product decision / optional** un
    - Do not require pagination, export, table empty states, or table row counts for card grids, master-detail layouts, kanban/cards, trees, dashboards, or credential/security pages.
    - If `pageModel.tables[]` points at a `div` with card/grid class and no real table headers/rows, treat table issues as false positives.
    - Export/download is product-specific and can be a security anti-pattern on sensitive pages.
+   - If a scanner says "API has data but table/page is empty", keep it only when the exact API response is a list-like object array (`records`/`rows`/`list`/`items`/`results`, or `data` from a list-like endpoint), the visible DOM is genuinely empty, and source code or E2E evidence binds that API to that UI. Otherwise classify as insufficient evidence or false positive.
 
 4. **Sensitive data keyword matches**
    - URL paths like `/credentials`, `/auth`, or redacted path segments are not leaks by themselves.

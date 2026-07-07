@@ -73,6 +73,10 @@ When the reachable URL is a Vite dev server (`@vite/client`, `/src/*.vue`, `/nod
    - `insufficient-source-coverage`
    - `source-discovered`
 5. Retain a frontend issue only when browser evidence and source evidence agree, or when source evidence reveals the real bug behind a noisy raw finding. Do not require a surviving raw issue for source-confirmed problems.
+6. Apply an actionability gate:
+   - Core fix: route/runtime error, failed core journey, missing error/retry state for real API failures, hard a11y violation, confirmed data binding mismatch, source-confirmed bundle/performance issue.
+   - Product/reference: style hierarchy, visual density, primary-button count, optional refresh/export/pagination, SEO for non-public admin pages, mobile tap target tradeoffs under PC-first ADR.
+   - Insufficient evidence: any conclusion based on only one signal, such as a global Network array without DOM/source binding.
 
 Minimum files to inspect for `/credentials` in `sunrise-web`:
 
@@ -93,6 +97,7 @@ Minimum files to inspect for `/credentials` in `sunrise-web`:
 - **Error state vs empty state**: if a composable/store captures `error` but the view renders only loading/list/empty states, classify API failure as a real frontend bug. Require a user-visible error state and retry path.
 - **Duplicate requests**: reloads from responsive, P2, journey, exception, and matrix phases are not duplicate-fetch bugs. Confirm a real duplicate only inside one page state or one user action, and verify watchers/effects in source.
 - **Card layouts are not tables**: do not require pagination/export/table row counts for master-detail cards, grids, dashboards, trees, or credential/security pages.
+- **API data but empty UI is high-risk for speculation**: retain only when one specific response body contains list-like object rows, the current visible UI is empty, and source/E2E proves that response feeds that UI. Generic `{ data: [...] }` from unrelated endpoints such as platform/options/menu dictionaries is not enough.
 - **Credential path is not a leak**: `/credentials` in a URL path is not sensitive-data exposure. Require real secrets in query/body/DOM/storage/logs.
 - **Deployment security headers**: CSP, `nosniff`, clickjacking headers, Referrer-Policy, COOP/CORP, HSTS/HTTPS, and `Server` fingerprint are deployment/gateway work unless the repo owns deploy config.
 - **PC-first ADRs**: if an ADR declares PC-first with mobile as adaptive/degraded, small inline icon buttons can be downgraded to optional/mobile-breakpoint work unless they block core mobile use.

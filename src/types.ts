@@ -1352,6 +1352,50 @@ export interface FixTask {
   verificationCommand: string;
 }
 
+export type RegressionPlanStatus = 'ready' | 'partial' | 'blocked';
+export type RegressionPlanItemType =
+  | 'full-rerun'
+  | 'root-cause'
+  | 'requirement'
+  | 'journey'
+  | 'source-health'
+  | 'download'
+  | 'environment'
+  | 'artifact-integrity'
+  | 'role-matrix';
+
+export interface RegressionPlanItem {
+  id: string;
+  type: RegressionPlanItemType;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  title: string;
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  status: 'ready' | 'needs-input' | 'blocked';
+  commands: string[];
+  steps: string[];
+  expected: string[];
+  evidenceRefs: string[];
+  issueIds?: string[];
+  requirementIds?: string[];
+  journeyIds?: string[];
+  notes?: string[];
+}
+
+export interface RegressionPlanResult {
+  status: RegressionPlanStatus;
+  generatedAt: string;
+  summary: {
+    itemCount: number;
+    commandCount: number;
+    blockedCount: number;
+    needsInputCount: number;
+    highPriorityCount: number;
+  };
+  commands: string[];
+  items: RegressionPlanItem[];
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -1566,6 +1610,7 @@ export interface ArtifactIndex {
   apiContractLog?: string;
   p2Log?: string;
   testDataLog?: string;
+  regressionPlanLog?: string;
   downloadDir?: string;
   downloadedFiles?: string[];
   sourceAnalysisLog?: string;
@@ -1699,6 +1744,7 @@ export interface QaResult {
   rootCauseGroups: RootCauseGroup[];
   issueDisposition: IssueDispositionResult;
   fixTasks: FixTask[];
+  regressionPlan: RegressionPlanResult;
   qualityGate: QaQualityGate;
   qaSignoff: QaSignoffResult;
   aiAnalysis: AiAnalysisResult;

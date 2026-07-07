@@ -436,7 +436,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         issueDisposition: result.issueDisposition.summary,
         fixTaskCount: result.fixTasks.length,
         qualityGate: result.qualityGate,
-        qaSignoff: result.qaSignoff
+        qaSignoff: result.qaSignoff,
+        regressionPlan: {
+          status: result.regressionPlan.status,
+          summary: result.regressionPlan.summary
+        }
       });
     }
     case 'frontlens_requirements_synthesize': {
@@ -492,7 +496,8 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         },
         issueDisposition: result.issueDisposition.summary,
         qualityGate: result.qualityGate,
-        qaSignoff: result.qaSignoff
+        qaSignoff: result.qaSignoff,
+        regressionPlan: result.regressionPlan
       });
     }
     case 'frontlens_issues': {

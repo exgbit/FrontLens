@@ -93,7 +93,7 @@ Tools exposed:
 - `frontlens_env_compare`: run dev/source-module and build/preview QA, then classify persistent, dev-only, preview-only, and dev-artifact findings.
 - `frontlens_suggestions`: return frontend/backend/product/test suggestions.
 
-`frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `testData` lifecycle status, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups`; use `qaSignoff` plus `testData.status`, `environment.trust`, and `pageProfile.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
+`frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `testData` lifecycle status, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, `rootCauseGroups`, and `regressionPlan` summary; use `qaSignoff` plus `testData.status`, `environment.trust`, `pageProfile.status`, and `regressionPlan.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
 
 `frontlens_role_matrix` returns `role-matrix.json` / `role-matrix.md`. Use it for permission-sensitive pages after collecting storage states; treat role-specific action labels or issues as review evidence unless expected allowed/forbidden text contracts or PRD/source/runtime proof show a violation.
 
@@ -118,7 +118,7 @@ Return these paths to the caller:
 - `$OUTPUT_DIR/network.json`
 - `$OUTPUT_DIR/console.json`
 
-Other skills should consume `result.json`, filter `issues[]`, and rerun FrontLens after applying fixes.
+Other skills should consume `result.json`, filter via `issueDisposition`/`rootCauseGroups`, follow `regressionPlan.items[]`, and rerun FrontLens after applying fixes.
 
 For lighter wrappers, call the helper commands:
 

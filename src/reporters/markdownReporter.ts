@@ -298,6 +298,26 @@ ${rows.length ? ['| ID | Severity | Category | Record | Operation | Message |', 
 `;
 }
 
+function formatRegressionPlan(result: QaResult): string {
+  const plan = result.regressionPlan;
+  const itemRows = plan.items.slice(0, 40).map((item) => {
+    const refs = [...(item.issueIds ?? []), ...(item.requirementIds ?? []), ...(item.journeyIds ?? []), ...item.evidenceRefs].slice(0, 8).join(', ') || '-';
+    return `| ${markdownEscape(item.id)} | ${item.priority} | ${item.type} | ${item.status} | ${item.owner} | ${markdownEscape(truncateMiddle(item.title, 90))} | ${markdownEscape(truncateMiddle(refs, 130))} |`;
+  });
+  const commandRows = plan.commands.slice(0, 12).map((command, index) => `${index + 1}. \`${markdownEscape(command)}\``);
+  return `## Regression Plan / 回归复测计划
+
+- Status：**${plan.status}**
+- Items / Commands：${plan.summary.itemCount} / ${plan.summary.commandCount}
+- Blocked / Needs input / P0-P1：${plan.summary.blockedCount} / ${plan.summary.needsInputCount} / ${plan.summary.highPriorityCount}
+- Notes：${plan.notes.length ? markdownEscape(plan.notes.join('；')) : '-'}
+
+${commandRows.length ? commandRows.join('\n') : '暂无复测命令。'}
+
+${itemRows.length ? ['| ID | Priority | Type | Status | Owner | Title | Evidence refs |', '| --- | --- | --- | --- | --- | --- | --- |', ...itemRows, ''].join('\n') : '暂无回归复测项。'}
+`;
+}
+
 function formatSourceAnalysis(result: QaResult): string {
   const source = result.sourceAnalysis;
   const findingRows = source.findings.slice(0, 20).map((finding) => {
@@ -889,6 +909,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Environment：${result.environment.kind} / trust performance ${result.environment.trust.performance} / security ${result.environment.trust.security}
 - Page profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test data：${result.testData.status} / records ${result.testData.summary.recordCount} / missing cleanup ${result.testData.summary.missingCleanupCount}
+- Regression plan：${result.regressionPlan.status} / items ${result.regressionPlan.summary.itemCount} / blocked ${result.regressionPlan.summary.blockedCount}
 - Source health：${result.sourceHealth.status}；syntax errors ${result.sourceHealth.syntaxErrorCount}；script checks ${result.sourceHealth.scriptChecks.length}（passed ${sourceScriptPassed} / failed-or-timeout ${sourceScriptFailed}）
 - Artifact integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 
@@ -961,6 +982,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - QA Sign-off：${result.qaSignoff.status} / ${result.qaSignoff.confidence} / ${result.qaSignoff.businessValidationConfidence}
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
+- Regression Plan：${result.regressionPlan.status} / items ${result.regressionPlan.summary.itemCount} / blocked ${result.regressionPlan.summary.blockedCount}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
@@ -977,6 +999,8 @@ ${formatEnvironmentAssessment(result)}
 ${formatPageProfileAssessment(result)}
 
 ${formatTestDataAssessment(result)}
+
+${formatRegressionPlan(result)}
 
 ${formatRootCauseGroups(result)}
 

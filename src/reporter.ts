@@ -13,6 +13,7 @@ import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
+import { buildRegressionPlan } from './regression/regressionPlan.js';
 
 async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.issues = result.issues.map((issue, index) =>
@@ -69,6 +70,22 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     exceptionSimulations: result.exceptionSimulations,
     pageDomNodes: result.pageModel.stats.domNodes
   });
+  result.regressionPlan = buildRegressionPlan({
+    targetUrl: result.summary.url,
+    sourceRoot: result.sourceAnalysis.root,
+    rootCauseGroups: result.rootCauseGroups,
+    fixTasks: result.fixTasks,
+    requirementCoverage: result.requirementCoverage,
+    journeyTests: result.journeyTests,
+    interactionTests: result.interactionTests,
+    sourceHealth: result.sourceHealth,
+    artifactIntegrity: result.artifactIntegrity,
+    environment: result.environment,
+    pageProfile: result.pageProfile,
+    testData: result.testData,
+    qualityGate: result.qualityGate,
+    qaSignoff: result.qaSignoff
+  });
 }
 
 export async function writeReports(result: QaResult): Promise<QaResult> {
@@ -95,6 +112,22 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
     result.rootCauseGroups = buildRootCauseGroups(result.issues, result.metadata.config);
     result.issueDisposition = buildIssueDisposition(result.issues, result.metadata.config, result.rootCauseGroups);
     result.fixTasks = generateFixTasks(result.issues, result.metadata.config);
+    result.regressionPlan = buildRegressionPlan({
+      targetUrl: result.summary.url,
+      sourceRoot: result.sourceAnalysis.root,
+      rootCauseGroups: result.rootCauseGroups,
+      fixTasks: result.fixTasks,
+      requirementCoverage: result.requirementCoverage,
+      journeyTests: result.journeyTests,
+      interactionTests: result.interactionTests,
+      sourceHealth: result.sourceHealth,
+      artifactIntegrity: result.artifactIntegrity,
+      environment: result.environment,
+      pageProfile: result.pageProfile,
+      testData: result.testData,
+      qualityGate: result.qualityGate,
+      qaSignoff: result.qaSignoff
+    });
     if (formats.has('markdown')) {
       await writeMarkdownReport(result);
       await normalizeAndRebuildSummary(result);

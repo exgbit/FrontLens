@@ -112,6 +112,11 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     .map((task) => `<tr><td>${escapeHtml(task.id)}</td><td>${escapeHtml(task.priority)}</td><td>${escapeHtml(task.owner)}</td><td>${escapeHtml(task.type)}</td><td>${escapeHtml(task.title)}</td><td>${escapeHtml(task.issueIds.join(', '))}</td></tr>`)
     .join('\n');
 
+  const regressionPlanRows = result.regressionPlan.items
+    .slice(0, 80)
+    .map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.priority)}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.owner)}</td><td>${escapeHtml(item.title)}</td></tr>`)
+    .join('\n');
+
   const responsiveRows = result.responsiveChecks
     .map(
       (check) => `<tr>
@@ -321,6 +326,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Root Causes</span><strong>${result.rootCauseGroups.filter((group) => group.status === 'actionable').length}/${result.rootCauseGroups.length}</strong></div>
           <div class="metric"><span>Disposition</span><strong>${result.issueDisposition.summary.actionableCount}/${result.issueDisposition.summary.conditionalCount}/${result.issueDisposition.summary.nonActionableCount}</strong></div>
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
+          <div class="metric"><span>Regression</span><strong>${escapeHtml(result.regressionPlan.status)} / ${result.regressionPlan.summary.itemCount}</strong></div>
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
           <div class="metric"><span>QA Sign-off</span><strong>${escapeHtml(result.qaSignoff.status)}</strong></div>
           <div class="metric"><span>Environment</span><strong>${escapeHtml(result.environment.kind)}</strong></div>
@@ -673,6 +679,20 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>ID</th><th>Priority</th><th>Owner</th><th>Type</th><th>Title</th><th>Issues</th></tr></thead>
           <tbody>${fixTaskRows || '<tr><td colspan="6">No fix tasks</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Regression Plan / 回归复测计划</h2>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.regressionPlan.status)}</strong></div>
+          <div class="metric"><span>Items</span><strong>${result.regressionPlan.summary.itemCount}</strong></div>
+          <div class="metric"><span>Blocked</span><strong>${result.regressionPlan.summary.blockedCount}</strong></div>
+          <div class="metric"><span>Needs input</span><strong>${result.regressionPlan.summary.needsInputCount}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Priority</th><th>Type</th><th>Status</th><th>Owner</th><th>Title</th></tr></thead>
+          <tbody>${regressionPlanRows || '<tr><td colspan="6">No regression plan items</td></tr>'}</tbody>
         </table>
       </section>
 

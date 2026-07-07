@@ -281,6 +281,7 @@ async function handleResultCommand(command: 'inspect' | 'issues' | 'root-causes'
             reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
           },
           issueDisposition: result.issueDisposition.summary,
+          regressionPlan: result.regressionPlan,
           qualityGate: result.qualityGate,
           qaSignoff: result.qaSignoff
         },
@@ -1005,6 +1006,10 @@ async function main(): Promise<void> {
           },
           issueDisposition: result.issueDisposition.summary,
           fixTaskCount: result.fixTasks.length,
+          regressionPlan: {
+            status: result.regressionPlan.status,
+            summary: result.regressionPlan.summary
+          },
           qualityGate: result.qualityGate,
           qaSignoff: result.qaSignoff,
           exitStatus,
@@ -1031,6 +1036,7 @@ async function main(): Promise<void> {
     console.log(`Root causes: ${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total`);
     console.log(`Disposition: ${result.issueDisposition.summary.actionableCount} actionable, ${result.issueDisposition.summary.conditionalCount} conditional, ${result.issueDisposition.summary.nonActionableCount} non-actionable`);
     console.log(`Fix tasks: ${result.fixTasks.length}`);
+    console.log(`Regression Plan: ${result.regressionPlan.status}, items ${result.regressionPlan.summary.itemCount}, blocked ${result.regressionPlan.summary.blockedCount}`);
     console.log(`QA Gate: ${result.qualityGate.status}, confidence ${result.qualityGate.confidence}`);
     console.log(`QA Sign-off: ${result.qaSignoff.status}, confidence ${result.qaSignoff.confidence}, business ${result.qaSignoff.businessValidationConfidence}`);
     console.log(`Issues: ${result.summary.issueCount} (critical ${result.summary.criticalCount}, high ${result.summary.highCount}, medium ${result.summary.mediumCount}, low ${result.summary.lowCount})`);

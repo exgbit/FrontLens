@@ -32,6 +32,7 @@ import { buildEnvironmentAssessment } from './environment/environmentAssessment.
 import { buildPageProfileAssessment } from './product/pageProfile.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
+import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
@@ -727,6 +728,22 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     exceptionSimulations,
     pageDomNodes: pageModel.stats.domNodes
   });
+  const regressionPlan = buildRegressionPlan({
+    targetUrl: redactUrl(config.target.url),
+    sourceRoot: sourceAnalysis.root,
+    rootCauseGroups,
+    fixTasks,
+    requirementCoverage,
+    journeyTests,
+    interactionTests,
+    sourceHealth,
+    artifactIntegrity: initialArtifactIntegrity,
+    environment,
+    pageProfile,
+    testData,
+    qualityGate,
+    qaSignoff
+  });
 
   const result: QaResult = {
     summary: buildSummary({
@@ -782,6 +799,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     rootCauseGroups,
     issueDisposition,
     fixTasks,
+    regressionPlan,
     qualityGate,
     qaSignoff,
     aiAnalysis,

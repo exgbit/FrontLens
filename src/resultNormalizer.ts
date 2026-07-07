@@ -36,8 +36,9 @@ import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { createEmptyEnvironmentAssessment } from './environment/environmentAssessment.js';
 import { buildPageProfileAssessment, createEmptyPageProfileAssessment } from './product/pageProfile.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
+import { buildRegressionPlan } from './regression/regressionPlan.js';
 
-export const RESULT_SCHEMA_VERSION = '1.19.0';
+export const RESULT_SCHEMA_VERSION = '1.20.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1091,6 +1092,22 @@ export function normalizeResult(raw: unknown): QaResult {
     pageDomNodes: pageModel.stats.domNodes
   });
   const qaSignoff = isRecord(raw.qaSignoff) ? normalizeQaSignoff(raw.qaSignoff, qaSignoffFallback) : qaSignoffFallback;
+  const regressionPlan = buildRegressionPlan({
+    targetUrl: summary.url,
+    sourceRoot: sourceAnalysis.root,
+    rootCauseGroups,
+    fixTasks,
+    requirementCoverage,
+    journeyTests,
+    interactionTests,
+    sourceHealth,
+    artifactIntegrity,
+    environment,
+    pageProfile,
+    testData,
+    qualityGate,
+    qaSignoff
+  });
 
   return {
     summary,
@@ -1122,6 +1139,7 @@ export function normalizeResult(raw: unknown): QaResult {
     rootCauseGroups,
     issueDisposition,
     fixTasks,
+    regressionPlan,
     qualityGate,
     qaSignoff,
     aiAnalysis,

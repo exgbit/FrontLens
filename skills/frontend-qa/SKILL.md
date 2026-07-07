@@ -1,6 +1,6 @@
 ---
 name: frontend-qa
-description: Run FrontLens Playwright QA for live webpage testing/auditing and evidence-backed Markdown/JSON reports covering UI/interaction, user journeys, Console, Network/API, contract drift, realtime GraphQL/WebSocket/SSE, data mismatch, performance/P2, accessibility, permissions, passive security, root-cause grouping, raw-finding disposition/actionability, fix tasks, diff/baseline, download/export artifact content validation, artifact integrity, source-code correlation when a repo path is provided, optional local build/serve, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/issueDisposition/rootCauseGroups/fixTasks to drive fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
+description: Run FrontLens Playwright QA for live webpage testing/auditing and evidence-backed Markdown/JSON reports covering UI/interaction, user journeys, Console, Network/API, contract drift, realtime GraphQL/WebSocket/SSE, data mismatch, performance/P2, accessibility, permissions, passive security, root-cause grouping, raw-finding disposition/actionability, fix tasks, regression plan, diff/baseline, download/export artifact content validation, artifact integrity, source-code correlation when a repo path is provided, optional local build/serve, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/issueDisposition/rootCauseGroups/fixTasks/regressionPlan to drive fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
 ---
 
 # Frontend QA
@@ -22,7 +22,7 @@ For every target-page QA run:
 5. After the run, read `references/triage-guidelines.md` and calibrate raw findings before reporting. Do not treat raw score or raw issue count as the final truth when findings are synthetic, skipped, deployment-only, or page-type mismatches.
 6. When the user provides a frontend source path, or when a known source mapping exists, source-aware triage is mandatory. Read `references/source-code-correlation.md`, pass the `sourceRoot` to the worker as `--source-root`, inspect `result.json.sourceAnalysis`, `result.json.sourceRuntimeCorrelation`, `result.json.sourceHealth`, and `result.json.pageProfile`, and require file:line plus runtime/source-health evidence for every retained frontend defect. For professional sign-off, enable controlled source script checks (`--source-run-scripts`, default scripts `typecheck,lint`) when dependencies exist and the user allowed a full local QA run.
 7. When the target URL is local/private and the source path is available, the worker may build/start/refresh the local dev or preview server before running QA if the page is unreachable, stale, or the user asks to deploy first. Keep the server non-destructive and do not modify business code.
-8. When the user asks for professional-QA replacement, full acceptance, release sign-off, business validation, or skill quality review, read `references/qa-engineer-mode.md` and require a QA sign-off, requirement coverage matrix, defect root-cause table, non-defect observations, and regression commands. Never claim full business pass without requirements and runtime evidence.
+8. When the user asks for professional-QA replacement, full acceptance, release sign-off, business validation, or skill quality review, read `references/qa-engineer-mode.md` and require a QA sign-off, requirement coverage matrix, defect root-cause table, non-defect observations, and `result.json.regressionPlan` regression commands/items. Never claim full business pass without requirements and runtime evidence.
 9. When PRD/acceptance criteria are provided as Markdown or natural language, first run `frontlens requirements synthesize` to create a reviewable draft, read the generated Markdown questions, then pass the reviewed JSON as `--requirements`. If the user already provided structured JSON, use it directly. Encode explicit `selectors`, `expectedTexts`, `apiPatterns`, and/or safe `journeySteps` whenever possible. FrontLens turns those fields into generated requirement journeys and links runtime evidence back to `requirementCoverage`; free-text requirements without explicit assertions remain coverage gaps, not inferred passes.
 10. When product scope, ADRs, supported devices, or “this is designed this way” feedback is available, encode it in `productContext` before rerunning or triaging. Use `deviceScope`, `requiredFeatures`, `optionalFeatures`, `outOfScopeFeatures`, `decisions[]`, and `adrRefs[]` so style, export, pagination, refresh, and touch-target findings are classified by product scope rather than guesswork.
 11. When multiple login roles/storage states are provided, or when the page has permission-sensitive actions, run `frontlens role-matrix` after the baseline QA. Treat role differences as permission-review evidence; only call them defects when they violate explicit requirements, expected allowed/forbidden text contracts, or source/runtime permission guards.
@@ -157,8 +157,8 @@ If the user selects "all/default", run the full default QA command. If the user 
 9. The worker must bucket findings into real frontend fixes, backend/API fixes, deployment/security config, product decisions, and false positives/tool limitations. For real frontend fixes, include source file paths and line numbers that confirm the defect and the likely fix surface. Source-aware triage must also retain source-discovered defects even when the raw browser finding was downgraded as dev-mode/synthetic noise; for example, a dev-server request-count finding may be false as a production metric but still reveal a real eager route import/code-splitting problem.
 10. Before returning fixes, read `issueDisposition` to separate actionable, conditional, and non-actionable raw findings, then group actionable/conditional raw issues by implementation root cause. Do not treat raw issue count, heuristic AI issue count, or `fixTasks[]` length as workload. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
 11. Apply the professional QA actionability gate: a bug needs user impact, evidence, reproducibility, and an owner/fix surface. Move style/product choices and single-signal guesses to non-defect observations.
-12. Prefer `result.json.qaSignoff` for release/sign-off wording; it may downgrade a raw `qualityGate.pass` to `pass-with-risks` when PRD, auth/role state, or runtime journeys are missing.
-13. Return the report path, JSON path, raw score, raw issue count, raw-finding disposition counts, root-cause fix count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, pageProfile status/questions, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, and the highest-priority fixes.
+12. Prefer `result.json.qaSignoff` for release/sign-off wording and `result.json.regressionPlan` for post-fix verification; it may downgrade a raw `qualityGate.pass` to `pass-with-risks` when PRD, auth/role state, or runtime journeys are missing.
+13. Return the report path, JSON path, raw score, raw issue count, raw-finding disposition counts, root-cause fix count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, pageProfile status/questions, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, regressionPlan status/item count, and the highest-priority fixes.
 
 ## Safety Rules
 
@@ -411,6 +411,7 @@ Minimum stable fields:
 - `fixTasks[]`
 - `qualityGate`
 - `qaSignoff`
+- `regressionPlan`
 - `aiAnalysis`
 - custom plugin outputs under `artifacts`
 
@@ -447,13 +448,14 @@ Summarize:
 - top frontend fixes;
 - top backend/API fixes;
 - API contract / GraphQL / WebSocket / SSE findings;
-- machine-executable fix task count and important task IDs;
+- machine-executable fix task count and important task IDs; regressionPlan status, blocked/needs-input counts, and top rerun commands;
 - generated artifact paths and artifact integrity status; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used; test-data lifecycle status when write/data-changing flows are in scope;
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation; include pageProfile questions when product scope is inferred rather than configured;
 - raw score plus confidence/adjusted-risk note when score is distorted by skipped/synthetic/deployment-only findings;
 - raw issue count separated from implementation root-cause count;
 - requirement coverage / business-validation confidence when the user asks for acceptance or professional QA;
 - QA sign-off status (`pass`, `pass-with-risks`, `blocked`, or `fail`) when using professional QA mode;
+- regression plan status/items from `result.json.regressionPlan` for repair verification;
 - skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;
 - for each retained critical/high issue: issue id, severity, category, evidence reference, reproduction step summary, and suggested owner/fix.
 

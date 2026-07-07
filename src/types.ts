@@ -134,6 +134,30 @@ export interface RequirementCoverageConfig {
   items: RequirementConfigItem[];
 }
 
+export type ProductDeviceScope = 'unknown' | 'desktop-only' | 'desktop-first' | 'responsive' | 'mobile-first';
+export type ProductAccessibilityTarget = 'unknown' | 'basic' | 'wcag-aa' | 'wcag-aaa';
+
+export interface ProductDecisionConfig {
+  id?: string;
+  title: string;
+  appliesTo?: string[];
+  rationale?: string;
+}
+
+export interface ProductContextConfig {
+  enabled: boolean;
+  productName?: string;
+  pageName?: string;
+  pageType?: string;
+  deviceScope: ProductDeviceScope;
+  accessibilityTarget: ProductAccessibilityTarget;
+  requiredFeatures: string[];
+  optionalFeatures: string[];
+  outOfScopeFeatures: string[];
+  decisions: ProductDecisionConfig[];
+  adrRefs: string[];
+}
+
 export interface ContractConfig {
   enabled: boolean;
   schemaPath?: string;
@@ -223,6 +247,7 @@ export interface FrontLensConfig {
   security: SecurityConfig;
   journeys: JourneyTestConfig;
   requirements: RequirementCoverageConfig;
+  productContext: ProductContextConfig;
   contract: ContractConfig;
   realtime: RealtimeConfig;
   p2: P2TestConfig;

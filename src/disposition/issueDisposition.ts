@@ -19,6 +19,118 @@ function ruleText(issue: Issue): string {
   return `${String(details.category ?? '')} ${String(details.rule ?? '')} ${issue.title}`.toLowerCase();
 }
 
+function normalizeFeature(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^\w\u4e00-\u9fff-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+const featureAliases: Record<string, string[]> = {
+  'touch-target': ['tap-target', 'mobile-touch-target', '触控目标', '移动端点击区', 'mobile', 'responsive', 'accessibility', 'a11y'],
+  'mobile-touch-target': ['touch-target', 'tap-target', '触控目标', '移动端点击区', 'mobile', 'responsive', 'accessibility', 'a11y'],
+  mobile: ['移动端', 'mobile-touch-target', 'touch-target', 'responsive'],
+  responsive: ['响应式', 'mobile', 'touch-target'],
+  export: ['导出', 'download', '下载'],
+  download: ['下载', 'export', '导出'],
+  导出: ['export', 'download', '下载'],
+  下载: ['download', 'export', '导出'],
+  'manual-refresh': ['refresh', '刷新', 'reload'],
+  refresh: ['manual-refresh', '刷新', 'reload'],
+  刷新: ['refresh', 'manual-refresh', 'reload'],
+  pagination: ['分页', 'paging', 'pager', 'page'],
+  分页: ['pagination', 'paging', 'pager'],
+  seo: ['搜索引擎优化'],
+  'visual-design': ['style', '视觉', '视觉密度', '样式', '颜色', '按钮层级'],
+  style: ['visual-design', '视觉', '样式'],
+  'empty-state': ['空状态', 'empty', 'no-data'],
+  'error-state': ['错误态', '异常反馈', '失败反馈', 'error-feedback'],
+  search: ['搜索', 'filter', '筛选', 'query'],
+  filter: ['筛选', 'search', '搜索'],
+  sort: ['排序', 'table-sort'],
+  offline: ['离线', '断网']
+};
+
+function expandFeature(value: string): Set<string> {
+  const normalized = normalizeFeature(value);
+  const expanded = new Set<string>([normalized]);
+  for (const alias of featureAliases[normalized] ?? []) expanded.add(normalizeFeature(alias));
+  for (const [key, aliases] of Object.entries(featureAliases)) {
+    if (aliases.map(normalizeFeature).includes(normalized)) {
+      expanded.add(normalizeFeature(key));
+      for (const alias of aliases) expanded.add(normalizeFeature(alias));
+    }
+  }
+  return expanded;
+}
+
+function issueFeatureCandidates(issue: Issue): string[] {
+  const text = textOf(issue);
+  const features = new Set<string>();
+  const add = (...items: string[]) => items.forEach((item) => features.add(item));
+  if (/触控目标|tap target|smalltap|touch target|mobile|tablet|移动端|响应式/.test(text)) add('touch-target', 'mobile-touch-target', 'mobile', 'responsive');
+  if (/导出|下载|export|download/.test(text)) add('export', 'download');
+  if (/刷新|refresh|reload|手动刷新/.test(text)) add('manual-refresh', 'refresh');
+  if (/分页|pagination|pager|page-size|pagesize|page\/pagesize/.test(text)) add('pagination');
+  if (/seo|搜索引擎/.test(text)) add('seo');
+  if (/视觉|视觉密度|样式|style|颜色|按钮层级|button hierarchy/.test(text)) add('visual-design', 'style');
+  if (/empty state|空状态|暂无|no data/.test(text)) add('empty-state');
+  if (/错误态|error state|异常反馈|失败反馈|error feedback/.test(text)) add('error-state');
+  if (/搜索|筛选|search|filter|query/.test(text)) add('search', 'filter');
+  if (/排序|sort|table-sort/.test(text)) add('sort');
+  if (/断网|离线|offline/.test(text)) add('offline');
+  return [...features];
+}
+
+function hasFeature(configured: string[] | undefined, candidates: string[]): boolean {
+  if (!configured?.length || candidates.length === 0) return false;
+  const candidateSet = new Set(candidates.flatMap((candidate) => [...expandFeature(candidate)]));
+  return configured.some((feature) => [...expandFeature(feature)].some((item) => candidateSet.has(item)));
+}
+
+function matchedProductDecisions(issue: Issue, config: FrontLensConfig): string[] {
+  if (!config.productContext.enabled) return [];
+  const candidates = issueFeatureCandidates(issue);
+  return config.productContext.decisions
+    .filter((decision) => decision.appliesTo?.length && hasFeature(decision.appliesTo, candidates))
+    .map((decision) => decision.id ? `${decision.id}: ${decision.title}` : decision.title);
+}
+
+type ProductContextDecision = {
+  state: 'required' | 'optional' | 'out-of-scope' | 'none';
+  features: string[];
+  notes: string[];
+};
+
+function productDecisionForIssue(issue: Issue, config: FrontLensConfig): ProductContextDecision {
+  if (!config.productContext.enabled) return { state: 'none', features: [], notes: [] };
+  const context = config.productContext;
+  const features = issueFeatureCandidates(issue);
+  const notes = matchedProductDecisions(issue, config);
+  if (hasFeature(context.requiredFeatures, features)) return { state: 'required', features, notes };
+  if (hasFeature(context.outOfScopeFeatures, features)) return { state: 'out-of-scope', features, notes };
+  if (hasFeature(context.optionalFeatures, features)) return { state: 'optional', features, notes };
+
+  const isMobileTouchIssue = hasFeature(['mobile-touch-target'], features);
+  if (isMobileTouchIssue) {
+    if (context.deviceScope === 'desktop-only') return { state: 'out-of-scope', features, notes: [...notes, 'deviceScope=desktop-only'] };
+    if (context.deviceScope === 'desktop-first') return { state: 'optional', features, notes: [...notes, 'deviceScope=desktop-first'] };
+    if (context.deviceScope === 'mobile-first' || context.accessibilityTarget === 'wcag-aa' || context.accessibilityTarget === 'wcag-aaa') return { state: 'required', features, notes: [...notes, `deviceScope=${context.deviceScope}`, `accessibilityTarget=${context.accessibilityTarget}`] };
+    if (context.deviceScope === 'responsive') return { state: 'optional', features, notes: [...notes, 'deviceScope=responsive'] };
+  }
+
+  return { state: 'none', features, notes };
+}
+
+function contextNote(decision: ProductContextDecision): string {
+  const featureText = decision.features.length ? `匹配特性：${decision.features.map(normalizeFeature).join(', ')}。` : '';
+  const noteText = decision.notes.length ? `上下文：${decision.notes.join('；')}。` : '';
+  return `${featureText}${noteText}`;
+}
+
 function hasEvidence(issue: Issue): boolean {
   return Boolean(
     issue.evidence.screenshot ||
@@ -169,8 +281,47 @@ function classifyException(issue: Issue, rootCauseGroupId?: string): IssueDispos
   return undefined;
 }
 
-function classifyProductOrSpec(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+function classifyProductOrSpec(issue: Issue, config: FrontLensConfig, rootCauseGroupId?: string): IssueDispositionItem | undefined {
   const text = textOf(issue);
+  const contextDecision = productDecisionForIssue(issue, config);
+  const productLike = /触控目标|tap target|smalltap|按钮层级|视觉密度|style|seo|导出|下载|刷新|分页控件|未发现分页参数|empty state|空状态/.test(text);
+  if (productLike && contextDecision.state === 'out-of-scope') {
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'non-actionable',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: `产品上下文将该能力标为不在当前页面/版本范围内，不应作为代码缺陷处理。${contextNote(contextDecision)}`,
+      nextStep: '若产品范围变化，先更新 productContext/PRD，再重新运行 QA；当前报告中仅保留为非缺陷观察。',
+      rootCauseGroupId
+    });
+  }
+  if (productLike && contextDecision.state === 'optional') {
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'conditional',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: `产品上下文将该能力标为可选/降级能力，默认不进入必须修复缺陷。${contextNote(contextDecision)}`,
+      nextStep: '由产品/设计决定是否提升为需求；若提升，再补明确验收标准和回归。',
+      rootCauseGroupId
+    });
+  }
+  if (productLike && contextDecision.state === 'required') {
+    const strong = hasEvidence(issue) && issue.confidence >= 0.75;
+    return makeItem(issue, {
+      status: strong ? 'confirmed' : 'needs-source-confirmation',
+      bucket: 'real-frontend-fix',
+      actionability: strong && issue.severity !== 'low' ? 'actionable' : 'conditional',
+      owner: ownerFor(issue),
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: `产品上下文将该能力标为必需，不能按“产品决策/样式取舍”降级。${contextNote(contextDecision)}`,
+      nextStep: '用 PRD/productContext 对应验收标准、运行证据和源码共同复核；确认后修复并补回归。',
+      rootCauseGroupId
+    });
+  }
   if (issue.severity === 'info') {
     return makeItem(issue, {
       status: issue.suggestion.product ? 'product-decision' : 'reference',
@@ -250,10 +401,23 @@ function classifyIntegration(issue: Issue, rootCauseGroupId?: string): IssueDisp
   });
 }
 
-function classifyAccessibility(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+function classifyAccessibility(issue: Issue, config: FrontLensConfig, rootCauseGroupId?: string): IssueDispositionItem | undefined {
   if (issue.category !== 'frontend-accessibility') return undefined;
   const text = textOf(issue);
   if (/触控目标|tap target/.test(text)) {
+    const contextDecision = productDecisionForIssue(issue, config);
+    if (contextDecision.state === 'required') {
+      return makeItem(issue, {
+        status: hasEvidence(issue) ? 'confirmed' : 'needs-source-confirmation',
+        bucket: 'real-frontend-fix',
+        actionability: issue.severity === 'low' ? 'conditional' : 'actionable',
+        owner: 'frontend',
+        evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+        reason: `移动端/触控或严格 a11y 已在 productContext 中纳入范围，触控目标不能作为 PC-first 取舍降级。${contextNote(contextDecision)}`,
+        nextStep: '在目标断点扩大点击区，保留 PC 信息密度，并补移动/触屏回归。',
+        rootCauseGroupId
+      });
+    }
     return makeItem(issue, {
       status: 'product-decision',
       bucket: 'product-decision',
@@ -392,9 +556,9 @@ export function buildIssueDisposition(issues: Issue[], config: FrontLensConfig, 
     return (
       classifySecurity(issue, rootCauseGroupId) ??
       classifyException(issue, rootCauseGroupId) ??
-      classifyProductOrSpec(issue, rootCauseGroupId) ??
+      classifyProductOrSpec(issue, config, rootCauseGroupId) ??
       classifyIntegration(issue, rootCauseGroupId) ??
-      classifyAccessibility(issue, rootCauseGroupId) ??
+      classifyAccessibility(issue, config, rootCauseGroupId) ??
       classifyPerformance(issue, rootCauseGroupId) ??
       classifyDefault(issue, rootCauseGroupId)
     );

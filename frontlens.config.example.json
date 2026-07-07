@@ -157,6 +157,29 @@
       }
     ]
   },
+  "productContext": {
+    "enabled": true,
+    "productName": "Example Admin",
+    "pageType": "admin",
+    "deviceScope": "unknown",
+    "accessibilityTarget": "basic",
+    "requiredFeatures": [],
+    "optionalFeatures": [],
+    "outOfScopeFeatures": [],
+    "decisions": [
+      {
+        "id": "ADR-EXAMPLE",
+        "title": "把已确认的产品取舍写到这里，避免把需求设计误报为缺陷",
+        "appliesTo": [
+          "export",
+          "pagination",
+          "mobile-touch-target"
+        ],
+        "rationale": "示例项，可按项目 ADR/PRD 替换。"
+      }
+    ],
+    "adrRefs": []
+  },
   "contract": {
     "enabled": true,
     "inferFromTraffic": true,

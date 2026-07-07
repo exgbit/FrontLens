@@ -24,6 +24,7 @@ If missing, continue with best effort but mark coverage gaps:
 
 - PRD / user stories / acceptance criteria. If available, encode them as `--requirements requirements.json` so FrontLens can produce machine-readable `requirementCoverage`.
 - For each acceptance criterion, prefer explicit runtime assertions: `selectors`, `expectedTexts`, and safe `journeySteps`. These generate `journeyTests[].source = requirement-generated` and allow high-confidence coverage. Criteria that are only free text remain coverage gaps unless other runtime evidence proves them.
+- Product scope/ADR context. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
 - Login state and role matrix, including admin/normal/readonly/unauthorized when relevant.
 - Test data requirements and whether create/edit/delete/download/upload are allowed.
 - API contract/OpenAPI or backend envelope conventions.

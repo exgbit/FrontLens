@@ -23,6 +23,7 @@ For every target-page QA run:
 7. When the target URL is local/private and the source path is available, the worker may build/start/refresh the local dev or preview server before running QA if the page is unreachable, stale, or the user asks to deploy first. Keep the server non-destructive and do not modify business code.
 8. When the user asks for professional-QA replacement, full acceptance, release sign-off, business validation, or skill quality review, read `references/qa-engineer-mode.md` and require a QA sign-off, requirement coverage matrix, defect root-cause table, non-defect observations, and regression commands. Never claim full business pass without requirements and runtime evidence.
 9. When PRD/acceptance criteria are provided, encode them as `requirements.items[]` with explicit `selectors`, `expectedTexts`, and/or safe `journeySteps` whenever possible. FrontLens turns those fields into generated requirement journeys and links runtime evidence back to `requirementCoverage`; free-text requirements without explicit assertions remain coverage gaps, not inferred passes.
+10. When product scope, ADRs, supported devices, or “this is designed this way” feedback is available, encode it in `productContext` before rerunning or triaging. Use `deviceScope`, `requiredFeatures`, `optionalFeatures`, `outOfScopeFeatures`, `decisions[]`, and `adrRefs[]` so style, export, pagination, refresh, and touch-target findings are classified by product scope rather than guesswork.
 
 Recommended checklist to show the user:
 
@@ -74,6 +75,30 @@ If the user selects "all/default", run the full default QA command. If the user 
    ```
 
    Use `selectors`/`expectedTexts` for read-only assertions and `journeySteps` for explicit safe flows. Do not translate vague product wishes into clicks or defects unless the requirement says so.
+
+   Product/ADR context can be added in the same config to avoid reporting deliberate design choices as bugs:
+
+   ```json
+   {
+     "productContext": {
+       "enabled": true,
+       "pageType": "credential",
+       "deviceScope": "desktop-first",
+       "accessibilityTarget": "basic",
+       "requiredFeatures": ["error-state"],
+       "optionalFeatures": ["mobile-touch-target"],
+       "outOfScopeFeatures": ["export"],
+       "decisions": [
+         {
+           "id": "ADR-0001",
+           "title": "PC 为主，移动端自适应降级；凭证页不提供导出",
+           "appliesTo": ["mobile-touch-target", "export"]
+         }
+       ],
+       "adrRefs": ["docs/adr/0001-pc-first.md"]
+     }
+   }
+   ```
 
    Default config blocks mutating `POST` / `PUT` / `PATCH` / `DELETE` requests unless the matching `allow*` safety switch is enabled. Read-only GraphQL `query` / `subscription` POSTs are allowed so contract/realtime capture remains useful; GraphQL `mutation` is still blocked by default. Use `--allow-mutating-requests` only for authorized integration tests.
    Passive security scanning, API contract inference, GraphQL/WebSocket/SSE capture, stable fingerprints, fix task generation, default safe smoke journey, P2 visual capture/budget/network checks, exception simulation, and heuristic AI analysis are enabled by default. Use `--no-security`, `--no-contract`, `--no-realtime`, `--no-p2`, `--no-journeys`, `--no-exceptions`, or `--no-ai` only when explicitly speed-testing.

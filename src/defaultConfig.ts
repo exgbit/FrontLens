@@ -60,6 +60,17 @@ export function createDefaultConfig(url = 'about:blank'): FrontLensConfig {
       inferFromPage: true,
       items: []
     },
+    productContext: {
+      enabled: true,
+      pageType: 'unknown',
+      deviceScope: 'unknown',
+      accessibilityTarget: 'basic',
+      requiredFeatures: [],
+      optionalFeatures: [],
+      outOfScopeFeatures: [],
+      decisions: [],
+      adrRefs: []
+    },
     contract: {
       enabled: true,
       inferFromTraffic: true,

@@ -26,6 +26,9 @@ test('default config enables complete non-destructive QA capabilities', () => {
   assert.equal(config.analysis.ai, true);
   assert.equal(config.requirements.enabled, true);
   assert.equal(config.requirements.inferFromPage, true);
+  assert.equal(config.productContext.enabled, true);
+  assert.equal(config.productContext.deviceScope, 'unknown');
+  assert.equal(config.productContext.accessibilityTarget, 'basic');
 
   assert.equal(config.safety.blockMutatingRequests, true);
   assert.equal(config.safety.allowCreate, false);
@@ -75,11 +78,16 @@ test('security scanner recognizes local and private targets as deployment/test e
 test('config file relative paths resolve from config directory and invalid nested objects fail clearly', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-config-'));
   const schemaPath = path.join(dir, 'openapi.json');
+  const adrPath = path.join(dir, 'adr-0001.md');
   const configPath = path.join(dir, 'frontlens.json');
   await writeFile(schemaPath, '{"openapi":"3.0.0","paths":{}}', 'utf8');
-  await writeFile(configPath, JSON.stringify({ contract: { schemaPath: 'openapi.json' } }), 'utf8');
+  await writeFile(adrPath, '# ADR', 'utf8');
+  await writeFile(configPath, JSON.stringify({ contract: { schemaPath: 'openapi.json' }, productContext: { deviceScope: 'desktop-first', optionalFeatures: ['mobile-touch-target'], adrRefs: ['adr-0001.md'] } }), 'utf8');
   const config = await loadConfig({ url: 'https://example.com', configPath });
   assert.equal(config.contract.schemaPath, schemaPath);
+  assert.equal(config.productContext.deviceScope, 'desktop-first');
+  assert.deepEqual(config.productContext.optionalFeatures, ['mobile-touch-target']);
+  assert.deepEqual(config.productContext.adrRefs, [adrPath]);
 
   const badConfigPath = path.join(dir, 'bad.json');
   await writeFile(badConfigPath, JSON.stringify({ browser: null }), 'utf8');

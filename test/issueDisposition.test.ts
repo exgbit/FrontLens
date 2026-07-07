@@ -107,3 +107,48 @@ test('quality gate uses disposition so speculative high findings become pass-wit
   assert.equal(result.qualityGate.blockingIssueCount, 0);
   assert.equal(result.qualityGate.coverageGaps.some((gap) => gap.includes('Raw finding')), true);
 });
+
+test('product context decides whether product-scope findings are defects or non-defect observations', () => {
+  const mobileConfig = createDefaultConfig('https://example.com/app');
+  mobileConfig.productContext.deviceScope = 'mobile-first';
+  mobileConfig.productContext.requiredFeatures = ['mobile-touch-target'];
+  const mobileDisposition = buildIssueDisposition(
+    [
+      issue({
+        id: 'ISSUE-MOBILE',
+        title: '触控目标尺寸偏小：mobile 390x844',
+        category: 'frontend-accessibility',
+        severity: 'medium',
+        evidence: { selector: 'button.icon', details: { smallTapTargetCount: 3 } },
+        suggestion: { frontend: 'increase target', priority: 'P2' }
+      })
+    ],
+    mobileConfig,
+    []
+  );
+  assert.equal(mobileDisposition.items[0].status, 'confirmed');
+  assert.equal(mobileDisposition.items[0].bucket, 'real-frontend-fix');
+  assert.equal(mobileDisposition.items[0].actionability, 'actionable');
+
+  const credentialConfig = createDefaultConfig('https://example.com/credentials');
+  credentialConfig.productContext.pageType = 'credential';
+  credentialConfig.productContext.outOfScopeFeatures = ['export'];
+  credentialConfig.productContext.decisions = [{ id: 'ADR-SEC-EXPORT', title: '凭证页不提供导出能力', appliesTo: ['export'], rationale: '凭证导出属于安全反模式。' }];
+  const credentialDisposition = buildIssueDisposition(
+    [
+      issue({
+        id: 'ISSUE-EXPORT',
+        title: '页面未提供导出入口',
+        category: 'frontend-ui',
+        severity: 'medium',
+        evidence: { details: { expectedFeature: 'export' } },
+        suggestion: { frontend: 'add export', priority: 'P2' }
+      })
+    ],
+    credentialConfig,
+    []
+  );
+  assert.equal(credentialDisposition.items[0].status, 'product-decision');
+  assert.equal(credentialDisposition.items[0].actionability, 'non-actionable');
+  assert.match(credentialDisposition.items[0].reason, /不在当前页面\/版本范围/);
+});

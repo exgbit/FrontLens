@@ -35,6 +35,14 @@ Add an **evidence confidence** label to any business-function conclusion:
 
 For product/design/style findings, default to **Product decision / optional** unless there is evidence that the style blocks a core task, violates an explicit ADR/accessibility requirement, or causes measurable usability failure. Avoid turning subjective visual density or color hierarchy into mandatory defects.
 
+If the project supplies `metadata.config.productContext`, use it as the source of truth before classifying product-scope findings:
+
+- `requiredFeatures`: keep matching findings as real fix candidates or source-confirmation gaps.
+- `optionalFeatures`: keep matching findings as product decisions, not mandatory defects.
+- `outOfScopeFeatures`: mark matching findings as non-actionable observations.
+- `deviceScope`: downgrade mobile/touch-target findings for `desktop-only` / `desktop-first`; keep them in scope for `mobile-first` and stricter accessibility targets.
+- `decisions[]` / `adrRefs[]`: cite the matching ADR/product decision in the reason.
+
 ## Common false positives and downgrades
 
 1. **Synthetic network profiles**

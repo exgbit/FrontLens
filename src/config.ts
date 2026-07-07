@@ -59,6 +59,7 @@ function resolveConfigRelativePaths(config: FrontLensConfig, baseDir: string): v
   config.auth.sessionStorageState = resolveRelativePath(config.auth.sessionStorageState, baseDir);
   config.contract.schemaPath = resolveRelativePath(config.contract.schemaPath, baseDir);
   config.p2.visual.baselineDir = resolveRelativePath(config.p2.visual.baselineDir, baseDir);
+  config.productContext.adrRefs = resolveRelativePathArray(config.productContext.adrRefs, baseDir);
   config.plugins.analyzers = resolveRelativePathArray(config.plugins.analyzers, baseDir);
   config.plugins.reporters = resolveRelativePathArray(config.plugins.reporters, baseDir);
   config.plugins.rules = resolveRelativePathArray(config.plugins.rules, baseDir);
@@ -125,6 +126,7 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
   assert(isRecord(config.security), 'security must be an object.');
   assert(isRecord(config.journeys), 'journeys must be an object.');
   assert(isRecord(config.requirements), 'requirements must be an object.');
+  assert(isRecord(config.productContext), 'productContext must be an object.');
   assert(isRecord(config.contract), 'contract must be an object.');
   assert(isRecord(config.realtime), 'realtime must be an object.');
   assert(isRecord(config.p2), 'p2 must be an object.');
@@ -195,6 +197,39 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
     if (item.interactionKinds !== undefined) {
       assert(Array.isArray(item.interactionKinds) && item.interactionKinds.every((kind) => typeof kind === 'string' && interactionKinds.has(kind)), `${itemPath}.interactionKinds must contain supported interaction kinds.`);
     }
+  });
+
+  assertBoolean(config.productContext.enabled, 'productContext.enabled');
+  if (config.productContext.productName !== undefined) assert(typeof config.productContext.productName === 'string', 'productContext.productName must be a string.');
+  if (config.productContext.pageName !== undefined) assert(typeof config.productContext.pageName === 'string', 'productContext.pageName must be a string.');
+  if (config.productContext.pageType !== undefined) assert(typeof config.productContext.pageType === 'string', 'productContext.pageType must be a string.');
+  assert(
+    config.productContext.deviceScope === 'unknown' ||
+      config.productContext.deviceScope === 'desktop-only' ||
+      config.productContext.deviceScope === 'desktop-first' ||
+      config.productContext.deviceScope === 'responsive' ||
+      config.productContext.deviceScope === 'mobile-first',
+    'productContext.deviceScope must be unknown, desktop-only, desktop-first, responsive, or mobile-first.'
+  );
+  assert(
+    config.productContext.accessibilityTarget === 'unknown' ||
+      config.productContext.accessibilityTarget === 'basic' ||
+      config.productContext.accessibilityTarget === 'wcag-aa' ||
+      config.productContext.accessibilityTarget === 'wcag-aaa',
+    'productContext.accessibilityTarget must be unknown, basic, wcag-aa, or wcag-aaa.'
+  );
+  assertStringArray(config.productContext.requiredFeatures, 'productContext.requiredFeatures');
+  assertStringArray(config.productContext.optionalFeatures, 'productContext.optionalFeatures');
+  assertStringArray(config.productContext.outOfScopeFeatures, 'productContext.outOfScopeFeatures');
+  assertStringArray(config.productContext.adrRefs, 'productContext.adrRefs');
+  assert(Array.isArray(config.productContext.decisions), 'productContext.decisions must be an array.');
+  (config.productContext.decisions as unknown[]).forEach((decision, index) => {
+    const decisionPath = `productContext.decisions[${index}]`;
+    assert(isRecord(decision), `${decisionPath} must be an object.`);
+    if (decision.id !== undefined) assert(typeof decision.id === 'string', `${decisionPath}.id must be a string.`);
+    assert(typeof decision.title === 'string' && decision.title.trim().length > 0, `${decisionPath}.title must be a non-empty string.`);
+    if (decision.appliesTo !== undefined) assertStringArray(decision.appliesTo, `${decisionPath}.appliesTo`);
+    if (decision.rationale !== undefined) assert(typeof decision.rationale === 'string', `${decisionPath}.rationale must be a string.`);
   });
 
   assertBoolean(config.contract.enabled, 'contract.enabled');

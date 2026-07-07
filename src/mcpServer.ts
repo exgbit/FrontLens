@@ -11,6 +11,7 @@ import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 import { runProfessionalAudit } from './audit/professionalAudit.js';
 import { buildProductContextSuggestion } from './product/productContextSuggestion.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
+import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -188,6 +189,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_qa_plan',
         description: 'Read result.json and return a professional QA execution/acceptance plan: reruns, requirements, journeys, product scope, evidence gaps, and blockers.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_qa_coverage',
+        description: 'Read result.json and return a professional QA coverage matrix: covered, partial, skipped, needs-input, and failed QA dimensions.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -548,6 +554,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         issueDisposition: result.issueDisposition.summary,
         professionalSummary: result.professionalSummary,
         qaPlan: result.qaPlan,
+        qaCoverage: result.qaCoverage,
         qualityGate: result.qualityGate,
         qaSignoff: result.qaSignoff,
         regressionPlan: result.regressionPlan
@@ -638,6 +645,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildQaExecutionPlan(result));
+    }
+    case 'frontlens_qa_coverage': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildQaCoverageMatrix(result));
     }
     case 'frontlens_diff': {
       const args = validateArgs(params.arguments ?? {}, ['before', 'after', 'outputDir'], ['before', 'after']);

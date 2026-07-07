@@ -38,6 +38,7 @@ import { buildProfessionalSummary } from './summary/professionalSummary.js';
 import { buildClaimGuard } from './claims/claimGuard.js';
 import { buildQaIntake } from './intake/qaIntake.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
+import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
@@ -848,6 +849,45 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     artifactIntegrity: initialArtifactIntegrity,
     artifacts
   });
+  const qaCoverage = buildQaCoverageMatrix({
+    pageModel,
+    network: {
+      requests: networkCollector.list(),
+      failedRequests: analysis.network.failedRequests,
+      slowRequests: analysis.network.slowRequests,
+      duplicatedRequests: analysis.network.duplicatedRequests,
+      suspiciousRequests: analysis.network.suspiciousRequests
+    },
+    console: {
+      messages: consoleCollector.getMessages(),
+      errors: analysis.console.errors,
+      warnings: analysis.console.warnings,
+      pageErrors: consoleCollector.getPageErrors()
+    },
+    requirementCoverage,
+    journeyTests,
+    interactionTests,
+    exceptionSimulations,
+    apiContract,
+    realtime,
+    sourceAnalysis,
+    sourceRuntimeCorrelation,
+    sourceHealth,
+    accessibilityChecks,
+    responsiveChecks,
+    coverage,
+    p2,
+    security,
+    environment,
+    pageProfile,
+    scopeReview,
+    testData,
+    artifactIntegrity: initialArtifactIntegrity,
+    issueDisposition,
+    rootCauseGroups,
+    defectProof,
+    qaSignoff
+  });
 
   const result: QaResult = {
     summary,
@@ -899,6 +939,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     fixTasks,
     regressionPlan,
     qaPlan,
+    qaCoverage,
     professionalSummary,
     defectProof,
     claimGuard,

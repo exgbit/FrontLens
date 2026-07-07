@@ -8,6 +8,7 @@ import { formatProfessionalBrief } from './briefReporter.js';
 import { formatProfessionalAudit, runProfessionalAudit } from '../audit/professionalAudit.js';
 import { buildProductContextSuggestion, formatProductContextSuggestion } from '../product/productContextSuggestion.js';
 import { buildQaExecutionPlan, formatQaExecutionPlan } from '../plan/qaExecutionPlan.js';
+import { buildQaCoverageMatrix, formatQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1044,6 +1045,10 @@ export function formatProfessionalReview(result: QaResult): string {
     ].filter(Boolean).join(' / ') || '-';
     return `| ${markdownEscape(item.id)} | ${markdownEscape(item.priority)} | ${markdownEscape(item.source)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(truncateMiddle(item.title, 90))} | ${markdownEscape(truncateMiddle(evidence, 120))} |`;
   });
+  const coverageGapRows = result.qaCoverage.items
+    .filter((item) => item.status !== 'covered')
+    .slice(0, 10)
+    .map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.area)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(truncateMiddle(item.gaps.slice(0, 2).join('；') || item.title, 150))} | ${markdownEscape(truncateMiddle(item.nextSteps.slice(0, 2).join('；') || '-', 140))} |`);
 
   const evidenceReport = typeof result.artifacts.evidenceReport === 'string' ? result.artifacts.evidenceReport : result.artifacts.markdownReport;
 
@@ -1060,6 +1065,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Fix queue：${actionableGroups.length} proof-ready root cause(s) / ${blockerGroups.length} P0-P1 blocker(s)
 - Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
 - Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
+- QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
 - Raw score：**${result.summary.score}/100**（原始扫描趋势分，不能直接等同页面质量或修复工作量）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
 - Proof-ready root causes：${actionableGroups.length} / actionable ${rawActionableGroupCount}（P0/P1 ${blockerGroups.length}）
@@ -1100,6 +1106,14 @@ ${dispositionSampleRows.length ? ['| Issue | Severity | Disposition | Actionabil
 ## 签核阻断、风险与待补证据
 
 ${gapRows.length ? ['| Type | Item |', '| --- | --- |', ...gapRows, ''].join('\n') : '未发现额外阻断、风险或待补证据。'}
+
+## QA 覆盖边界
+
+- Coverage matrix：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}**
+- Artifact：${artifactPath(result.artifacts.qaCoverage)}
+- Rule：partial / skipped / needs-input / failed 只能写成覆盖缺口，不能写成“已验证通过”。
+
+${coverageGapRows.length ? ['| ID | Area | Status | Confidence | Gap | Next step |', '| --- | --- | --- | --- | --- | --- |', ...coverageGapRows, ''].join('\n') : '当前覆盖矩阵没有额外缺口。'}
 
 ## 结论护栏 / 禁止过度承诺
 
@@ -1150,6 +1164,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const auditPath = path.join(result.artifacts.outputDir, 'professional-audit.md');
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
+  const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
@@ -1161,6 +1176,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.professionalAudit = auditPath;
   result.artifacts.productContext = productContextPath;
   result.artifacts.qaPlan = qaPlanPath;
+  result.artifacts.qaCoverage = qaCoveragePath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
@@ -1341,6 +1357,8 @@ ${formatArtifacts(result)}
   await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));
   result.qaPlan = buildQaExecutionPlan(result);
   await writeText(qaPlanPath, formatQaExecutionPlan(result.qaPlan));
+  result.qaCoverage = buildQaCoverageMatrix(result);
+  await writeText(qaCoveragePath, formatQaCoverageMatrix(result.qaCoverage));
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);

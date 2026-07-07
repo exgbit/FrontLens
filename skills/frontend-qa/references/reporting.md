@@ -38,6 +38,7 @@ Summarize:
 - defectProof status and `defect-proof.md` path; if root causes are `needs-evidence`, list missing evidence and next steps and do not count them as implementation fixes;
 - regression plan status/items from `result.json.regressionPlan` for repair verification;
 - QA execution plan status/items from `result.json.qaPlan` and `qa-plan.md` so follow-up work is a tester worklist, not a raw issue dump;
+- QA coverage matrix status/items from `result.json.qaCoverage` and `qa-coverage.md`; skipped and needs-input rows must be phrased as coverage gaps, not passes;
 - skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;
 - for each retained critical/high issue: issue id, severity, category, evidence reference, reproduction step summary, and suggested owner/fix.
 

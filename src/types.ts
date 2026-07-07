@@ -1449,6 +1449,55 @@ export interface RegressionPlanResult {
   notes: string[];
 }
 
+
+export type QaCoverageMatrixStatus = 'covered' | 'partial' | 'skipped' | 'needs-input' | 'failed';
+export type QaCoverageMatrixArea =
+  | 'runtime'
+  | 'requirements'
+  | 'journey'
+  | 'interaction'
+  | 'exception'
+  | 'api-network'
+  | 'source'
+  | 'accessibility'
+  | 'responsive'
+  | 'performance'
+  | 'security'
+  | 'environment'
+  | 'product-scope'
+  | 'test-data'
+  | 'artifact'
+  | 'triage';
+
+export interface QaCoverageMatrixItem {
+  id: string;
+  area: QaCoverageMatrixArea;
+  title: string;
+  status: QaCoverageMatrixStatus;
+  confidence: 'high' | 'medium' | 'low';
+  evidenceRefs: string[];
+  covered: string[];
+  gaps: string[];
+  nextSteps: string[];
+}
+
+export interface QaCoverageMatrixResult {
+  generatedAt: string;
+  status: 'sufficient' | 'partial' | 'insufficient';
+  confidence: 'high' | 'medium' | 'low';
+  summary: {
+    itemCount: number;
+    coveredCount: number;
+    partialCount: number;
+    skippedCount: number;
+    needsInputCount: number;
+    failedCount: number;
+    blockerCount: number;
+  };
+  items: QaCoverageMatrixItem[];
+  notes: string[];
+}
+
 export type QaExecutionPlanStatus = 'ready' | 'needs-input' | 'blocked';
 export type QaExecutionPlanItemType =
   | 'rerun'
@@ -1892,6 +1941,8 @@ export interface ArtifactIndex {
   productContextConfig?: string;
   /** Professional QA execution/acceptance plan Markdown. */
   qaPlan?: string;
+  /** Professional QA coverage matrix Markdown. */
+  qaCoverage?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -1913,6 +1964,7 @@ export interface ArtifactIndex {
   professionalAuditLog?: string;
   productContextLog?: string;
   qaPlanLog?: string;
+  qaCoverageLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2072,6 +2124,7 @@ export interface QaResult {
   fixTasks: FixTask[];
   regressionPlan: RegressionPlanResult;
   qaPlan: QaExecutionPlanResult;
+  qaCoverage: QaCoverageMatrixResult;
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
   claimGuard: ClaimGuardResult;

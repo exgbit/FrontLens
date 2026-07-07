@@ -18,7 +18,7 @@ A professional-test-engineer answer must include:
 6. **Execution / regression pack**: use `result.json.qaPlan` first as the professional tester worklist, then `result.json.regressionPlan` for detailed repair verification; include exact FrontLens rerun commands, blocked/needs-input items, journey/requirement/download/environment checks, and focused verification steps after fixes.
 7. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
-Use `result.json.professionalSummary` as the first human-facing triage summary, `result.json.qaPlan` as the professional execution/acceptance worklist, `result.json.claimGuard` as the anti-overclaim wording gate, `result.json.qaIntake` as the professional follow-up question list, `result.json.defectProof` as the root-cause proof-strength gate, and `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `claimGuard`, `qaIntake`, `defectProof`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, scope questions, or relevant journeys are missing.
+Use `result.json.professionalSummary` as the first human-facing triage summary, `result.json.qaPlan` as the professional execution/acceptance worklist, `result.json.qaCoverage` as the coverage boundary, `result.json.claimGuard` as the anti-overclaim wording gate, `result.json.qaIntake` as the professional follow-up question list, `result.json.defectProof` as the root-cause proof-strength gate, and `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `claimGuard`, `qaIntake`, `defectProof`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, scope questions, or relevant journeys are missing.
 
 ## Inputs a human QA would ask for
 
@@ -145,6 +145,7 @@ Default final answers should fit in one decision screen unless the user asks for
 ## Regression plan
 - Status: ready | partial | blocked
 - QA execution plan: qaPlan.status, top requirements/journeys/product-context/environment/test-data/root-cause items
+- QA coverage matrix: qaCoverage.status, skipped/needs-input/failed areas
 - Top commands:
 ```bash
 node dist/cli.js qa ...

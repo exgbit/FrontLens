@@ -62,6 +62,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(brief, /product-context\.md/);
   assert.match(brief, /product-context\.config\.json/);
   assert.match(brief, /qa-plan\.md/);
+  assert.match(brief, /qa-coverage\.md/);
   assert.match(report, /核心缺陷 \/ 修复根因/);
   assert.match(report, /Professional audit/);
   assert.match(report, /产品范围 \/ PRD 待确认/);
@@ -127,6 +128,8 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextConfig' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaPlan' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaPlanLog' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaCoverage' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaCoverageLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.evidenceReport' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.htmlReport' && entry.exists), true);
   assert.match(report, /Artifact integrity：passed（missing 0）/);

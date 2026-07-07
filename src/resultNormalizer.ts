@@ -43,8 +43,9 @@ import { buildClaimGuard } from './claims/claimGuard.js';
 import { buildQaIntake } from './intake/qaIntake.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
+import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 
-export const RESULT_SCHEMA_VERSION = '1.54.0';
+export const RESULT_SCHEMA_VERSION = '1.55.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1234,6 +1235,34 @@ export function normalizeResult(raw: unknown): QaResult {
     artifactIntegrity,
     artifacts
   });
+  const qaCoverage = buildQaCoverageMatrix({
+    pageModel,
+    network,
+    console: consoleSection,
+    requirementCoverage,
+    journeyTests,
+    interactionTests,
+    exceptionSimulations,
+    apiContract: normalizeApiContract(raw.apiContract),
+    realtime: normalizeRealtime(raw.realtime),
+    sourceAnalysis,
+    sourceRuntimeCorrelation,
+    sourceHealth,
+    accessibilityChecks,
+    responsiveChecks: asArray(raw.responsiveChecks),
+    coverage,
+    p2,
+    security,
+    environment,
+    pageProfile,
+    scopeReview,
+    testData,
+    artifactIntegrity,
+    issueDisposition,
+    rootCauseGroups,
+    defectProof,
+    qaSignoff
+  });
 
   return {
     summary,
@@ -1268,6 +1297,7 @@ export function normalizeResult(raw: unknown): QaResult {
     fixTasks,
     regressionPlan,
     qaPlan,
+    qaCoverage,
     professionalSummary,
     defectProof,
     claimGuard,

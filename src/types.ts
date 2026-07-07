@@ -1243,7 +1243,15 @@ export interface P2TestResult {
     status: 'passed' | 'warning' | 'failed' | 'skipped';
     currentScreenshot?: string;
     baselinePath?: string;
+    diffScreenshot?: string;
+    diffMethod?: 'pixel' | 'byte-fallback';
     diffRatio?: number;
+    changedPixelCount?: number;
+    totalPixelCount?: number;
+    sizeMismatch?: boolean;
+    currentSize?: { width: number; height: number };
+    baselineSize?: { width: number; height: number };
+    diffBoundingBox?: { x: number; y: number; width: number; height: number };
     message?: string;
   };
   budgets: Array<{

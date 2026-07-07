@@ -658,6 +658,12 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Network profiles</span><strong>${result.p2.networkProfiles.length}</strong></div>
         </div>
         <p>${escapeHtml(result.p2.visual.message ?? '')}</p>
+        <p>
+          Current: ${result.p2.visual.currentScreenshot ? `<a href="${escapeHtml(path.relative(result.artifacts.outputDir, result.p2.visual.currentScreenshot))}">current</a>` : '-'}
+          / Baseline: ${result.p2.visual.baselinePath ? `<a href="${escapeHtml(path.relative(result.artifacts.outputDir, result.p2.visual.baselinePath))}">baseline</a>` : '-'}
+          / Diff: ${result.p2.visual.diffScreenshot ? `<a href="${escapeHtml(path.relative(result.artifacts.outputDir, result.p2.visual.diffScreenshot))}">diff</a>` : '-'}
+        </p>
+        <p>Method: ${escapeHtml(result.p2.visual.diffMethod ?? '-')} / Ratio: ${result.p2.visual.diffRatio ?? '-'} / Changed: ${result.p2.visual.changedPixelCount ?? '-'} / ${result.p2.visual.totalPixelCount ?? '-'} / Size mismatch: ${String(result.p2.visual.sizeMismatch ?? '-')}</p>
         <table>
           <thead><tr><th>Metric</th><th>Actual</th><th>Budget</th><th>Status</th></tr></thead>
           <tbody>${p2BudgetRows || '<tr><td colspan="4">No budgets</td></tr>'}</tbody>

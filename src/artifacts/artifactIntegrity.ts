@@ -146,6 +146,7 @@ export async function buildArtifactIntegrity(result: QaResult): Promise<Artifact
   }
   pushFile(candidates, 'p2.visual.currentScreenshot', result.p2.visual.currentScreenshot, outputDir, { expected: true });
   pushFile(candidates, 'p2.visual.baselinePath', result.p2.visual.baselinePath, outputDir, { expected: true });
+  pushFile(candidates, 'p2.visual.diffScreenshot', result.p2.visual.diffScreenshot, outputDir, { expected: result.p2.visual.status === 'failed' || result.p2.visual.status === 'passed' });
   for (const [index, profile] of result.p2.networkProfiles.entries()) {
     pushFile(candidates, `p2.networkProfiles[${index}].screenshot`, profile.screenshot, outputDir, { expected: true });
   }

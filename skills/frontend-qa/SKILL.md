@@ -32,7 +32,7 @@ Recommended checklist to show the user:
 
 - API / Network / Contract / frontend-backend consistency
 - Security passive scan
-- Performance / Coverage / P2 visual+budget+network profiles
+- Performance / Coverage / P2 visual pixel diff + budget + network profiles
 - Accessibility / Responsive / optional SEO
 - User journeys
 - Exception simulation
@@ -143,7 +143,7 @@ If the user selects "all/default", run the full default QA command. If the user 
    ```
 
    Default config blocks mutating `POST` / `PUT` / `PATCH` / `DELETE` requests unless the matching `allow*` safety switch is enabled. Read-only GraphQL `query` / `subscription` POSTs are allowed so contract/realtime capture remains useful; GraphQL `mutation` is still blocked by default. Use `--allow-mutating-requests` only for authorized integration tests.
-   Passive security scanning, API contract inference, GraphQL/WebSocket/SSE capture, stable fingerprints, fix task generation, default safe smoke journey, P2 visual capture/budget/network checks, exception simulation, and heuristic AI analysis are enabled by default. Use `--no-security`, `--no-contract`, `--no-realtime`, `--no-p2`, `--no-journeys`, `--no-exceptions`, or `--no-ai` only when explicitly speed-testing.
+   Passive security scanning, API contract inference, GraphQL/WebSocket/SSE capture, stable fingerprints, fix task generation, default safe smoke journey, P2 visual capture/pixel baseline diff/budget/network checks, exception simulation, and heuristic AI analysis are enabled by default. Use `--no-security`, `--no-contract`, `--no-realtime`, `--no-p2`, `--no-journeys`, `--no-exceptions`, or `--no-ai` only when explicitly speed-testing.
 
 5. If browser binaries are missing, run:
 

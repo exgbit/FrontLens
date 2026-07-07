@@ -726,6 +726,8 @@ function formatP2Summary(result: QaResult): string {
 
 - Visual：${result.p2.visual.status}，${result.p2.visual.message ?? '-'}
 - Visual current：${result.p2.visual.currentScreenshot ? `\`${reportPath(result, result.p2.visual.currentScreenshot)}\`` : '-'}
+- Visual baseline / diff：${result.p2.visual.baselinePath ? `\`${reportPath(result, result.p2.visual.baselinePath)}\`` : '-'} / ${result.p2.visual.diffScreenshot ? `\`${reportPath(result, result.p2.visual.diffScreenshot)}\`` : '-'}
+- Visual metrics：method ${result.p2.visual.diffMethod ?? '-'}；ratio ${result.p2.visual.diffRatio ?? '-'}；changed ${result.p2.visual.changedPixelCount ?? '-'} / ${result.p2.visual.totalPixelCount ?? '-'}；size mismatch ${result.p2.visual.sizeMismatch ?? '-'}
 
 ### 性能预算
 

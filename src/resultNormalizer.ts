@@ -39,7 +39,7 @@ import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 
-export const RESULT_SCHEMA_VERSION = '1.21.0';
+export const RESULT_SCHEMA_VERSION = '1.22.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -508,7 +508,15 @@ function normalizeP2(raw: unknown): QaResult['p2'] {
       status: visual.status === 'passed' || visual.status === 'warning' || visual.status === 'failed' || visual.status === 'skipped' ? visual.status : 'skipped',
       currentScreenshot: optionalString(visual.currentScreenshot),
       baselinePath: optionalString(visual.baselinePath),
+      diffScreenshot: optionalString(visual.diffScreenshot),
+      diffMethod: visual.diffMethod === 'pixel' || visual.diffMethod === 'byte-fallback' ? visual.diffMethod : undefined,
       diffRatio: visual.diffRatio === undefined ? undefined : asNumber(visual.diffRatio),
+      changedPixelCount: optionalNumber(visual.changedPixelCount),
+      totalPixelCount: optionalNumber(visual.totalPixelCount),
+      sizeMismatch: typeof visual.sizeMismatch === 'boolean' ? visual.sizeMismatch : undefined,
+      currentSize: isRecord(visual.currentSize) ? { width: asNumber(visual.currentSize.width), height: asNumber(visual.currentSize.height) } : undefined,
+      baselineSize: isRecord(visual.baselineSize) ? { width: asNumber(visual.baselineSize.width), height: asNumber(visual.baselineSize.height) } : undefined,
+      diffBoundingBox: isRecord(visual.diffBoundingBox) ? { x: asNumber(visual.diffBoundingBox.x), y: asNumber(visual.diffBoundingBox.y), width: asNumber(visual.diffBoundingBox.width), height: asNumber(visual.diffBoundingBox.height) } : undefined,
       message: optionalString(visual.message)
     },
     budgets: asArray(raw.budgets).map(normalizeBudget),

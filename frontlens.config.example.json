@@ -240,6 +240,7 @@
     "enabled": true,
     "visual": {
       "enabled": true,
+      "baselineDir": "./visual-baseline",
       "diffThresholdRatio": 0.01
     },
     "budgets": {

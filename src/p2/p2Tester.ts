@@ -6,6 +6,7 @@ import { IssueFactory } from '../analyzers/issueFactory.js';
 import { ensureDir } from '../utils/fs.js';
 import { redactText } from '../utils/redact.js';
 import { isViteDevServerRun } from '../utils/devServer.js';
+import { diffPngFiles } from './pngDiff.js';
 
 export function createEmptyP2Result(config: FrontLensConfig): P2TestResult {
   const visualEnabled = config.p2.enabled && config.p2.visual.enabled;
@@ -82,6 +83,7 @@ export class P2Tester {
       const visualDir = path.join(this.artifacts.outputDir, 'visual');
       await ensureDir(visualDir);
       const current = path.join(visualDir, 'current.png');
+      const diffImage = path.join(visualDir, 'diff.png');
       await page.screenshot({ path: current, fullPage: true }).catch(() => undefined);
       const baseline = this.config.p2.visual.baselineDir ? path.join(this.config.p2.visual.baselineDir, 'baseline.png') : undefined;
       result.visual.currentScreenshot = current;
@@ -89,18 +91,42 @@ export class P2Tester {
       if (!baseline) {
         result.visual.status = 'skipped';
         result.visual.message = 'No visual.baselineDir configured; current screenshot captured as evidence.';
+      } else if (!(await fileExists(current))) {
+        result.visual.status = 'skipped';
+        result.visual.message = 'Current visual screenshot could not be captured.';
       } else {
-        const ratio = await byteDiffRatio(current, baseline).catch(() => undefined);
-        result.visual.diffRatio = ratio;
-        if (ratio === undefined) {
-          result.visual.status = 'skipped';
-          result.visual.message = 'Baseline screenshot not found or unreadable.';
-        } else if (ratio > this.config.p2.visual.diffThresholdRatio) {
-          result.visual.status = 'failed';
-          result.visual.message = `Visual byte diff ratio ${ratio.toFixed(4)} exceeds threshold ${this.config.p2.visual.diffThresholdRatio}.`;
+        const pixelDiff = await diffPngFiles(current, baseline, diffImage).catch(() => undefined);
+        if (pixelDiff) {
+          result.visual.diffMethod = 'pixel';
+          result.visual.diffScreenshot = diffImage;
+          result.visual.diffRatio = pixelDiff.ratio;
+          result.visual.changedPixelCount = pixelDiff.changedPixels;
+          result.visual.totalPixelCount = pixelDiff.totalPixels;
+          result.visual.sizeMismatch = pixelDiff.sizeMismatch;
+          result.visual.currentSize = pixelDiff.currentSize;
+          result.visual.baselineSize = pixelDiff.baselineSize;
+          result.visual.diffBoundingBox = pixelDiff.boundingBox;
+          if (pixelDiff.ratio > this.config.p2.visual.diffThresholdRatio) {
+            result.visual.status = 'failed';
+            result.visual.message = `Visual pixel diff ratio ${pixelDiff.ratio.toFixed(4)} exceeds threshold ${this.config.p2.visual.diffThresholdRatio} (${pixelDiff.changedPixels}/${pixelDiff.totalPixels} pixels changed).`;
+          } else {
+            result.visual.status = 'passed';
+            result.visual.message = `Visual pixel diff ratio ${pixelDiff.ratio.toFixed(4)} within threshold (${pixelDiff.changedPixels}/${pixelDiff.totalPixels} pixels changed).`;
+          }
         } else {
-          result.visual.status = 'passed';
-          result.visual.message = `Visual byte diff ratio ${ratio.toFixed(4)} within threshold.`;
+          const ratio = await byteDiffRatio(current, baseline).catch(() => undefined);
+          result.visual.diffMethod = 'byte-fallback';
+          result.visual.diffRatio = ratio;
+          if (ratio === undefined) {
+            result.visual.status = 'skipped';
+            result.visual.message = 'Baseline screenshot not found or unreadable.';
+          } else if (ratio > this.config.p2.visual.diffThresholdRatio) {
+            result.visual.status = 'failed';
+            result.visual.message = `Visual byte fallback diff ratio ${ratio.toFixed(4)} exceeds threshold ${this.config.p2.visual.diffThresholdRatio}.`;
+          } else {
+            result.visual.status = 'passed';
+            result.visual.message = `Visual byte fallback diff ratio ${ratio.toFixed(4)} within threshold.`;
+          }
         }
       }
     }
@@ -178,7 +204,7 @@ export class P2Tester {
         severity: 'medium',
         confidence: 0.72,
         description: result.visual.message ?? '当前截图与基线存在差异。',
-        evidence: { screenshot: result.visual.currentScreenshot, details: result.visual },
+        evidence: { screenshot: result.visual.diffScreenshot ?? result.visual.currentScreenshot, details: result.visual },
         reproduceSteps: ['运行 FrontLens P2 visual check', '对比 visual.current.png 与 baseline.png'],
         reason: '视觉差异可能意味着布局错乱、样式回归或组件遮挡。',
         suggestion: { frontend: '确认截图差异是否符合预期；非预期时修复样式/布局并更新回归基线。', test: '将视觉基线纳入 CI。', priority: 'P2' }

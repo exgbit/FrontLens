@@ -51,7 +51,7 @@ Read `<OUTPUT_DIR>/requirements.md` and treat low-confidence or `needsReview` it
 
 If requirements or journeys include create/edit/delete/upload/import/submit flows, add `testData` to the run config before claiming business validation. Missing isolated records, missing cleanup/rollback, sensitive fixture use, or unapproved production writes must downgrade QA sign-off even when UI smoke checks pass.
 
-This default enables security, contract, realtime, safe smoke journey, exception simulation, heuristic AI, coverage, P2 visual capture, P2 budgets, P2 offline + slow-3g profiles, accessibility, responsive, performance, resource, integration, Console, Network, reports, issueDisposition, rootCauseGroups, and fixTasks. It keeps destructive actions disabled.
+This default enables security, contract, realtime, safe smoke journey, exception simulation, heuristic AI, coverage, P2 visual capture/pixel baseline diff, P2 budgets, P2 offline + slow-3g profiles, accessibility, responsive, performance, resource, integration, Console, Network, reports, issueDisposition, rootCauseGroups, and fixTasks. It keeps destructive actions disabled.
 
 Use browser matrix only when the user selected module 9 or explicitly asked compatibility:
 
@@ -110,7 +110,7 @@ When the user deselects modules without direct CLI flags, create `<OUTPUT_DIR>/f
   "realtime": { "enabled": true },
   "p2": {
     "enabled": true,
-    "visual": { "enabled": true },
+    "visual": { "enabled": true, "baselineDir": "./visual-baseline" },
     "budgets": { "enabled": true },
     "networkProfiles": { "enabled": true, "profiles": ["offline", "slow-3g"] }
   },

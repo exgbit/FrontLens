@@ -9,6 +9,7 @@ export interface CompatibilityRunInput {
   url: string;
   outputDir?: string;
   configPath?: string;
+  requirementsPath?: string;
   browsers: BrowserName[];
   headless?: boolean;
   storageState?: string;
@@ -123,6 +124,7 @@ export async function runCompatibility(input: CompatibilityRunInput): Promise<Co
       const result = await runQa({
         url: input.url,
         configPath: input.configPath,
+        requirementsPath: input.requirementsPath,
         outputDir: browserOutput,
         browser,
         headless: input.headless,

@@ -125,6 +125,20 @@
       }
     ]
   },
+  "requirements": {
+    "enabled": true,
+    "inferFromPage": true,
+    "items": [
+      {
+        "id": "REQ-SMOKE",
+        "title": "目标页面可以打开并展示主体内容",
+        "priority": "P1",
+        "journeyNames": [
+          "Default page smoke journey"
+        ]
+      }
+    ]
+  },
   "contract": {
     "enabled": true,
     "inferFromTraffic": true,

@@ -43,7 +43,7 @@ If the user selects "all/default", run the full default QA command. If the user 
    - Default output: `reports/frontlens/<timestamp>/`.
    - Prefer a task-specific output directory when the user names a page or feature.
 2. Complete module selection and prepare a subagent prompt.
-   - Include URL, selected modules, output directory, safety requirements, exact command/config, known `sourceRoot`/deployment URL, and required Markdown summary fields.
+   - Include URL, selected modules, output directory, safety requirements, exact command/config, known `sourceRoot`/deployment URL, any requirements/acceptance criteria file, and required Markdown summary fields.
    - Tell the worker not to modify business code.
 3. Ensure the CLI is available inside the worker.
    - In the FrontLens repo: run `npm ci` when dependencies are missing, then `npm run build`; use `node dist/cli.js ...` only from the repo root.
@@ -52,6 +52,9 @@ If the user selects "all/default", run the full default QA command. If the user 
 
    ```bash
    node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>-<timestamp>" --no-trace --json
+
+   # When PRD/acceptance criteria exist, put them in a JSON file and add:
+   # --requirements "path/to/requirements.json"
    ```
 
    Default config blocks mutating `POST` / `PUT` / `PATCH` / `DELETE` requests unless the matching `allow*` safety switch is enabled. Read-only GraphQL `query` / `subscription` POSTs are allowed so contract/realtime capture remains useful; GraphQL `mutation` is still blocked by default. Use `--allow-mutating-requests` only for authorized integration tests.
@@ -257,6 +260,7 @@ Minimum stable fields:
 - `performance`
 - `coverage`
 - `p2`
+- `requirementCoverage`
 - `fixTasks[]`
 - `qualityGate`
 - `aiAnalysis`

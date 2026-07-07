@@ -31,6 +31,7 @@ FrontLens 的推荐使用方式是：
 - 安全响应头 / 敏感信息 / Cookie 等被动安全检查
 - 性能、资源体积、Coverage、P2 预算检查
 - 结合前端源码进行 file:line 级别的问题定位
+- 基于 PRD/验收标准 JSON 生成需求覆盖矩阵和 QA Gate
 - 生成可交给后续修复 Agent 使用的 fix tasks
 
 ## 为什么还需要代码
@@ -120,7 +121,22 @@ Skill 会自动执行：
 
 如果用户没有明确选择模块，skill 会先询问；如果用户说“全选”，则直接启用默认完整扫描。
 
-### 3. 要求先部署再分析
+### 3. 带验收标准分析
+
+```json
+[
+  {
+    "id": "REQ-SEARCH",
+    "title": "搜索可以筛选列表",
+    "priority": "P1",
+    "interactionKinds": ["search"]
+  }
+]
+```
+
+保存为 `requirements.json` 后，可在手动 CLI 中追加 `--requirements requirements.json`；通过 skill 使用时，把该文件路径告诉 Codex。报告会生成 `requirementCoverage`，并让未覆盖/失败的 P0/P1 验收标准影响 `qualityGate`。
+
+### 4. 要求先部署再分析
 
 ```text
 用 frontend-qa 全选分析 http://127.0.0.1:5173/rules，前端代码 /Users/justin/work/sunrise-web，如果需要部署则自动部署
@@ -160,13 +176,13 @@ Skill 会按规则：
 - 证据路径
 - 复测命令
 
-从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`：
+从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`；从 `1.4.0` 开始还包含 `requirementCoverage`：
 
 - `status`: `pass` / `pass-with-risks` / `fail` / `blocked`
 - `confidence`: `high` / `medium` / `low`
 - `reasons` / `coverageGaps`: 为什么可以验收、为什么有风险、或为什么阻断
 
-它用于替代单纯看分数的做法：CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate`，再结合需求、源码和运行证据做最终验收判断。
+`requirementCoverage` 会区分用户提供的验收标准和从页面推断的能力覆盖；推断项只能说明覆盖缺口，不能代表 100% 业务通过。CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate` + `requirementCoverage`，再结合需求、源码和运行证据做最终验收判断。
 
 ## 误报降噪原则
 
@@ -213,6 +229,12 @@ node dist/cli.js qa \
   --output "reports/frontlens/example" \
   --no-trace \
   --json
+```
+
+如需带验收标准：
+
+```bash
+node dist/cli.js qa --url "https://example.com" --requirements "requirements.json"
 ```
 
 ### 查看已有结果

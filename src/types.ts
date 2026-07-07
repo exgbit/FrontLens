@@ -106,6 +106,27 @@ export interface JourneyTestConfig {
   journeys: JourneyConfig[];
 }
 
+export type RequirementPriority = 'P0' | 'P1' | 'P2' | 'P3';
+export type RequirementSource = 'provided' | 'inferred';
+
+export interface RequirementConfigItem {
+  id?: string;
+  title: string;
+  description?: string;
+  priority?: RequirementPriority;
+  source?: RequirementSource;
+  selectors?: string[];
+  journeyNames?: string[];
+  interactionKinds?: InteractionTestKind[];
+  apiPatterns?: string[];
+}
+
+export interface RequirementCoverageConfig {
+  enabled: boolean;
+  inferFromPage: boolean;
+  items: RequirementConfigItem[];
+}
+
 export interface ContractConfig {
   enabled: boolean;
   schemaPath?: string;
@@ -194,6 +215,7 @@ export interface FrontLensConfig {
   safety: SafetyConfig;
   security: SecurityConfig;
   journeys: JourneyTestConfig;
+  requirements: RequirementCoverageConfig;
   contract: ContractConfig;
   realtime: RealtimeConfig;
   p2: P2TestConfig;
@@ -240,6 +262,7 @@ export interface QaRunInput {
   contract?: boolean;
   realtime?: boolean;
   p2?: boolean;
+  requirementsPath?: string;
 }
 
 export interface BoundingBox {
@@ -799,6 +822,47 @@ export interface RealtimeResult {
   };
 }
 
+export type RequirementCoverageStatus = 'passed' | 'failed' | 'partial' | 'not-covered' | 'not-applicable';
+
+export interface RequirementCoverageItem {
+  id: string;
+  title: string;
+  description?: string;
+  priority: RequirementPriority;
+  source: RequirementSource;
+  status: RequirementCoverageStatus;
+  confidence: 'high' | 'medium' | 'low';
+  evidence: {
+    selectors: string[];
+    componentIds: string[];
+    journeyIds: string[];
+    interactionTestIds: string[];
+    networkRequestIds: string[];
+    issueIds: string[];
+    notes: string[];
+  };
+  gaps: string[];
+}
+
+export interface RequirementCoverageResult {
+  enabled: boolean;
+  checkedAt: string;
+  source: 'provided' | 'inferred' | 'mixed' | 'none';
+  summary: {
+    requirementCount: number;
+    passedCount: number;
+    failedCount: number;
+    partialCount: number;
+    notCoveredCount: number;
+    notApplicableCount: number;
+    providedCount: number;
+    inferredCount: number;
+    highPriorityGapCount: number;
+  };
+  items: RequirementCoverageItem[];
+  gaps: string[];
+}
+
 export interface P2TestResult {
   enabled: boolean;
   checkedAt: string;
@@ -1004,6 +1068,7 @@ export interface QaResult {
   responsiveChecks: ResponsiveCheckResult[];
   exceptionSimulations: ExceptionSimulationResult[];
   security: SecurityScanResult;
+  requirementCoverage: RequirementCoverageResult;
   p2: P2TestResult;
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
@@ -1037,6 +1102,7 @@ export interface AnalyzerContext {
   responsiveChecks: ResponsiveCheckResult[];
   exceptionSimulations: ExceptionSimulationResult[];
   security: SecurityScanResult;
+  requirementCoverage?: RequirementCoverageResult;
   p2: P2TestResult;
   analysisExclusions?: {
     networkRequestIds?: string[];

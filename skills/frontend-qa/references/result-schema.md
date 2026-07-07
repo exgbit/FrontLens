@@ -8,15 +8,15 @@ Use this reference when consuming QA results from another skill.
 - Summary, page model, artifacts
 - Network, console, resources
 - Interactions, journeys, responsive, accessibility, permission, exceptions
-- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Fix Tasks, QA Gate, AI
+- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Fix Tasks, QA Gate, AI
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`. CLI/MCP helper commands normalize common missing sections to safe defaults and synthesize `fixTasks[]` / `qualityGate` from normalized issues when older reports do not contain them.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`. CLI/MCP helper commands normalize common missing sections to safe defaults and synthesize `fixTasks[]`, `qualityGate`, and `requirementCoverage` from normalized evidence when older reports do not contain them.
 
-Default QA runs enable the safe smoke journey, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
+Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
 ```ts
 interface QaResult {
@@ -37,6 +37,7 @@ interface QaResult {
   apiContract: ApiContractResult;
   realtime: RealtimeResult;
   security: SecurityScanResult; // always present; skipped when disabled
+  requirementCoverage: RequirementCoverageResult;
   p2: P2TestResult;
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
@@ -342,9 +343,9 @@ interface ExceptionSimulationResult {
 }
 ```
 
-## API Contract, Realtime, P2, Fix Tasks, Diff
+## API Contract, Realtime, Requirement Coverage, P2, Fix Tasks, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` also includes `qualityGate`.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`.
 
 ```ts
 interface ApiContractResult {
@@ -386,6 +387,45 @@ interface P2TestResult {
   networkProfiles: Array<{ profile: 'offline' | 'slow-3g'; status: 'passed' | 'warning' | 'failed' | 'skipped'; observations: string[]; screenshot?: string; error?: string }>; // skipped when the SPA did not boot and feedback cannot be assessed
 }
 
+interface RequirementCoverageResult {
+  enabled: boolean;
+  checkedAt: string;
+  source: 'provided' | 'inferred' | 'mixed' | 'none';
+  summary: {
+    requirementCount: number;
+    passedCount: number;
+    failedCount: number;
+    partialCount: number;
+    notCoveredCount: number;
+    notApplicableCount: number;
+    providedCount: number;
+    inferredCount: number;
+    highPriorityGapCount: number;
+  };
+  items: RequirementCoverageItem[];
+  gaps: string[];
+}
+
+interface RequirementCoverageItem {
+  id: string;
+  title: string;
+  description?: string;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  source: 'provided' | 'inferred';
+  status: 'passed' | 'failed' | 'partial' | 'not-covered' | 'not-applicable';
+  confidence: 'high' | 'medium' | 'low';
+  evidence: {
+    selectors: string[];
+    componentIds: string[];
+    journeyIds: string[];
+    interactionTestIds: string[];
+    networkRequestIds: string[];
+    issueIds: string[];
+    notes: string[];
+  };
+  gaps: string[];
+}
+
 interface FixTask {
   id: string;
   issueIds: string[];
@@ -413,6 +453,8 @@ interface QaQualityGate {
   summary: string;
 }
 ```
+
+`requirementCoverage` is the machine-readable requirement/ability coverage matrix. User-provided requirements come from config/`--requirements`; when none are provided, FrontLens only infers obvious page abilities and marks them as `source: inferred`. Inferred coverage is useful for gaps but must not be reported as 100% business validation. P0/P1 uncovered or failed requirements influence `qualityGate`.
 
 `qualityGate` is the machine-readable professional QA gate. Use it for release/sign-off conversations, but still inspect `issues[]` and evidence before deciding whether to ship:
 
@@ -643,7 +685,7 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Read `qualityGate` for machine-readable QA status, but do not use it as a substitute for requirement/source triage.
+3. Read `qualityGate` and `requirementCoverage` for machine-readable QA status and requirement gaps, but do not use them as a substitute for source/PRD triage.
 4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.

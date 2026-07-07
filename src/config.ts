@@ -18,6 +18,19 @@ async function loadConfigFile(configPath: string): Promise<{ config: unknown; ba
   return { config: mod.default ?? mod.config ?? mod, baseDir };
 }
 
+async function loadRequirementsFile(requirementsPath: string): Promise<unknown> {
+  const absolutePath = path.isAbsolute(requirementsPath) ? requirementsPath : path.resolve(process.cwd(), requirementsPath);
+  return JSON.parse(await readFile(absolutePath, 'utf8')) as unknown;
+}
+
+function extractRequirementsConfig(value: unknown): unknown {
+  if (Array.isArray(value)) return { enabled: true, inferFromPage: false, items: value };
+  if (!isRecord(value)) return value;
+  if (isRecord(value.requirements) || Array.isArray(value.requirements)) return extractRequirementsConfig(value.requirements);
+  if (Array.isArray(value.items)) return { enabled: true, inferFromPage: Boolean(value.inferFromPage), items: value.items };
+  return value;
+}
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(`Invalid FrontLens config: ${message}`);
@@ -78,6 +91,21 @@ const journeyStepActions = new Set([
   'waitMs'
 ]);
 
+const interactionKinds = new Set([
+  'search',
+  'reset',
+  'pagination',
+  'dialog',
+  'tab',
+  'table-sort',
+  'table-selection',
+  'refresh',
+  'download',
+  'rapid-click',
+  'upload',
+  'form-validation'
+]);
+
 function validateConfig(config: FrontLensConfig): FrontLensConfig {
   assert(isRecord(config.target), 'target must be an object.');
   assert(isRecord(config.browser), 'browser must be an object.');
@@ -86,6 +114,7 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
   assert(isRecord(config.safety), 'safety must be an object.');
   assert(isRecord(config.security), 'security must be an object.');
   assert(isRecord(config.journeys), 'journeys must be an object.');
+  assert(isRecord(config.requirements), 'requirements must be an object.');
   assert(isRecord(config.contract), 'contract must be an object.');
   assert(isRecord(config.realtime), 'realtime must be an object.');
   assert(isRecord(config.p2), 'p2 must be an object.');
@@ -140,6 +169,25 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
       if (step.description !== undefined) assert(typeof step.description === 'string', `${stepPath}.description must be a string.`);
     });
   });
+  assertBoolean(config.requirements.enabled, 'requirements.enabled');
+  assertBoolean(config.requirements.inferFromPage, 'requirements.inferFromPage');
+  assert(Array.isArray(config.requirements.items), 'requirements.items must be an array.');
+  (config.requirements.items as unknown[]).forEach((item, index) => {
+    const itemPath = `requirements.items[${index}]`;
+    assert(isRecord(item), `${itemPath} must be an object.`);
+    if (item.id !== undefined) assert(typeof item.id === 'string' && item.id.trim().length > 0, `${itemPath}.id must be a non-empty string.`);
+    assert(typeof item.title === 'string' && item.title.trim().length > 0, `${itemPath}.title must be a non-empty string.`);
+    if (item.description !== undefined) assert(typeof item.description === 'string', `${itemPath}.description must be a string.`);
+    if (item.priority !== undefined) assert(item.priority === 'P0' || item.priority === 'P1' || item.priority === 'P2' || item.priority === 'P3', `${itemPath}.priority must be P0, P1, P2, or P3.`);
+    if (item.source !== undefined) assert(item.source === 'provided' || item.source === 'inferred', `${itemPath}.source must be provided or inferred.`);
+    if (item.selectors !== undefined) assertStringArray(item.selectors, `${itemPath}.selectors`);
+    if (item.journeyNames !== undefined) assertStringArray(item.journeyNames, `${itemPath}.journeyNames`);
+    if (item.apiPatterns !== undefined) assertStringArray(item.apiPatterns, `${itemPath}.apiPatterns`);
+    if (item.interactionKinds !== undefined) {
+      assert(Array.isArray(item.interactionKinds) && item.interactionKinds.every((kind) => typeof kind === 'string' && interactionKinds.has(kind)), `${itemPath}.interactionKinds must contain supported interaction kinds.`);
+    }
+  });
+
   assertBoolean(config.contract.enabled, 'contract.enabled');
   if (config.contract.schemaPath !== undefined) assert(typeof config.contract.schemaPath === 'string', 'contract.schemaPath must be a string.');
   assertBoolean(config.contract.inferFromTraffic, 'contract.inferFromTraffic');
@@ -260,6 +308,11 @@ export async function loadConfig(input: QaRunInput): Promise<FrontLensConfig> {
   }
   if (input.p2 !== undefined) {
     config.p2.enabled = input.p2;
+  }
+  if (input.requirementsPath) {
+    const requirements = extractRequirementsConfig(await loadRequirementsFile(input.requirementsPath));
+    config.requirements = deepMerge(config.requirements as unknown as Record<string, unknown>, requirements) as unknown as FrontLensConfig['requirements'];
+    config.requirements.enabled = true;
   }
 
   return validateConfig(config);

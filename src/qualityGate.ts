@@ -1,4 +1,4 @@
-import type { CoverageResult, ExceptionSimulationResult, InteractionTestResult, Issue, JourneyTestResult, PageModel, PhaseError, QaQualityGate, SecurityScanResult } from './types.js';
+import type { CoverageResult, ExceptionSimulationResult, InteractionTestResult, Issue, JourneyTestResult, PageModel, PhaseError, QaQualityGate, RequirementCoverageResult, SecurityScanResult } from './types.js';
 
 export function isActionableIssue(issue: Issue): boolean {
   return issue.severity !== 'info';
@@ -22,6 +22,7 @@ function collectCoverageGaps(input: {
   exceptionSimulations: ExceptionSimulationResult[];
   coverage: CoverageResult;
   security: SecurityScanResult;
+  requirementCoverage?: RequirementCoverageResult;
 }): string[] {
   const gaps: string[] = [];
   if (input.phaseErrors.length > 0) gaps.push(`${input.phaseErrors.length} 个采集阶段异常，部分证据可能缺失。`);
@@ -33,6 +34,9 @@ function collectCoverageGaps(input: {
   else if (allSkipped(input.exceptionSimulations)) gaps.push('异常/错误态模拟全部 skipped。');
   if (input.coverage.enabled && input.coverage.status !== 'passed') gaps.push(`Coverage 状态为 ${input.coverage.status}，未使用资源结论置信度降低。`);
   if (input.security.enabled && input.security.status === 'skipped') gaps.push('安全扫描已启用但未采集完成。');
+  if (input.requirementCoverage?.enabled) {
+    for (const gap of input.requirementCoverage.gaps) gaps.push(`需求覆盖：${gap}`);
+  }
   return gaps;
 }
 
@@ -45,6 +49,7 @@ export function buildQualityGate(input: {
   exceptionSimulations: ExceptionSimulationResult[];
   coverage: CoverageResult;
   security: SecurityScanResult;
+  requirementCoverage?: RequirementCoverageResult;
 }): QaQualityGate {
   const actionableIssues = input.issues.filter(isActionableIssue);
   const referenceIssues = input.issues.filter((issue) => !isActionableIssue(issue));
@@ -52,6 +57,8 @@ export function buildQualityGate(input: {
   const mediumRisks = actionableIssues.filter((issue) => issue.severity === 'medium');
   const failedJourneys = input.journeyTests.filter((journey) => journey.status === 'failed');
   const failedExceptions = input.exceptionSimulations.filter((item) => item.status === 'failed');
+  const failedRequirements = input.requirementCoverage?.items.filter((item) => item.status === 'failed') ?? [];
+  const uncoveredHighRequirements = input.requirementCoverage?.items.filter((item) => (item.priority === 'P0' || item.priority === 'P1') && item.status !== 'passed' && item.status !== 'not-applicable' && item.status !== 'failed') ?? [];
   const coverageGaps = collectCoverageGaps(input);
   const navigationBlocked = hasNavigationBlocker(actionableIssues, input.pageModel);
 
@@ -60,10 +67,12 @@ export function buildQualityGate(input: {
   if (navigationBlocked) {
     status = 'blocked';
     reasons.push('目标页面未可靠进入或首屏/路由被阻断，无法完成有效 QA 验收。');
-  } else if (blockers.length > 0 || failedJourneys.length > 0) {
+  } else if (blockers.length > 0 || failedJourneys.length > 0 || failedRequirements.length > 0 || uncoveredHighRequirements.length > 0) {
     status = 'fail';
     if (blockers.length > 0) reasons.push(`${blockers.length} 个 Critical/High 可执行问题未解决。`);
     if (failedJourneys.length > 0) reasons.push(`${failedJourneys.length} 条用户旅程失败。`);
+    if (failedRequirements.length > 0) reasons.push(`${failedRequirements.length} 项需求/能力验证失败。`);
+    if (uncoveredHighRequirements.length > 0) reasons.push(`${uncoveredHighRequirements.length} 项 P0/P1 需求未完全覆盖或未通过。`);
   } else if (mediumRisks.length > 0 || failedExceptions.length > 0 || coverageGaps.length > 0) {
     status = 'pass-with-risks';
     if (mediumRisks.length > 0) reasons.push(`${mediumRisks.length} 个 Medium 可执行风险。`);

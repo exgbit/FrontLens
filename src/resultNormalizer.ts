@@ -1,4 +1,5 @@
 import type {
+  AccessibilityCheckResult,
   AiAnalysisResult,
   ArtifactIndex,
   BrowserName,
@@ -22,8 +23,10 @@ import { createStableFingerprint } from './utils/id.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { calculateScore } from './summary.js';
 import { buildQualityGate } from './qualityGate.js';
+import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
+import { deepMerge } from './utils/deepMerge.js';
 
-export const RESULT_SCHEMA_VERSION = '1.3.0';
+export const RESULT_SCHEMA_VERSION = '1.4.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -616,10 +619,9 @@ export function normalizeResult(raw: unknown): QaResult {
         issues: []
       };
 
-  const metadataConfig =
-    isRecord(metadataRaw.config) && isRecord(metadataRaw.config.target) && typeof metadataRaw.config.target.url === 'string'
-      ? (metadataRaw.config as unknown as FrontLensConfig)
-      : createDefaultConfig(url);
+  const metadataConfig = isRecord(metadataRaw.config)
+    ? (deepMerge(createDefaultConfig(url) as unknown as Record<string, unknown>, metadataRaw.config) as unknown as FrontLensConfig)
+    : createDefaultConfig(url);
   const fixTasks = asArray(raw.fixTasks).length > 0 ? normalizeFixTasks(raw.fixTasks) : generateFixTasks(issues, metadataConfig);
   const pageModel = normalizePageModel(raw.pageModel, url);
   const coverage = normalizeCoverage(raw.coverage, browser);
@@ -627,20 +629,29 @@ export function normalizeResult(raw: unknown): QaResult {
   const phaseErrors = asArray<PhaseError>(metadataRaw.phaseErrors);
   const interactionTests = asArray<InteractionTestResult>(raw.interactionTests);
   const journeyTests = asArray<JourneyTestResult>(raw.journeyTests);
+  const accessibilityChecks = asArray<AccessibilityCheckResult>(raw.accessibilityChecks);
   const exceptionSimulations = asArray<ExceptionSimulationResult>(raw.exceptionSimulations);
-  const qualityGate = normalizeQualityGate(
-    raw.qualityGate,
-    buildQualityGate({
-      issues,
-      pageModel,
-      phaseErrors,
-      interactionTests,
-      journeyTests,
-      exceptionSimulations,
-      coverage,
-      security
-    })
-  );
+  const requirementCoverage = buildRequirementCoverage({
+    config: metadataConfig,
+    pageModel,
+    networkRecords: network.requests,
+    issues,
+    journeyTests,
+    interactionTests,
+    accessibilityChecks
+  });
+  const qualityGateFallback = buildQualityGate({
+    issues,
+    pageModel,
+    phaseErrors,
+    interactionTests,
+    journeyTests,
+    exceptionSimulations,
+    coverage,
+    security,
+    requirementCoverage
+  });
+  const qualityGate = isRecord(raw.requirementCoverage) ? normalizeQualityGate(raw.qualityGate, qualityGateFallback) : qualityGateFallback;
 
   return {
     summary,
@@ -655,11 +666,12 @@ export function normalizeResult(raw: unknown): QaResult {
     realtime: normalizeRealtime(raw.realtime),
     interactionTests,
     journeyTests,
-    accessibilityChecks: asArray(raw.accessibilityChecks),
+    accessibilityChecks,
     permissionChecks: asArray(raw.permissionChecks),
     responsiveChecks: asArray(raw.responsiveChecks),
     exceptionSimulations,
     security,
+    requirementCoverage,
     p2: normalizeP2(raw.p2),
     fixTasks,
     qualityGate,

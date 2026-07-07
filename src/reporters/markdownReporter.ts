@@ -168,6 +168,34 @@ ${suggestions || '- 暂无。'}
     .join('\n');
 }
 
+function formatRequirementCoverage(result: QaResult): string {
+  const coverage = result.requirementCoverage;
+  const rows = coverage.items.map((item) => {
+    const evidence = [
+      item.evidence.journeyIds.length ? `journey:${item.evidence.journeyIds.join(',')}` : '',
+      item.evidence.interactionTestIds.length ? `interaction:${item.evidence.interactionTestIds.join(',')}` : '',
+      item.evidence.networkRequestIds.length ? `network:${item.evidence.networkRequestIds.slice(0, 5).join(',')}` : '',
+      item.evidence.selectors.length ? `selector:${item.evidence.selectors.slice(0, 3).join(',')}` : ''
+    ].filter(Boolean).join(' / ') || '-';
+    const gaps = item.gaps.length ? item.gaps.join('；') : '-';
+    return `| ${markdownEscape(item.id)} | ${markdownEscape(item.priority)} | ${markdownEscape(item.source)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(item.title)} | ${markdownEscape(truncateMiddle(evidence, 140))} | ${markdownEscape(truncateMiddle(gaps, 160))} |`;
+  });
+  const gapRows = coverage.gaps.map((gap) => `- ${markdownEscape(gap)}`).join('\n');
+  return `## Requirement Coverage / 需求覆盖矩阵
+
+- Enabled：${coverage.enabled}
+- Source：${coverage.source}
+- Passed / Total：${coverage.summary.passedCount} / ${coverage.summary.requirementCount}
+- Failed / Partial / Not covered：${coverage.summary.failedCount} / ${coverage.summary.partialCount} / ${coverage.summary.notCoveredCount}
+- Provided / Inferred：${coverage.summary.providedCount} / ${coverage.summary.inferredCount}
+- P0/P1 gaps：${coverage.summary.highPriorityGapCount}
+
+${gapRows || '未发现额外需求覆盖缺口。'}
+
+${rows.length ? ['| ID | 优先级 | 来源 | 状态 | 置信度 | 需求/能力 | 证据 | 缺口 |', '| --- | --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '未配置或未推断出需求项。'}
+`;
+}
+
 function formatQualityGate(result: QaResult): string {
   const gate = result.qualityGate;
   const gapRows = gate.coverageGaps.map((gap) => `| coverage-gap | ${markdownEscape(gap)} |`);
@@ -616,6 +644,8 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 ${formatPhaseErrors(result)}
 
 ${formatQualityGate(result)}
+
+${formatRequirementCoverage(result)}
 
 ## 核心可执行问题列表
 

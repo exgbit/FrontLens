@@ -24,6 +24,8 @@ test('default config enables complete non-destructive QA capabilities', () => {
 
   assert.equal(config.exception.enabled, true);
   assert.equal(config.analysis.ai, true);
+  assert.equal(config.requirements.enabled, true);
+  assert.equal(config.requirements.inferFromPage, true);
 
   assert.equal(config.safety.blockMutatingRequests, true);
   assert.equal(config.safety.allowCreate, false);

@@ -33,6 +33,7 @@ Usage:
 Options:
   --url <url>                 Target page URL.
   --config <path>             Optional config file (.json/.js/.mjs).
+  --requirements <path>       Optional requirements/acceptance criteria JSON file.
   --output <dir>              Output report directory.
   --browser <name>            chromium | firefox | webkit. Default: chromium.
   --headed                    Run headed browser.
@@ -205,6 +206,7 @@ async function handleResultCommand(command: 'inspect' | 'issues' | 'network' | '
             score: result.security.score,
             summary: result.security.summary
           },
+          requirementCoverage: result.requirementCoverage,
           qualityGate: result.qualityGate
         },
         null,
@@ -420,6 +422,7 @@ async function main(): Promise<void> {
       options: {
         url: { type: 'string' },
         config: { type: 'string' },
+        requirements: { type: 'string' },
         output: { type: 'string' },
         browsers: { type: 'string' },
         headed: { type: 'boolean' },
@@ -482,6 +485,7 @@ async function main(): Promise<void> {
     const result = await runCompatibility({
       url,
       configPath: parsed.values.config,
+      requirementsPath: parsed.values.requirements,
       outputDir: parsed.values.output,
       browsers: uniqueBrowsers,
       headless: parsed.values.headed ? false : parsed.values.headless,
@@ -537,6 +541,7 @@ async function main(): Promise<void> {
     options: {
       url: { type: 'string' },
       config: { type: 'string' },
+      requirements: { type: 'string' },
       output: { type: 'string' },
       browser: { type: 'string' },
       headed: { type: 'boolean' },
@@ -595,6 +600,7 @@ async function main(): Promise<void> {
   const input: QaRunInput = {
     url,
     configPath: parsed.values.config,
+    requirementsPath: parsed.values.requirements,
     outputDir: parsed.values.output,
     browser: normalizeBrowser(parsed.values.browser),
     headless: parsed.values.headed ? false : parsed.values.headless,
@@ -631,6 +637,7 @@ async function main(): Promise<void> {
           },
           apiContract: result.apiContract.summary,
           realtime: result.realtime.summary,
+          requirementCoverage: result.requirementCoverage.summary,
           fixTaskCount: result.fixTasks.length,
           qualityGate: result.qualityGate,
           exitStatus,
@@ -647,6 +654,7 @@ async function main(): Promise<void> {
     console.log(`Security: ${result.security.status}, ${result.security.score}/100 (${result.security.summary.failedCount} failed, ${result.security.summary.warningCount} warnings)`);
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);
+    console.log(`Requirement coverage: ${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed, ${result.requirementCoverage.summary.highPriorityGapCount} high-priority gaps`);
     console.log(`Fix tasks: ${result.fixTasks.length}`);
     console.log(`QA Gate: ${result.qualityGate.status}, confidence ${result.qualityGate.confidence}`);
     console.log(`Issues: ${result.summary.issueCount} (critical ${result.summary.criticalCount}, high ${result.summary.highCount}, medium ${result.summary.mediumCount}, low ${result.summary.lowCount})`);

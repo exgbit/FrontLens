@@ -55,6 +55,11 @@ export function createDefaultConfig(url = 'about:blank'): FrontLensConfig {
         }
       ]
     },
+    requirements: {
+      enabled: true,
+      inferFromPage: true,
+      items: []
+    },
     contract: {
       enabled: true,
       inferFromTraffic: true,

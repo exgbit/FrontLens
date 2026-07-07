@@ -184,6 +184,17 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     ...result.qualityGate.reasons.map((item) => `<tr><td>reason</td><td>${escapeHtml(item)}</td></tr>`),
     ...result.qualityGate.coverageGaps.map((item) => `<tr><td>coverage-gap</td><td>${escapeHtml(item)}</td></tr>`)
   ].join('\n');
+  const requirementRows = result.requirementCoverage.items
+    .map((item) => {
+      const evidence = [
+        item.evidence.journeyIds.length ? `journey:${item.evidence.journeyIds.join(',')}` : '',
+        item.evidence.interactionTestIds.length ? `interaction:${item.evidence.interactionTestIds.join(',')}` : '',
+        item.evidence.networkRequestIds.length ? `network:${item.evidence.networkRequestIds.slice(0, 5).join(',')}` : '',
+        item.evidence.selectors.length ? `selector:${item.evidence.selectors.slice(0, 3).join(',')}` : ''
+      ].filter(Boolean).join(' / ') || '-';
+      return `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.priority)}</td><td>${escapeHtml(item.source)}</td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.confidence)}</td><td>${escapeHtml(item.title)}</td><td>${escapeHtml(evidence)}</td><td>${escapeHtml(item.gaps.join('；') || '-')}</td></tr>`;
+    })
+    .join('\n');
   const phaseErrorRows = result.metadata.phaseErrors
     .map((item) => `<tr><td>${escapeHtml(item.phase)}</td><td>${escapeHtml(item.message)}</td><td>${escapeHtml(item.timestamp)}</td></tr>`)
     .join('\n');
@@ -250,6 +261,23 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>Type</th><th>Reason / Gap</th></tr></thead>
           <tbody>${qualityGateRows || '<tr><td colspan="2">No quality gate notes</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Requirement Coverage / 需求覆盖矩阵</h2>
+        <div class="grid">
+          <div class="metric"><span>Source</span><strong>${escapeHtml(result.requirementCoverage.source)}</strong></div>
+          <div class="metric"><span>Passed / Total</span><strong>${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount}</strong></div>
+          <div class="metric"><span>Failed</span><strong>${result.requirementCoverage.summary.failedCount}</strong></div>
+          <div class="metric"><span>Partial</span><strong>${result.requirementCoverage.summary.partialCount}</strong></div>
+          <div class="metric"><span>Not covered</span><strong>${result.requirementCoverage.summary.notCoveredCount}</strong></div>
+          <div class="metric"><span>P0/P1 gaps</span><strong>${result.requirementCoverage.summary.highPriorityGapCount}</strong></div>
+        </div>
+        <p>${escapeHtml(result.requirementCoverage.gaps.join(' ') || 'No requirement coverage gaps')}</p>
+        <table>
+          <thead><tr><th>ID</th><th>Priority</th><th>Source</th><th>Status</th><th>Confidence</th><th>Requirement</th><th>Evidence</th><th>Gaps</th></tr></thead>
+          <tbody>${requirementRows || '<tr><td colspan="8">No requirements collected</td></tr>'}</tbody>
         </table>
       </section>
 

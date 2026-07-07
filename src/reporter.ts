@@ -7,6 +7,7 @@ import { buildSummary } from './summary.js';
 import { normalizeIssueLike } from './resultNormalizer.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
+import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 
 function normalizeAndRebuildSummary(result: QaResult): void {
   result.issues = result.issues.map((issue, index) =>
@@ -23,6 +24,15 @@ function normalizeAndRebuildSummary(result: QaResult): void {
     browser: result.summary.browser,
     viewport: result.summary.viewport
   });
+  result.requirementCoverage = buildRequirementCoverage({
+    config: result.metadata.config,
+    pageModel: result.pageModel,
+    networkRecords: result.network.requests,
+    issues: result.issues,
+    journeyTests: result.journeyTests,
+    interactionTests: result.interactionTests,
+    accessibilityChecks: result.accessibilityChecks
+  });
   result.qualityGate = buildQualityGate({
     issues: result.issues,
     pageModel: result.pageModel,
@@ -31,7 +41,8 @@ function normalizeAndRebuildSummary(result: QaResult): void {
     journeyTests: result.journeyTests,
     exceptionSimulations: result.exceptionSimulations,
     coverage: result.coverage,
-    security: result.security
+    security: result.security,
+    requirementCoverage: result.requirementCoverage
   });
 }
 

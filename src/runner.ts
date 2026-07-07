@@ -27,6 +27,7 @@ import { applySuggestionTemplates } from './fix/suggestionTemplates.js';
 import { dedupeIssues } from './fix/issueDedupe.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
+import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { sessionStorageSidecarPath } from './auth.js';
 import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
@@ -628,6 +629,15 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     ...normalizedBaseIssues,
     ...aiAnalysis.issues
   ])));
+  const requirementCoverage = buildRequirementCoverage({
+    config,
+    pageModel,
+    networkRecords: networkCollector.list(),
+    issues,
+    journeyTests,
+    interactionTests,
+    accessibilityChecks
+  });
   const fixTasks: FixTask[] = generateFixTasks(issues, config);
   const resultConfig: FrontLensConfig = {
     ...config,
@@ -679,6 +689,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     responsiveChecks,
     exceptionSimulations,
     security,
+    requirementCoverage,
     p2,
     fixTasks,
     qualityGate: buildQualityGate({
@@ -689,7 +700,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
       journeyTests,
       exceptionSimulations,
       coverage,
-      security
+      security,
+      requirementCoverage
     }),
     aiAnalysis,
     artifacts,

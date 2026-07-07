@@ -44,6 +44,9 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.equal(result.apiContract.summary.endpointCount, 0);
   assert.equal(result.realtime.summary.graphqlOperationCount, 0);
   assert.equal(result.fixTasks.length, 1);
+  assert.equal(result.rootCauseGroups.length, 1);
+  assert.equal(result.rootCauseGroups[0].issueCount, 1);
+  assert.equal(result.rootCauseGroups[0].owner, 'backend');
   assert.equal(result.fixTasks[0].owner, 'backend');
   assert.match(result.fixTasks[0].verificationCommand, /node dist\/cli\.js qa --url/);
   assert.ok(result.issues[0].fingerprint);
@@ -166,4 +169,27 @@ test('normalizeResult preserves artifact integrity summaries from reports', () =
   assert.equal(result.artifactIntegrity.status, 'failed');
   assert.equal(result.artifactIntegrity.missingCount, 1);
   assert.equal(result.artifactIntegrity.missing[0].source, 'artifacts.screenshot');
+});
+
+
+test('normalizeResult preserves quality gate when requirement coverage is absent', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com' },
+    qualityGate: {
+      status: 'pass-with-risks',
+      confidence: 'medium',
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      actionableIssueCount: 0,
+      referenceIssueCount: 0,
+      blockingIssueCount: 0,
+      mediumRiskCount: 0,
+      coverageGapCount: 1,
+      coverageGaps: ['manual gap'],
+      reasons: ['manual reason'],
+      summary: 'manual gate'
+    }
+  });
+  assert.equal(result.qualityGate.status, 'pass-with-risks');
+  assert.equal(result.qualityGate.summary, 'manual gate');
+  assert.deepEqual(result.qualityGate.reasons, ['manual reason']);
 });

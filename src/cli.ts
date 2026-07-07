@@ -10,7 +10,7 @@ import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'matrix', 'mcp', 'inspect', 'issues', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'matrix', 'mcp', 'inspect', 'issues', 'root-causes', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -23,6 +23,7 @@ Usage:
   frontlens mcp
   frontlens inspect --report <result.json>
   frontlens issues --report <result.json> [--severity high]
+  frontlens root-causes --report <result.json>
   frontlens network --report <result.json>
   frontlens coverage --report <result.json>
   frontlens security --report <result.json>
@@ -84,6 +85,7 @@ Examples:
   frontlens matrix --url https://example.com --browsers chromium,firefox,webkit --output reports/compat
   frontlens mcp
   frontlens issues --report reports/frontlens/users/result.json --severity high
+  frontlens root-causes --report reports/frontlens/users/result.json
   frontlens coverage --report reports/frontlens/users/result.json
   frontlens security --report reports/frontlens/users/result.json
   frontlens diff --before reports/frontlens/old/result.json --after reports/frontlens/new/result.json --output reports/frontlens/diff
@@ -140,6 +142,7 @@ Exposed tools:
   frontlens_matrix
   frontlens_inspect
   frontlens_issues
+  frontlens_root_causes
   frontlens_network
   frontlens_coverage
   frontlens_security
@@ -157,7 +160,7 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'inspect' | 'issues' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'inspect' | 'issues' | 'root-causes' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
@@ -208,12 +211,22 @@ async function handleResultCommand(command: 'inspect' | 'issues' | 'network' | '
           },
           requirementCoverage: result.requirementCoverage,
           artifactIntegrity: result.artifactIntegrity,
+          rootCauseGroups: {
+            total: result.rootCauseGroups.length,
+            actionable: result.rootCauseGroups.filter((group) => group.status === 'actionable').length,
+            reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
+          },
           qualityGate: result.qualityGate
         },
         null,
         2
       )
     );
+    return;
+  }
+
+  if (command === 'root-causes') {
+    console.log(JSON.stringify(result.rootCauseGroups, null, 2));
     return;
   }
 
@@ -335,7 +348,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
+  if (argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
     await handleResultCommand(argv[0], argv.slice(1));
     return;
   }
@@ -640,6 +653,11 @@ async function main(): Promise<void> {
           realtime: result.realtime.summary,
           requirementCoverage: result.requirementCoverage.summary,
           artifactIntegrity: result.artifactIntegrity,
+          rootCauseGroups: {
+            total: result.rootCauseGroups.length,
+            actionable: result.rootCauseGroups.filter((group) => group.status === 'actionable').length,
+            reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
+          },
           fixTaskCount: result.fixTasks.length,
           qualityGate: result.qualityGate,
           exitStatus,
@@ -658,6 +676,7 @@ async function main(): Promise<void> {
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);
     console.log(`Requirement coverage: ${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed, ${result.requirementCoverage.summary.highPriorityGapCount} high-priority gaps`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
+    console.log(`Root causes: ${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total`);
     console.log(`Fix tasks: ${result.fixTasks.length}`);
     console.log(`QA Gate: ${result.qualityGate.status}, confidence ${result.qualityGate.confidence}`);
     console.log(`Issues: ${result.summary.issueCount} (critical ${result.summary.criticalCount}, high ${result.summary.highCount}, medium ${result.summary.mediumCount}, low ${result.summary.lowCount})`);

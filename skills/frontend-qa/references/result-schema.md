@@ -8,13 +8,13 @@ Use this reference when consuming QA results from another skill.
 - Summary, page model, artifacts
 - Network, console, resources
 - Interactions, journeys, responsive, accessibility, permission, exceptions
-- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Artifact Integrity, Fix Tasks, QA Gate, AI
+- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Artifact Integrity, Root Cause Groups, Fix Tasks, QA Gate, AI
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, and `requirementCoverage` from normalized evidence, and expose a safe default `artifactIntegrity` when older reports do not contain it.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `requirementCoverage`, and `rootCauseGroups[]` from normalized evidence, and expose a safe default `artifactIntegrity` when older reports do not contain it.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -40,6 +40,7 @@ interface QaResult {
   requirementCoverage: RequirementCoverageResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
+  rootCauseGroups: RootCauseGroup[];
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
   aiAnalysis: AiAnalysisResult; // always present; skipped when disabled
@@ -344,9 +345,9 @@ interface ExceptionSimulationResult {
 }
 ```
 
-## API Contract, Realtime, Requirement Coverage, P2, Fix Tasks, Diff
+## API Contract, Realtime, Requirement Coverage, P2, Root Cause Groups, Fix Tasks, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`.
 
 ```ts
 interface ApiContractResult {
@@ -450,6 +451,27 @@ interface ArtifactIntegrityEntry {
   message?: string;
 }
 
+interface RootCauseGroup {
+  id: string;                         // RC-001; stable only within a normalized report
+  rootCauseKey: string;               // deterministic grouping key
+  title: string;
+  status: 'actionable' | 'reference'; // use actionable groups as the real fix workload
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  severity: Issue['severity'];
+  issueIds: string[];                 // merged raw issue IDs
+  issueCount: number;
+  categories: string[];
+  selectors: string[];
+  networkRequestIds: string[];
+  consoleIds: string[];
+  pageErrorIds: string[];
+  resourceUrls: string[];
+  summary: string;
+  suggestedFix: string;
+  verificationCommand: string;
+}
+
 interface FixTask {
   id: string;
   issueIds: string[];
@@ -479,6 +501,8 @@ interface QaQualityGate {
 ```
 
 `artifactIntegrity` validates all local artifact paths referenced by the report, including screenshots, DOM snapshots, trace/video, JSON sidecars, responsive/P2 screenshots, and issue evidence paths. Missing referenced files are report-quality defects and should not be used as evidence.
+
+`rootCauseGroups` is the machine-readable triage layer that merges raw scanner findings into implementation-level work items. Use it to avoid overcounting duplicated scenarios (for example api-500/api-404/timeout with the same missing error state), deployment-header families, and repeated selector-level a11y evidence. `issues[]` remains the raw evidence ledger; `rootCauseGroups[]` is the preferred workload and professional QA defect table.
 
 `requirementCoverage` is the machine-readable requirement/ability coverage matrix. User-provided requirements come from config/`--requirements`; when none are provided, FrontLens only infers obvious page abilities and marks them as `source: inferred`. Inferred coverage is useful for gaps but must not be reported as 100% business validation. P0/P1 uncovered or failed requirements influence `qualityGate`.
 
@@ -711,7 +735,7 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Read `qualityGate`, `requirementCoverage`, and `artifactIntegrity` for machine-readable QA status, requirement gaps, and evidence-path reliability; do not use them as a substitute for source/PRD triage.
+3. Read `qualityGate`, `requirementCoverage`, `artifactIntegrity`, and `rootCauseGroups` for machine-readable QA status, requirement gaps, evidence-path reliability, and root-cause workload; do not use them as a substitute for source/PRD triage.
 4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.
@@ -719,8 +743,8 @@ interface Issue {
    - permission skill: `frontend-permission`, `backend-api-auth`, and `permissionChecks[]`.
    - security/backend hardening skill: `category === 'security'`, `security.checks[]`, plus backend suggestions on `headers`, `cookies`, `api-leak`, `csrf`.
    - API/realtime skill: `apiContract.endpoints[]`, `realtime.graphql[]`, `realtime.webSockets[]`, `realtime.sse[]`, and `backend-api-contract` / `backend-realtime` issues.
-   - downstream fixing skill: prefer `fixTasks[]` because it maps issues to owner/type/expectedChange/verificationCommand.
-5. Use `evidence.selector`, `evidence.dom`, `networkRequestId`, `consoleId`, `pageErrorId`, or `evidence.details` to locate root cause.
+   - downstream fixing skill: prefer `rootCauseGroups[]` for prioritization/workload and `fixTasks[]` when it needs machine-executable owner/type/expectedChange/verificationCommand records.
+5. Use `rootCauseGroups[].issueIds` to gather supporting raw issues, then use `evidence.selector`, `evidence.dom`, `networkRequestId`, `consoleId`, `pageErrorId`, or `evidence.details` to locate root cause.
 6. Apply code/API changes.
 7. Rerun FrontLens. Prefer `issues[].fingerprint`; otherwise compare `category + title + evidence`; treat `issues[].id` as run-local display ID.
 

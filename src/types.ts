@@ -890,6 +890,27 @@ export interface P2TestResult {
   }>;
 }
 
+export interface RootCauseGroup {
+  id: string;
+  rootCauseKey: string;
+  title: string;
+  status: 'actionable' | 'reference';
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  severity: Severity;
+  issueIds: string[];
+  issueCount: number;
+  categories: IssueCategory[];
+  selectors: string[];
+  networkRequestIds: string[];
+  consoleIds: string[];
+  pageErrorIds: string[];
+  resourceUrls: string[];
+  summary: string;
+  suggestedFix: string;
+  verificationCommand: string;
+}
+
 export interface FixTask {
   id: string;
   issueIds: string[];
@@ -1094,6 +1115,7 @@ export interface QaResult {
   requirementCoverage: RequirementCoverageResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
+  rootCauseGroups: RootCauseGroup[];
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
   aiAnalysis: AiAnalysisResult;

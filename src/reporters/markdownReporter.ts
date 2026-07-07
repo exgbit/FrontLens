@@ -213,6 +213,29 @@ ${rows.length ? ['| 类型 | 说明 |', '| --- | --- |', ...rows, ''].join('\n')
 `;
 }
 
+function formatRootCauseGroups(result: QaResult): string {
+  const groups = result.rootCauseGroups ?? [];
+  const rows = groups.slice(0, 50).map((group) => {
+    const evidence = [
+      group.issueIds.length ? `issues:${group.issueIds.join(',')}` : '',
+      group.networkRequestIds.length ? `network:${group.networkRequestIds.slice(0, 5).join(',')}` : '',
+      group.consoleIds.length ? `console:${group.consoleIds.slice(0, 5).join(',')}` : '',
+      group.pageErrorIds.length ? `pageError:${group.pageErrorIds.slice(0, 5).join(',')}` : '',
+      group.selectors.length ? `selector:${truncateMiddle(group.selectors.slice(0, 3).join(' / '), 120)}` : ''
+    ].filter(Boolean).join('；') || '-';
+    return `| ${group.id} | ${group.priority} | ${severityLabel[group.severity]} | ${group.status} | ${group.owner} | ${markdownEscape(group.title)} | ${group.issueCount} | ${markdownEscape(truncateMiddle(evidence, 180))} | ${markdownEscape(truncateMiddle(group.suggestedFix, 180))} |`;
+  });
+  return `## Root Cause Groups / 根因归并
+
+Raw issue 数不等于修复工作量。本节按实现根因归并，优先看这里再看后面的原始问题详情。
+
+- Root Cause 总数：${groups.length}
+- Actionable / Reference：${groups.filter((group) => group.status === 'actionable').length} / ${groups.filter((group) => group.status === 'reference').length}
+
+${rows.length ? ['| ID | 优先级 | 等级 | 状态 | Owner | 根因 | Raw Issues | 证据 | 建议 |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '未归并出根因问题。'}
+`;
+}
+
 function formatNetworkSummary(result: QaResult): string {
   const failed = result.network.failedRequests.slice(0, 20);
   const slow = result.network.slowRequests.slice(0, 20);
@@ -649,6 +672,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - 安全评分：**${result.security.score}/100**（${result.security.status}）
 - API Contract：${result.apiContract.summary.endpointCount} endpoints / ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings
 - Realtime：GraphQL ${result.realtime.summary.graphqlOperationCount} / WS ${result.realtime.summary.webSocketCount} / SSE ${result.realtime.summary.sseCount}
+- Root Causes：${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total
 - Fix Tasks：${result.fixTasks.length}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
@@ -658,6 +682,8 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 ${formatPhaseErrors(result)}
 
 ${formatQualityGate(result)}
+
+${formatRootCauseGroups(result)}
 
 ${formatRequirementCoverage(result)}
 

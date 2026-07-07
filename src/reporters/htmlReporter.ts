@@ -25,6 +25,10 @@ function safeJson(value: unknown): string {
   }
 }
 
+function truncateText(value: string, max = 180): string {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
 export async function writeHtmlReport(result: QaResult): Promise<void> {
   const outputPath = path.join(result.artifacts.outputDir, 'report.html');
   result.artifacts.htmlReport = outputPath;
@@ -184,6 +188,19 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     ...result.qualityGate.reasons.map((item) => `<tr><td>reason</td><td>${escapeHtml(item)}</td></tr>`),
     ...result.qualityGate.coverageGaps.map((item) => `<tr><td>coverage-gap</td><td>${escapeHtml(item)}</td></tr>`)
   ].join('\n');
+  const rootCauseRows = result.rootCauseGroups
+    .slice(0, 80)
+    .map((group) => {
+      const evidence = [
+        group.issueIds.length ? `issues:${group.issueIds.join(',')}` : '',
+        group.networkRequestIds.length ? `network:${group.networkRequestIds.slice(0, 5).join(',')}` : '',
+        group.consoleIds.length ? `console:${group.consoleIds.slice(0, 5).join(',')}` : '',
+        group.pageErrorIds.length ? `pageError:${group.pageErrorIds.slice(0, 5).join(',')}` : '',
+        group.selectors.length ? `selector:${truncateText(group.selectors.slice(0, 3).join(' / '), 120)}` : ''
+      ].filter(Boolean).join('; ') || '-';
+      return `<tr><td>${escapeHtml(group.id)}</td><td>${escapeHtml(group.priority)}</td><td>${issueBadge(group.severity)}</td><td>${escapeHtml(group.status)}</td><td>${escapeHtml(group.owner)}</td><td>${escapeHtml(group.title)}</td><td>${group.issueCount}</td><td>${escapeHtml(truncateText(evidence, 180))}</td><td>${escapeHtml(truncateText(group.suggestedFix, 220))}</td></tr>`;
+    })
+    .join('\n');
   const requirementRows = result.requirementCoverage.items
     .map((item) => {
       const evidence = [
@@ -244,6 +261,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Medium</span><strong>${result.summary.mediumCount}</strong></div>
           <div class="metric"><span>Low</span><strong>${result.summary.lowCount}</strong></div>
           <div class="metric"><span>Security</span><strong>${result.security.score}/100</strong></div>
+          <div class="metric"><span>Root Causes</span><strong>${result.rootCauseGroups.filter((group) => group.status === 'actionable').length}/${result.rootCauseGroups.length}</strong></div>
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
@@ -266,6 +284,20 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>Type</th><th>Reason / Gap</th></tr></thead>
           <tbody>${qualityGateRows || '<tr><td colspan="2">No quality gate notes</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Root Cause Groups / 根因归并</h2>
+        <p>Raw issue 数不等于修复工作量。本节按实现根因归并，优先看这里再看原始问题详情。</p>
+        <div class="grid">
+          <div class="metric"><span>Total</span><strong>${result.rootCauseGroups.length}</strong></div>
+          <div class="metric"><span>Actionable</span><strong>${result.rootCauseGroups.filter((group) => group.status === 'actionable').length}</strong></div>
+          <div class="metric"><span>Reference</span><strong>${result.rootCauseGroups.filter((group) => group.status === 'reference').length}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Priority</th><th>Severity</th><th>Status</th><th>Owner</th><th>Root cause</th><th>Raw issues</th><th>Evidence</th><th>Suggested fix</th></tr></thead>
+          <tbody>${rootCauseRows || '<tr><td colspan="9">No root-cause groups</td></tr>'}</tbody>
         </table>
       </section>
 

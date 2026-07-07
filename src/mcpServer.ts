@@ -123,6 +123,11 @@ function listTools(): Record<string, unknown> {
         inputSchema: schema({ report: { type: 'string' }, severity: { type: 'string', enum: ['critical', 'high', 'medium', 'low', 'info'] }, full: { type: 'boolean' } }, ['report'])
       },
       {
+        name: 'frontlens_root_causes',
+        description: 'Read result.json and return root-cause groups that merge noisy raw issues into implementation-level work items.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
         name: 'frontlens_network',
         description: 'Read result.json and return failed, slow, duplicated, and suspicious API/network requests.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
@@ -259,6 +264,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         realtime: result.realtime.summary,
         requirementCoverage: result.requirementCoverage.summary,
         artifactIntegrity: result.artifactIntegrity,
+        rootCauseGroups: {
+          total: result.rootCauseGroups.length,
+          actionable: result.rootCauseGroups.filter((group) => group.status === 'actionable').length,
+          reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
+        },
         fixTaskCount: result.fixTasks.length,
         qualityGate: result.qualityGate
       });
@@ -289,6 +299,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         },
         requirementCoverage: result.requirementCoverage,
         artifactIntegrity: result.artifactIntegrity,
+        rootCauseGroups: {
+          total: result.rootCauseGroups.length,
+          actionable: result.rootCauseGroups.filter((group) => group.status === 'actionable').length,
+          reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
+        },
         qualityGate: result.qualityGate
       });
     }
@@ -316,8 +331,13 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
                 reproduceSteps: issue.reproduceSteps,
                 evidence: issue.evidence
               }
-        );
+      );
       return textContent(issues);
+    }
+    case 'frontlens_root_causes': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(result.rootCauseGroups);
     }
     case 'frontlens_network': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

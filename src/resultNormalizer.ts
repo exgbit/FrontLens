@@ -26,8 +26,9 @@ import { buildQualityGate } from './qualityGate.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { deepMerge } from './utils/deepMerge.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
+import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 
-export const RESULT_SCHEMA_VERSION = '1.5.0';
+export const RESULT_SCHEMA_VERSION = '1.6.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -679,6 +680,7 @@ export function normalizeResult(raw: unknown): QaResult {
     accessibilityChecks
   });
   const artifactIntegrity = normalizeArtifactIntegrity(raw.artifactIntegrity);
+  const rootCauseGroups = buildRootCauseGroups(issues, metadataConfig);
   const qualityGateFallback = buildQualityGate({
     issues,
     pageModel,
@@ -691,7 +693,7 @@ export function normalizeResult(raw: unknown): QaResult {
     requirementCoverage,
     artifactIntegrity
   });
-  const qualityGate = isRecord(raw.requirementCoverage) ? normalizeQualityGate(raw.qualityGate, qualityGateFallback) : qualityGateFallback;
+  const qualityGate = isRecord(raw.qualityGate) ? normalizeQualityGate(raw.qualityGate, qualityGateFallback) : qualityGateFallback;
 
   return {
     summary,
@@ -714,6 +716,7 @@ export function normalizeResult(raw: unknown): QaResult {
     requirementCoverage,
     p2: normalizeP2(raw.p2),
     artifactIntegrity,
+    rootCauseGroups,
     fixTasks,
     qualityGate,
     aiAnalysis,

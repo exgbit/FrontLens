@@ -7,4 +7,5 @@ export { normalizeResult, normalizeIssueLike, fingerprintIssue, RESULT_SCHEMA_VE
 export { buildQualityGate, isActionableIssue } from './qualityGate.js';
 export { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
+export { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 export type * from './types.js';

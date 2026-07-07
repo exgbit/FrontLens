@@ -1020,16 +1020,17 @@ export function formatProfessionalReview(result: QaResult): string {
 ## 结论
 
 - Target：${markdownEscape(result.summary.url)}
-- Raw score：**${result.summary.score}/100**（全量 raw finding，仅作趋势/排序参考）
-- Adjusted score：**${result.summary.adjustedScore}/100**（基于 ${result.summary.adjustedIssueCount} 个 ${result.summary.scoreBasis} finding）
-- QA sign-off：**${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
 - Professional summary：${markdownEscape(result.professionalSummary.headline)}
+- QA sign-off：**${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
+- Adjusted score：**${result.summary.adjustedScore}/100**（专业排期口径，基于 ${result.summary.adjustedIssueCount} 个 ${result.summary.scoreBasis} finding）
+- Fix queue：${actionableGroups.length} proof-ready root cause(s) / ${blockerGroups.length} P0-P1 blocker(s)
+- Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
+- Raw score：**${result.summary.score}/100**（原始扫描趋势分，不能直接等同页面质量或修复工作量）
+- Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
+- Proof-ready root causes：${actionableGroups.length} / actionable ${rawActionableGroupCount}（P0/P1 ${blockerGroups.length}）
+- Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
 - Claim guard：**${result.claimGuard.status}** / forbidden claims ${result.claimGuard.forbiddenClaims.length}
 - QA intake：**${result.qaIntake.status}** / questions ${result.qaIntake.questions.length}（top ${result.qaIntake.topQuestions.length}）
-- Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
-- Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
-- Proof-ready root causes：${actionableGroups.length} / actionable ${rawActionableGroupCount}（P0/P1 ${blockerGroups.length}）
-- Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
 - Requirement coverage：${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed；provided / inferred：${result.requirementCoverage.summary.providedCount}/${result.requirementCoverage.summary.inferredCount}
 - Environment：${result.environment.kind} / trust performance ${result.environment.trust.performance} / security ${result.environment.trust.security}
 - Page profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}

@@ -55,6 +55,9 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(report, /结论护栏 \/ 禁止过度承诺/);
   assert.match(report, /专业 QA 待补输入 \/ 避免猜测/);
   assert.match(report, /缺陷证明强度/);
+  assert.match(report, /Adjusted score：\*\*.*专业排期口径/);
+  assert.match(report, /Raw score：\*\*.*不能直接等同页面质量或修复工作量/);
+  assert.ok(report.indexOf('Adjusted score') < report.indexOf('Raw score'));
   assert.doesNotMatch(report, /## 十三、问题详情/);
   assert.doesNotMatch(report, /<details><summary>Evidence details/);
   assert.match(review, /完整原始证据见 `evidence-report\.md`/);

@@ -29,7 +29,7 @@ import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 
-export const RESULT_SCHEMA_VERSION = '1.11.0';
+export const RESULT_SCHEMA_VERSION = '1.12.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -689,6 +689,50 @@ function normalizeSourceRuntimeCorrelation(raw: unknown): QaResult['sourceRuntim
   };
 }
 
+function normalizeSourceHealth(raw: unknown): QaResult['sourceHealth'] {
+  const empty: QaResult['sourceHealth'] = {
+    enabled: false,
+    status: 'skipped',
+    checkedAt: new Date().toISOString(),
+    packageScripts: [],
+    scannedFiles: 0,
+    parsedFiles: 0,
+    skippedFiles: 0,
+    syntaxErrorCount: 0,
+    findings: [],
+    error: 'Source health missing from report.'
+  };
+  if (!isRecord(raw)) return empty;
+  const packageManager = raw.packageManager === 'npm' || raw.packageManager === 'pnpm' || raw.packageManager === 'yarn' || raw.packageManager === 'bun' || raw.packageManager === 'unknown' ? raw.packageManager : undefined;
+  return {
+    enabled: Boolean(raw.enabled),
+    status: raw.status === 'passed' || raw.status === 'failed' || raw.status === 'skipped' ? raw.status : empty.status,
+    checkedAt: asString(raw.checkedAt, empty.checkedAt),
+    root: optionalString(raw.root),
+    packageManager,
+    packageScripts: asArray(raw.packageScripts).filter(isRecord).map((script) => ({
+      name: asString(script.name),
+      command: asString(script.command),
+      category: script.category === 'build' || script.category === 'typecheck' || script.category === 'lint' || script.category === 'test' || script.category === 'e2e' || script.category === 'coverage' || script.category === 'other' ? script.category : 'other'
+    })),
+    scannedFiles: asNumber(raw.scannedFiles),
+    parsedFiles: asNumber(raw.parsedFiles),
+    skippedFiles: asNumber(raw.skippedFiles),
+    syntaxErrorCount: asNumber(raw.syntaxErrorCount),
+    findings: asArray(raw.findings).filter(isRecord).map((finding) => ({
+      id: asString(finding.id),
+      kind: 'syntax-error' as const,
+      severity: asSeverity(finding.severity),
+      file: asString(finding.file),
+      line: optionalNumber(finding.line),
+      column: optionalNumber(finding.column),
+      message: asString(finding.message),
+      code: optionalNumber(finding.code)
+    })),
+    error: optionalString(raw.error)
+  };
+}
+
 export function normalizeResult(raw: unknown): QaResult {
   if (!isRecord(raw)) {
     throw new Error('Invalid FrontLens result: expected a JSON object.');
@@ -792,6 +836,7 @@ export function normalizeResult(raw: unknown): QaResult {
   const artifactIntegrity = normalizeArtifactIntegrity(raw.artifactIntegrity);
   const sourceAnalysis = normalizeSourceAnalysis(raw.sourceAnalysis, metadataConfig);
   const sourceRuntimeCorrelation = normalizeSourceRuntimeCorrelation(raw.sourceRuntimeCorrelation);
+  const sourceHealth = normalizeSourceHealth(raw.sourceHealth);
   const rootCauseGroups = buildRootCauseGroups(issues, metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
   const qualityGateFallback = buildQualityGate({
@@ -830,6 +875,7 @@ export function normalizeResult(raw: unknown): QaResult {
     requirementCoverage,
     sourceAnalysis,
     sourceRuntimeCorrelation,
+    sourceHealth,
     p2: normalizeP2(raw.p2),
     artifactIntegrity,
     rootCauseGroups,

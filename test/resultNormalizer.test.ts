@@ -43,6 +43,8 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.equal(result.security.score, 100);
   assert.equal(result.apiContract.summary.endpointCount, 0);
   assert.equal(result.realtime.summary.graphqlOperationCount, 0);
+  assert.equal(result.sourceHealth.status, 'skipped');
+  assert.equal(result.sourceHealth.syntaxErrorCount, 0);
   assert.equal(result.fixTasks.length, 1);
   assert.equal(result.rootCauseGroups.length, 1);
   assert.equal(result.rootCauseGroups[0].issueCount, 1);

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { normalizeResult } from '../src/resultNormalizer.ts';
 import { buildArtifactIntegrity } from '../src/artifacts/artifactIntegrity.ts';
 import { buildQualityGate } from '../src/qualityGate.ts';
+import { assignJsonArtifactPaths } from '../src/reporters/jsonReporter.ts';
 
 test('artifact integrity detects missing issue evidence paths', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-artifacts-'));
@@ -77,4 +78,18 @@ test('artifact integrity failures become QA gate coverage gaps', async () => {
   });
   assert.equal(gate.status, 'pass-with-risks');
   assert.equal(gate.coverageGaps.some((gap) => gap.includes('证据产物')), true);
+});
+
+test('artifact integrity tracks generated JSON sidecars before report writing', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-artifacts-sidecars-'));
+  const result = normalizeResult({
+    summary: { url: 'https://example.com', title: 'Example' },
+    artifacts: { outputDir: dir },
+    pageModel: { url: 'https://example.com', title: 'Example', stats: { domNodes: 10, visibleTextLength: 20, bodyTextSample: 'ok' } }
+  });
+  assignJsonArtifactPaths(result);
+  const integrity = await buildArtifactIntegrity(result);
+  assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.sourceAnalysisLog'), true);
+  assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.sourceRuntimeLog'), true);
+  assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.sourceHealthLog'), true);
 });

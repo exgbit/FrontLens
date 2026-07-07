@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { createDefaultConfig } from '../src/defaultConfig.ts';
 import { analyzeSource } from '../src/source/sourceAnalyzer.ts';
 import { buildSourceRuntimeCorrelation } from '../src/source/sourceRuntimeCorrelation.ts';
+import { analyzeSourceHealth } from '../src/source/sourceHealth.ts';
 import type { NetworkRecord, PageModel, SourceAnalysisResult } from '../src/types.ts';
 
 test('source analysis indexes routes, API calls, states and reports eager route imports', async () => {
@@ -162,4 +163,39 @@ test('source runtime correlation links network responses to source API and UI hi
   assert.equal(result.links[0].responseListHints[0].path, '$.records');
   assert.equal(result.links[1].confidence, 'none');
   assert.equal(result.summary.unlinkedRequestCount, 1);
+});
+
+test('source health detects package scripts and TS/Vue syntax errors', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-source-health-'));
+  await mkdir(path.join(dir, 'src'), { recursive: true });
+  await writeFile(
+    path.join(dir, 'package.json'),
+    JSON.stringify({ scripts: { build: 'vite build', typecheck: 'vue-tsc --noEmit', lint: 'eslint src' } }),
+    'utf8'
+  );
+  await writeFile(path.join(dir, 'package-lock.json'), '{}', 'utf8');
+  await writeFile(path.join(dir, 'src/good.ts'), 'export const ok = 1;\n', 'utf8');
+  await writeFile(path.join(dir, 'src/bad.ts'), 'export const broken = ;\n', 'utf8');
+  await writeFile(
+    path.join(dir, 'src/BadView.vue'),
+    `<template><div>Bad</div></template>
+<script setup lang="ts">
+const value =
+</script>
+`,
+    'utf8'
+  );
+
+  const config = createDefaultConfig('https://example.com/users');
+  config.source.root = dir;
+  const { result, issues } = await analyzeSourceHealth(config);
+
+  assert.equal(result.status, 'failed');
+  assert.equal(result.packageManager, 'npm');
+  assert.equal(result.packageScripts.some((script) => script.name === 'typecheck' && script.category === 'typecheck'), true);
+  assert.equal(result.syntaxErrorCount >= 2, true);
+  assert.equal(result.findings.some((finding) => finding.file === 'src/bad.ts'), true);
+  assert.equal(result.findings.some((finding) => finding.file === 'src/BadView.vue'), true);
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].category, 'frontend-source-health');
 });

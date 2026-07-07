@@ -269,6 +269,30 @@ ${rows.length ? ['| ID | Network | Status | Confidence | Source matches | Compon
 `;
 }
 
+function formatSourceHealth(result: QaResult): string {
+  const health = result.sourceHealth;
+  const scriptRows = health.packageScripts.slice(0, 20).map((script) => `| ${markdownEscape(script.name)} | ${markdownEscape(script.category)} | \`${markdownEscape(script.command)}\` |`);
+  const findingRows = health.findings.slice(0, 20).map((finding) => `| ${markdownEscape(finding.id)} | ${markdownEscape(finding.severity)} | ${markdownEscape(finding.file)}:${finding.line ?? '-'}:${finding.column ?? '-'} | ${markdownEscape(finding.message)} |`);
+  return `## Source Health / 源码健康
+
+- Enabled：${health.enabled}
+- Status：${health.status}
+- Root：${health.root ? `\`${markdownEscape(health.root)}\`` : '-'}
+- Package manager：${health.packageManager ?? '-'}
+- Scanned / Parsed / Skipped：${health.scannedFiles} / ${health.parsedFiles} / ${health.skippedFiles}
+- Syntax errors：${health.syntaxErrorCount}
+- Error：${markdownEscape(health.error ?? '-')}
+
+### package.json scripts
+
+${scriptRows.length ? ['| Script | Category | Command |', '| --- | --- | --- |', ...scriptRows, ''].join('\n') : '未识别到 package.json scripts。'}
+
+### Syntax findings
+
+${findingRows.length ? ['| ID | Severity | Location | Message |', '| --- | --- | --- | --- |', ...findingRows, ''].join('\n') : '未发现源码语法解析错误。'}
+`;
+}
+
 function formatRootCauseGroups(result: QaResult): string {
   const groups = result.rootCauseGroups ?? [];
   const rows = groups.slice(0, 50).map((group) => {
@@ -765,6 +789,8 @@ ${formatRequirementCoverage(result)}
 ${formatSourceAnalysis(result)}
 
 ${formatSourceRuntimeCorrelation(result)}
+
+${formatSourceHealth(result)}
 
 ## 核心可执行问题列表
 

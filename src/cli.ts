@@ -214,6 +214,7 @@ async function handleResultCommand(command: 'inspect' | 'issues' | 'root-causes'
             summary: result.security.summary
           },
           requirementCoverage: result.requirementCoverage,
+          sourceHealth: result.sourceHealth,
           artifactIntegrity: result.artifactIntegrity,
           rootCauseGroups: {
             total: result.rootCauseGroups.length,
@@ -666,6 +667,11 @@ async function main(): Promise<void> {
           apiContract: result.apiContract.summary,
           realtime: result.realtime.summary,
           requirementCoverage: result.requirementCoverage.summary,
+          sourceHealth: {
+            status: result.sourceHealth.status,
+            syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
+            parsedFiles: result.sourceHealth.parsedFiles
+          },
           artifactIntegrity: result.artifactIntegrity,
           rootCauseGroups: {
             total: result.rootCauseGroups.length,
@@ -690,6 +696,7 @@ async function main(): Promise<void> {
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);
     console.log(`Requirement coverage: ${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed, ${result.requirementCoverage.summary.highPriorityGapCount} high-priority gaps`);
+    console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
     console.log(`Root causes: ${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total`);
     console.log(`Disposition: ${result.issueDisposition.summary.actionableCount} actionable, ${result.issueDisposition.summary.conditionalCount} conditional, ${result.issueDisposition.summary.nonActionableCount} non-actionable`);

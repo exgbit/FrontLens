@@ -1,5 +1,5 @@
 import type { QaResult } from './types.js';
-import { writeJsonReports } from './reporters/jsonReporter.js';
+import { assignJsonArtifactPaths, writeJsonReports } from './reporters/jsonReporter.js';
 import { writeMarkdownReport } from './reporters/markdownReporter.js';
 import { writeHtmlReport } from './reporters/htmlReporter.js';
 import { runReporterPlugins } from './plugins/pluginManager.js';
@@ -56,6 +56,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
 
 export async function writeReports(result: QaResult): Promise<QaResult> {
   const formats = new Set(result.metadata.config.report.formats);
+  assignJsonArtifactPaths(result);
   await normalizeAndRebuildSummary(result);
   await writeJsonReports(result);
   await normalizeAndRebuildSummary(result);

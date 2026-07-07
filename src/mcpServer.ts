@@ -270,6 +270,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         apiContract: result.apiContract.summary,
         realtime: result.realtime.summary,
         requirementCoverage: result.requirementCoverage.summary,
+        sourceHealth: {
+          status: result.sourceHealth.status,
+          syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
+          parsedFiles: result.sourceHealth.parsedFiles
+        },
         artifactIntegrity: result.artifactIntegrity,
         rootCauseGroups: {
           total: result.rootCauseGroups.length,
@@ -306,6 +311,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           summary: result.security.summary
         },
         requirementCoverage: result.requirementCoverage,
+        sourceHealth: result.sourceHealth,
         artifactIntegrity: result.artifactIntegrity,
         rootCauseGroups: {
           total: result.rootCauseGroups.length,

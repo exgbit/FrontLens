@@ -233,6 +233,14 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
       return `<tr><td>${escapeHtml(link.id)}</td><td>${escapeHtml(`${link.method} ${truncateText(link.path, 90)}`)}</td><td>${escapeHtml(String(link.status ?? '-'))}</td><td>${escapeHtml(link.confidence)}</td><td>${escapeHtml(sourceMatches)}</td><td>${escapeHtml(link.componentIds.slice(0, 5).join(', ') || '-')}</td><td>${escapeHtml(listHints)}</td></tr>`;
     })
     .join('\n');
+  const sourceHealthRows = result.sourceHealth.findings
+    .slice(0, 50)
+    .map((finding) => `<tr><td>${escapeHtml(finding.id)}</td><td>${issueBadge(finding.severity)}</td><td>${escapeHtml(`${finding.file}:${finding.line ?? '-'}:${finding.column ?? '-'}`)}</td><td>${escapeHtml(finding.message)}</td></tr>`)
+    .join('\n');
+  const sourceHealthScriptRows = result.sourceHealth.packageScripts
+    .slice(0, 50)
+    .map((script) => `<tr><td>${escapeHtml(script.name)}</td><td>${escapeHtml(script.category)}</td><td><code>${escapeHtml(script.command)}</code></td></tr>`)
+    .join('\n');
   const phaseErrorRows = result.metadata.phaseErrors
     .map((item) => `<tr><td>${escapeHtml(item.phase)}</td><td>${escapeHtml(item.message)}</td><td>${escapeHtml(item.timestamp)}</td></tr>`)
     .join('\n');
@@ -290,6 +298,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
           <div class="metric"><span>Source × Runtime</span><strong>${escapeHtml(result.sourceRuntimeCorrelation.status)}</strong></div>
+          <div class="metric"><span>Source Health</span><strong>${escapeHtml(result.sourceHealth.status)}</strong></div>
           <div class="metric"><span>Phase errors</span><strong>${result.metadata.phaseErrors.length}</strong></div>
         </div>
       </section>
@@ -390,6 +399,29 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>ID</th><th>Network</th><th>Status</th><th>Confidence</th><th>Source matches</th><th>Components</th><th>List hints</th></tr></thead>
           <tbody>${sourceRuntimeRows || '<tr><td colspan="7">No source/runtime links</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Source Health / 源码健康</h2>
+        <p>源码静态健康检查会识别 package scripts，并对 TS/JS/Vue script 做语法解析；语法错误是构建/发布前置阻断，不代表业务功能已完成验收。</p>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.sourceHealth.status)}</strong></div>
+          <div class="metric"><span>Package manager</span><strong>${escapeHtml(result.sourceHealth.packageManager ?? '-')}</strong></div>
+          <div class="metric"><span>Scanned</span><strong>${result.sourceHealth.scannedFiles}</strong></div>
+          <div class="metric"><span>Parsed</span><strong>${result.sourceHealth.parsedFiles}</strong></div>
+          <div class="metric"><span>Skipped</span><strong>${result.sourceHealth.skippedFiles}</strong></div>
+          <div class="metric"><span>Syntax errors</span><strong>${result.sourceHealth.syntaxErrorCount}</strong></div>
+        </div>
+        <h3>package.json scripts</h3>
+        <table>
+          <thead><tr><th>Script</th><th>Category</th><th>Command</th></tr></thead>
+          <tbody>${sourceHealthScriptRows || '<tr><td colspan="3">No package scripts detected</td></tr>'}</tbody>
+        </table>
+        <h3>Syntax findings</h3>
+        <table>
+          <thead><tr><th>ID</th><th>Severity</th><th>Location</th><th>Message</th></tr></thead>
+          <tbody>${sourceHealthRows || '<tr><td colspan="4">No source syntax findings</td></tr>'}</tbody>
         </table>
       </section>
 

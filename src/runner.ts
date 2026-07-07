@@ -34,8 +34,9 @@ import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { analyzeSource, createEmptySourceAnalysis } from './source/sourceAnalyzer.js';
 import { buildSourceRuntimeCorrelation, createEmptySourceRuntimeCorrelation } from './source/sourceRuntimeCorrelation.js';
+import { analyzeSourceHealth, createEmptySourceHealth } from './source/sourceHealth.js';
 import { sessionStorageSidecarPath } from './auth.js';
-import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult, SourceRuntimeCorrelationResult } from './types.js';
+import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
 import { RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 import { redactText, redactUrl } from './utils/redact.js';
@@ -371,7 +372,9 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   let contractIssues: Issue[] = [];
   let sourceAnalysis: SourceAnalysisResult = createEmptySourceAnalysis(config, config.source.enabled ? 'skipped' : 'skipped', config.source.enabled ? 'Source analysis was not collected.' : 'Source analysis disabled.');
   let sourceRuntimeCorrelation: SourceRuntimeCorrelationResult = createEmptySourceRuntimeCorrelation('skipped', config.source.enabled ? 'Source/runtime correlation was not collected.' : 'Source analysis disabled.');
+  let sourceHealth: SourceHealthResult = createEmptySourceHealth(config, config.source.enabled ? 'skipped' : 'skipped', config.source.enabled ? 'Source health was not collected.' : 'Source analysis disabled.');
   let sourceIssues: Issue[] = [];
+  let sourceHealthIssues: Issue[] = [];
   let realtime: RealtimeResult = createEmptyRealtimeResult(config);
   let p2: P2TestResult = createEmptyP2Result(config);
   let p2Issues: Issue[] = [];
@@ -392,6 +395,9 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     const sourceOutput = await safePhase('source.analyze', phaseErrors, { result: sourceAnalysis, issues: [] as Issue[] }, () => analyzeSource(config));
     sourceAnalysis = sourceOutput.result;
     sourceIssues = sourceOutput.issues;
+    const sourceHealthOutput = await safePhase('source.health', phaseErrors, { result: sourceHealth, issues: [] as Issue[] }, () => analyzeSourceHealth(config));
+    sourceHealth = sourceHealthOutput.result;
+    sourceHealthIssues = sourceHealthOutput.issues;
     context = await createContext(browser, config, artifacts);
     realtimeCollector.attach(context);
     if (config.analysis.console) {
@@ -619,6 +625,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     p2,
     sourceAnalysis,
     sourceRuntimeCorrelation,
+    sourceHealth,
     analysisExclusions: {
       networkRequestIds: [...interactionRestoreNetworkRequestIds, ...securityNetworkRequestIds, ...p2NetworkRequestIds, ...exceptionPhaseNetworkRequestIds],
       consoleIds: [...interactionRestoreConsoleIds, ...exceptionPhaseConsoleIds],
@@ -647,6 +654,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     ...contractIssues,
     ...p2Issues,
     ...sourceIssues,
+    ...sourceHealthIssues,
     ...pluginIssues
   ];
   const normalizedBaseIssues = reindexIssues(dedupeIssues(applySuggestionTemplates(baseIssues)));
@@ -721,6 +729,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     requirementCoverage,
     sourceAnalysis,
     sourceRuntimeCorrelation,
+    sourceHealth,
     p2,
     artifactIntegrity: createEmptyArtifactIntegrity(),
     rootCauseGroups,

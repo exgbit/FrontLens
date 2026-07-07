@@ -8,6 +8,7 @@ export type KnownIssueCategory =
   | 'frontend-form'
   | 'frontend-table'
   | 'frontend-routing'
+  | 'frontend-source-health'
   | 'frontend-permission'
   | 'frontend-accessibility'
   | 'frontend-performance'
@@ -839,6 +840,38 @@ export interface SourceRuntimeCorrelationResult {
   error?: string;
 }
 
+export interface SourceHealthScript {
+  name: string;
+  command: string;
+  category: 'build' | 'typecheck' | 'lint' | 'test' | 'e2e' | 'coverage' | 'other';
+}
+
+export interface SourceHealthFinding {
+  id: string;
+  kind: 'syntax-error';
+  severity: Severity;
+  file: string;
+  line?: number;
+  column?: number;
+  message: string;
+  code?: number;
+}
+
+export interface SourceHealthResult {
+  enabled: boolean;
+  status: 'passed' | 'skipped' | 'failed';
+  checkedAt: string;
+  root?: string;
+  packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun' | 'unknown';
+  packageScripts: SourceHealthScript[];
+  scannedFiles: number;
+  parsedFiles: number;
+  skippedFiles: number;
+  syntaxErrorCount: number;
+  findings: SourceHealthFinding[];
+  error?: string;
+}
+
 export type SecurityCheckCategory =
   | 'headers'
   | 'cookies'
@@ -1201,6 +1234,7 @@ export interface ArtifactIndex {
   p2Log?: string;
   sourceAnalysisLog?: string;
   sourceRuntimeLog?: string;
+  sourceHealthLog?: string;
   pageModel?: string;
 }
 
@@ -1320,6 +1354,7 @@ export interface QaResult {
   requirementCoverage: RequirementCoverageResult;
   sourceAnalysis: SourceAnalysisResult;
   sourceRuntimeCorrelation: SourceRuntimeCorrelationResult;
+  sourceHealth: SourceHealthResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];
@@ -1359,6 +1394,7 @@ export interface AnalyzerContext {
   requirementCoverage?: RequirementCoverageResult;
   sourceAnalysis?: SourceAnalysisResult;
   sourceRuntimeCorrelation?: SourceRuntimeCorrelationResult;
+  sourceHealth?: SourceHealthResult;
   p2: P2TestResult;
   artifactIntegrity?: ArtifactIntegrityResult;
   analysisExclusions?: {

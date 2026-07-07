@@ -19,6 +19,7 @@ const FILE_ARTIFACT_KEYS = [
   'p2Log',
   'sourceAnalysisLog',
   'sourceRuntimeLog',
+  'sourceHealthLog',
   'pageModel'
 ] as const;
 

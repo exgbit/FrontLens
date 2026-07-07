@@ -83,6 +83,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Must-fix / should-fix: **${result.professionalSummary.mustFix.length} / ${result.professionalSummary.shouldFix.length}**
 - Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）
 - Claim guard: **${result.claimGuard.status}**；QA intake: **${result.qaIntake.status}**；Defect proof: **${result.defectProof.status}**
+- QA execution plan: **${result.qaPlan.status}** / confidence **${result.qaPlan.confidence}**
 
 ## Core fixes
 
@@ -108,6 +109,7 @@ ${forbidden.length ? ['以下结论当前不能正向使用：', ...forbidden].j
 - professional-audit.md: \`${markdownEscape(artifactPath(result, 'professionalAudit'))}\`
 - product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\`
 - product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\`
+- qa-plan.md: \`${markdownEscape(artifactPath(result, 'qaPlan'))}\`
 - qa-review.md: \`${markdownEscape(artifactPath(result, 'qaReview'))}\`
 - evidence-report.md: \`${markdownEscape(artifactPath(result, 'evidenceReport'))}\`
 - artifact integrity: **${result.artifactIntegrity.status}**（missing ${result.artifactIntegrity.missingCount}）

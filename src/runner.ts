@@ -37,6 +37,7 @@ import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 import { buildClaimGuard } from './claims/claimGuard.js';
 import { buildQaIntake } from './intake/qaIntake.js';
+import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
@@ -826,6 +827,27 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     issueDisposition,
     defectProof
   );
+  const qaPlan = buildQaExecutionPlan({
+    summary,
+    requirementCoverage,
+    journeyTests,
+    interactionTests,
+    rootCauseGroups,
+    defectProof,
+    regressionPlan,
+    professionalSummary,
+    claimGuard,
+    qaIntake,
+    qaSignoff,
+    environment,
+    pageProfile,
+    scopeReview,
+    sourceAnalysis,
+    sourceHealth,
+    testData,
+    artifactIntegrity: initialArtifactIntegrity,
+    artifacts
+  });
 
   const result: QaResult = {
     summary,
@@ -876,6 +898,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     issueDisposition,
     fixTasks,
     regressionPlan,
+    qaPlan,
     professionalSummary,
     defectProof,
     claimGuard,

@@ -19,6 +19,7 @@ import { buildScopeReview } from './product/scopeReview.js';
 import { buildClaimGuard } from './claims/claimGuard.js';
 import { buildQaIntake } from './intake/qaIntake.js';
 import { buildDefectProof } from './proof/defectProof.js';
+import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
@@ -118,6 +119,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   });
   result.claimGuard = buildClaimGuard(result);
   result.qaIntake = buildQaIntake(result);
+  result.qaPlan = buildQaExecutionPlan(result);
 }
 
 async function writeHumanReportsWithStableIntegrity(result: QaResult, formats: Set<string>): Promise<void> {
@@ -178,6 +180,7 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
     });
     result.claimGuard = buildClaimGuard(result);
     result.qaIntake = buildQaIntake(result);
+    result.qaPlan = buildQaExecutionPlan(result);
     await writeHumanReportsWithStableIntegrity(result, formats);
     await writeJsonReports(result);
   }

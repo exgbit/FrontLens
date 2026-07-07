@@ -12,6 +12,7 @@ export { buildRequirementCoverage } from './requirements/requirementCoverage.js'
 export { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 export { buildTestDataAssessment, writeTestDataAssessment } from './testData/testDataAssessment.js';
 export { buildRegressionPlan } from './regression/regressionPlan.js';
+export { buildQaExecutionPlan, formatQaExecutionPlan } from './plan/qaExecutionPlan.js';
 export { buildProfessionalSummary } from './summary/professionalSummary.js';
 export { buildScopeReview, createEmptyScopeReview } from './product/scopeReview.js';
 export { buildProductContextSuggestion, formatProductContextSuggestion } from './product/productContextSuggestion.js';

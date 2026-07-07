@@ -10,6 +10,7 @@ import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 import { runProfessionalAudit } from './audit/professionalAudit.js';
 import { buildProductContextSuggestion } from './product/productContextSuggestion.js';
+import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -182,6 +183,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_product_context',
         description: 'Read result.json and return the reviewable suggested productContext config plus scope questions to reduce product/design false positives on rerun.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_qa_plan',
+        description: 'Read result.json and return a professional QA execution/acceptance plan: reruns, requirements, journeys, product scope, evidence gaps, and blockers.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -541,6 +547,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         },
         issueDisposition: result.issueDisposition.summary,
         professionalSummary: result.professionalSummary,
+        qaPlan: result.qaPlan,
         qualityGate: result.qualityGate,
         qaSignoff: result.qaSignoff,
         regressionPlan: result.regressionPlan
@@ -626,6 +633,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildProductContextSuggestion(result));
+    }
+    case 'frontlens_qa_plan': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildQaExecutionPlan(result));
     }
     case 'frontlens_diff': {
       const args = validateArgs(params.arguments ?? {}, ['before', 'after', 'outputDir'], ['before', 'after']);

@@ -16,9 +16,10 @@ import { evaluateMatrixItemCiGate, evaluateQaCiGate, type CiGateMode } from './g
 import { formatProfessionalBrief } from './reporters/briefReporter.js';
 import { formatProfessionalAudit, runProfessionalAudit } from './audit/professionalAudit.js';
 import { buildProductContextSuggestion, formatProductContextSuggestion } from './product/productContextSuggestion.js';
+import { buildQaExecutionPlan, formatQaExecutionPlan } from './plan/qaExecutionPlan.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'qa-plan', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -36,6 +37,7 @@ Usage:
   frontlens brief --report <result.json>
   frontlens audit --report <result.json>
   frontlens product-context --report <result.json>
+  frontlens qa-plan --report <result.json>
   frontlens inspect --report <result.json>
   frontlens issues --report <result.json> [--severity high]
   frontlens root-causes --report <result.json>
@@ -72,7 +74,7 @@ Options:
   --role <name=storageState[|sessionStorageState]>
                               Role matrix entry. Use name= for anonymous/no storage. Repeatable.
   --roles <path>              Role matrix JSON file: [{name, storageState, sessionStorageState, expectedAllowedTexts, expectedForbiddenTexts}].
-  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/suggestions.
+  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/qa-plan/suggestions.
   --severity <level>          Filter issues by severity.
   --trace                     Enable Playwright trace.
   --no-trace                  Disable Playwright trace.
@@ -124,6 +126,7 @@ Examples:
   frontlens brief --report reports/frontlens/users/result.json
   frontlens audit --report reports/frontlens/users/result.json
   frontlens product-context --report reports/frontlens/users/result.json
+  frontlens qa-plan --report reports/frontlens/users/result.json
   frontlens issues --report reports/frontlens/users/result.json --severity high
   frontlens root-causes --report reports/frontlens/users/result.json
   frontlens disposition --report reports/frontlens/users/result.json
@@ -233,6 +236,7 @@ Exposed tools:
   frontlens_fix_tasks
   frontlens_audit
   frontlens_product_context
+  frontlens_qa_plan
   frontlens_diff
   frontlens_suggestions
 `);
@@ -246,7 +250,7 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'qa-plan' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
@@ -278,6 +282,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
           {
             summary: result.summary,
             professionalSummary: result.professionalSummary,
+            qaPlan: result.qaPlan,
             qaSignoff: result.qaSignoff,
             claimGuard: result.claimGuard,
             defectProof: result.defectProof,
@@ -308,6 +313,15 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
       console.log(JSON.stringify(suggestion, null, 2));
     } else {
       console.log(formatProductContextSuggestion(suggestion));
+    }
+    return;
+  }
+  if (command === 'qa-plan') {
+    const plan = buildQaExecutionPlan(result);
+    if (parsed.values.json) {
+      console.log(JSON.stringify(plan, null, 2));
+    } else {
+      console.log(formatQaExecutionPlan(plan));
     }
     return;
   }
@@ -348,6 +362,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
           },
           issueDisposition: result.issueDisposition.summary,
           professionalSummary: result.professionalSummary,
+          qaPlan: result.qaPlan,
           regressionPlan: result.regressionPlan,
           qualityGate: result.qualityGate,
           qaSignoff: result.qaSignoff
@@ -487,7 +502,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
+  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'qa-plan' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
     await handleResultCommand(argv[0], argv.slice(1));
     return;
   }

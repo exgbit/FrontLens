@@ -3,6 +3,7 @@ import type { QaResult } from '../types.js';
 import { writeJson } from '../utils/fs.js';
 import { runProfessionalAudit } from '../audit/professionalAudit.js';
 import { buildProductContextSuggestion } from '../product/productContextSuggestion.js';
+import { buildQaExecutionPlan } from '../plan/qaExecutionPlan.js';
 
 export function assignJsonArtifactPaths(result: QaResult): void {
   const outputDir = result.artifacts.outputDir;
@@ -20,6 +21,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.professionalAuditLog = path.join(outputDir, 'professional-audit.json');
   result.artifacts.productContextLog = path.join(outputDir, 'product-context.json');
   result.artifacts.productContextConfig = path.join(outputDir, 'product-context.config.json');
+  result.artifacts.qaPlanLog = path.join(outputDir, 'qa-plan.json');
   result.artifacts.regressionPlanLog = path.join(outputDir, 'regression-plan.json');
   result.artifacts.scopeReviewLog = path.join(outputDir, 'scope-review.json');
   result.artifacts.claimGuardLog = path.join(outputDir, 'claim-guard.json');
@@ -47,6 +49,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     professionalAuditLog: string;
     productContextLog: string;
     productContextConfig: string;
+    qaPlanLog: string;
     regressionPlanLog: string;
     scopeReviewLog: string;
     claimGuardLog: string;
@@ -70,6 +73,8 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   const productContextSuggestion = buildProductContextSuggestion(result);
   await writeJson(artifacts.productContextLog, productContextSuggestion);
   await writeJson(artifacts.productContextConfig, productContextSuggestion.usage.configSnippet);
+  result.qaPlan = buildQaExecutionPlan(result);
+  await writeJson(artifacts.qaPlanLog, result.qaPlan);
   await writeJson(artifacts.regressionPlanLog, result.regressionPlan);
   await writeJson(artifacts.scopeReviewLog, result.scopeReview);
   await writeJson(artifacts.claimGuardLog, result.claimGuard);

@@ -1449,6 +1449,64 @@ export interface RegressionPlanResult {
   notes: string[];
 }
 
+export type QaExecutionPlanStatus = 'ready' | 'needs-input' | 'blocked';
+export type QaExecutionPlanItemType =
+  | 'rerun'
+  | 'requirement'
+  | 'journey'
+  | 'root-cause'
+  | 'defect-proof'
+  | 'environment'
+  | 'product-context'
+  | 'test-data'
+  | 'artifact-integrity'
+  | 'download'
+  | 'source-health'
+  | 'role-matrix';
+
+export interface QaExecutionPlanItem {
+  id: string;
+  type: QaExecutionPlanItemType;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  status: 'ready' | 'needs-input' | 'blocked';
+  title: string;
+  why: string;
+  commands: string[];
+  steps: string[];
+  expected: string[];
+  evidenceRefs: string[];
+  issueIds?: string[];
+  requirementIds?: string[];
+  journeyIds?: string[];
+  notes?: string[];
+}
+
+export interface QaExecutionPlanResult {
+  generatedAt: string;
+  status: QaExecutionPlanStatus;
+  confidence: 'high' | 'medium' | 'low';
+  summary: string;
+  scope: {
+    targetUrl: string;
+    sourceRoot?: string;
+    signoffStatus: QaSignoffResult['status'];
+    businessValidationConfidence: BusinessValidationConfidence;
+    requirementSource: RequirementCoverageResult['source'];
+    environmentKind: EnvironmentAssessment['kind'];
+    pageType: PageProfileType;
+  };
+  commands: {
+    fullRerun: string;
+    productContextRerun?: string;
+    envCompare?: string;
+    roleMatrix?: string;
+  };
+  items: QaExecutionPlanItem[];
+  blockers: string[];
+  notes: string[];
+}
+
 export type ProfessionalSummaryItemKind =
   | 'defect'
   | 'coverage-gap'
@@ -1832,6 +1890,8 @@ export interface ArtifactIndex {
   productContext?: string;
   /** Direct FrontLens config JSON containing the suggested/reviewed productContext snippet. */
   productContextConfig?: string;
+  /** Professional QA execution/acceptance plan Markdown. */
+  qaPlan?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -1852,6 +1912,7 @@ export interface ArtifactIndex {
   professionalSummaryLog?: string;
   professionalAuditLog?: string;
   productContextLog?: string;
+  qaPlanLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2010,6 +2071,7 @@ export interface QaResult {
   issueDisposition: IssueDispositionResult;
   fixTasks: FixTask[];
   regressionPlan: RegressionPlanResult;
+  qaPlan: QaExecutionPlanResult;
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
   claimGuard: ClaimGuardResult;

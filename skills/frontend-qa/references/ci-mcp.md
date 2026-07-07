@@ -92,6 +92,7 @@ Tools exposed:
 - `frontlens_fix_tasks`: return machine-executable fix tasks for downstream repair skills.
 - `frontlens_audit`: run professional report-contract self-check for overclaiming, proof-ready fix queue, source evidence, artifact integrity, and scope alignment.
 - `frontlens_product_context`: return a reviewable suggested productContext config plus scope questions so product/design/style/device findings can be downgraded consistently on rerun.
+- `frontlens_qa_plan`: return the professional QA execution/acceptance worklist: PRD, journey, product-context, environment, test-data, proof, and rerun items.
 - `frontlens_diff`: compare two `result.json` files by stable fingerprints.
 - `frontlens_env_compare`: run dev/source-module and build/preview QA, then classify persistent, dev-only, preview-only, and dev-artifact findings.
 - `frontlens_suggestions`: return frontend/backend/product/test suggestions.

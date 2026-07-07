@@ -42,8 +42,9 @@ import { buildScopeReview } from './product/scopeReview.js';
 import { buildClaimGuard } from './claims/claimGuard.js';
 import { buildQaIntake } from './intake/qaIntake.js';
 import { buildDefectProof } from './proof/defectProof.js';
+import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 
-export const RESULT_SCHEMA_VERSION = '1.53.0';
+export const RESULT_SCHEMA_VERSION = '1.54.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1208,6 +1209,31 @@ export function normalizeResult(raw: unknown): QaResult {
       outputDir: asString(artifactsRaw.outputDir)
     } as ArtifactIndex
   });
+  const artifacts = {
+    ...artifactsRaw,
+    outputDir: asString(artifactsRaw.outputDir)
+  } as ArtifactIndex;
+  const qaPlan = buildQaExecutionPlan({
+    summary,
+    requirementCoverage,
+    journeyTests,
+    interactionTests,
+    rootCauseGroups,
+    defectProof,
+    regressionPlan,
+    professionalSummary,
+    claimGuard,
+    qaIntake,
+    qaSignoff,
+    environment,
+    pageProfile,
+    scopeReview,
+    sourceAnalysis,
+    sourceHealth,
+    testData,
+    artifactIntegrity,
+    artifacts
+  });
 
   return {
     summary,
@@ -1241,6 +1267,7 @@ export function normalizeResult(raw: unknown): QaResult {
     issueDisposition,
     fixTasks,
     regressionPlan,
+    qaPlan,
     professionalSummary,
     defectProof,
     claimGuard,
@@ -1248,10 +1275,7 @@ export function normalizeResult(raw: unknown): QaResult {
     qualityGate,
     qaSignoff,
     aiAnalysis,
-    artifacts: {
-      ...artifactsRaw,
-      outputDir: asString(artifactsRaw.outputDir)
-    } as ArtifactIndex,
+    artifacts,
     metadata: {
       config: metadataConfig,
       durationMs: asNumber(metadataRaw.durationMs, 0),

@@ -1000,7 +1000,7 @@ export function formatProfessionalReview(result: QaResult): string {
   const sourceScriptFailed = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
   const disposition = result.issueDisposition.summary;
   const artifactPath = (value: string | undefined): string => value ? `\`${markdownEscape(reportPath(result, value) ?? value)}\`` : '-';
-  const rootRows = actionableGroups.slice(0, 12).map((group) => {
+  const rootRows = actionableGroups.slice(0, 5).map((group) => {
     const sourceLocations = group.sourceLocations?.map((location) => `${location.file}:${location.line}`).slice(0, 4) ?? [];
     const evidence = [
       group.issueIds.length ? `issues:${group.issueIds.join(',')}` : '',
@@ -1031,15 +1031,15 @@ export function formatProfessionalReview(result: QaResult): string {
   const dispositionSampleRows = result.issueDisposition.items
     .filter((item) => item.actionability !== 'actionable' || item.status !== 'confirmed')
     .sort((a, b) => (dispositionRank[a.status] ?? 99) - (dispositionRank[b.status] ?? 99) || severityOrder[a.severity] - severityOrder[b.severity] || a.issueId.localeCompare(b.issueId))
-    .slice(0, 12)
-    .map((item) => `| ${markdownEscape(item.issueId)} | ${severityLabel[item.severity]} | ${markdownEscape(item.status)} | ${markdownEscape(item.actionability)} | ${markdownEscape(item.owner)} | ${markdownEscape(truncateMiddle(item.reason, 150))} | ${markdownEscape(truncateMiddle(item.nextStep, 140))} |`);
+    .slice(0, 6)
+    .map((item) => `| ${markdownEscape(item.issueId)} | ${severityLabel[item.severity]} | ${markdownEscape(item.status)} | ${markdownEscape(item.actionability)} | ${markdownEscape(item.owner)} | ${markdownEscape(truncateMiddle(item.reason, 130))} | ${markdownEscape(truncateMiddle(item.nextStep, 120))} |`);
   const gapRows = [
     ...result.qaSignoff.blockers.map((item) => `| blocker | ${markdownEscape(item)} |`),
     ...result.qaSignoff.risks.map((item) => `| risk | ${markdownEscape(item)} |`),
     ...result.qaSignoff.coverageGaps.map((item) => `| gap | ${markdownEscape(item)} |`),
     ...result.qaSignoff.requiredFollowups.map((item) => `| follow-up | ${markdownEscape(item)} |`)
-  ].slice(0, 16);
-  const requirementRows = result.requirementCoverage.items.slice(0, 12).map((item) => {
+  ].slice(0, 8);
+  const requirementRows = result.requirementCoverage.items.slice(0, 8).map((item) => {
     const evidence = [
       item.evidence.journeyIds.length ? `journey:${item.evidence.journeyIds.join(',')}` : '',
       item.evidence.selectors.length ? `selector:${item.evidence.selectors.slice(0, 2).join(',')}` : '',
@@ -1049,8 +1049,8 @@ export function formatProfessionalReview(result: QaResult): string {
   });
   const coverageGapRows = result.qaCoverage.items
     .filter((item) => item.status !== 'covered')
-    .slice(0, 10)
-    .map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.area)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(truncateMiddle(item.gaps.slice(0, 2).join('；') || item.title, 150))} | ${markdownEscape(truncateMiddle(item.nextSteps.slice(0, 2).join('；') || '-', 140))} |`);
+    .slice(0, 6)
+    .map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.area)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(truncateMiddle(item.gaps.slice(0, 2).join('；') || item.title, 130))} | ${markdownEscape(truncateMiddle(item.nextSteps.slice(0, 2).join('；') || '-', 120))} |`);
 
   const evidenceReport = typeof result.artifacts.evidenceReport === 'string' ? result.artifacts.evidenceReport : result.artifacts.markdownReport;
 
@@ -1093,7 +1093,7 @@ ${rootRows.length ? ['| Priority | Severity | Owner | Root cause | Raw issues | 
 - Artifact：${artifactPath(result.artifacts.defectProof)}
 - Rule：must-fix 缺陷需要用户影响、运行时证据、源码/owner 修复面、复现步骤，以及必要的需求/产品范围上下文。
 
-${result.defectProof.items.length ? ['| Root cause | Proof | Score | Missing / weak evidence | Next step |', '| --- | --- | --- | --- | --- |', ...result.defectProof.items.slice(0, 8).map((item) => `| ${markdownEscape(item.rootCauseGroupId)} | ${markdownEscape(item.status)} | ${item.score} | ${markdownEscape(truncateMiddle(item.missingEvidence.slice(0, 2).join('；') || '-', 140))} | ${markdownEscape(truncateMiddle(item.nextSteps.slice(0, 2).join('；') || '-', 140))} |`), ''].join('\n') : '当前没有 root cause 需要缺陷证明。'}
+${result.defectProof.items.length ? ['| Root cause | Proof | Score | Missing / weak evidence | Next step |', '| --- | --- | --- | --- | --- |', ...result.defectProof.items.slice(0, 6).map((item) => `| ${markdownEscape(item.rootCauseGroupId)} | ${markdownEscape(item.status)} | ${item.score} | ${markdownEscape(truncateMiddle(item.missingEvidence.slice(0, 2).join('；') || '-', 140))} | ${markdownEscape(truncateMiddle(item.nextSteps.slice(0, 2).join('；') || '-', 140))} |`), ''].join('\n') : '当前没有 root cause 需要缺陷证明。'}
 
 ## 非缺陷与降噪
 
@@ -1123,7 +1123,7 @@ ${coverageGapRows.length ? ['| ID | Area | Status | Confidence | Gap | Next step
 - Artifact：${artifactPath(result.artifacts.claimGuard)}
 - Required inputs：${result.claimGuard.requiredInputs.length ? markdownEscape(result.claimGuard.requiredInputs.slice(0, 5).join('；')) : '-'}
 
-${result.claimGuard.items.length ? ['| Claim | Status | Allowed wording | Forbidden wording |', '| --- | --- | --- | --- |', ...result.claimGuard.items.slice(0, 8).map((item) => `| ${markdownEscape(item.claim)} | ${markdownEscape(item.status)} | ${markdownEscape(item.allowedWording)} | ${markdownEscape(item.forbiddenWording.slice(0, 2).join('；'))} |`), ''].join('\n') : '暂无 claim guard 明细。'}
+${result.claimGuard.items.length ? ['| Claim | Status | Allowed wording | Forbidden wording |', '| --- | --- | --- | --- |', ...result.claimGuard.items.slice(0, 6).map((item) => `| ${markdownEscape(item.claim)} | ${markdownEscape(item.status)} | ${markdownEscape(item.allowedWording)} | ${markdownEscape(item.forbiddenWording.slice(0, 2).join('；'))} |`), ''].join('\n') : '暂无 claim guard 明细。'}
 
 ## 专业 QA 待补输入 / 避免猜测
 
@@ -1139,7 +1139,7 @@ ${result.qaIntake.topQuestions.length ? ['| Priority | Category | Question | Why
 - Questions：${result.scopeReview.questions.length}
 - Suggested config：${artifactPath(result.artifacts.scopeReview)}
 
-${result.scopeReview.questions.length ? ['| ID | Category | Question | Default disposition |', '| --- | --- | --- | --- |', ...result.scopeReview.questions.slice(0, 8).map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.category)} | ${markdownEscape(item.question)} | ${markdownEscape(item.defaultDisposition)} |`), ''].join('\n') : '产品范围已配置；按 productContext 作为产品/设计 triage 的依据。'}
+${result.scopeReview.questions.length ? ['| ID | Category | Question | Default disposition |', '| --- | --- | --- | --- |', ...result.scopeReview.questions.slice(0, 6).map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.category)} | ${markdownEscape(item.question)} | ${markdownEscape(item.defaultDisposition)} |`), ''].join('\n') : '产品范围已配置；按 productContext 作为产品/设计 triage 的依据。'}
 
 ## 需求/能力覆盖
 

@@ -19,6 +19,14 @@ function countHeading2(markdown: string): number {
   return markdown.split('\n').filter((line) => /^##\s+/.test(line)).length;
 }
 
+function countTableRows(markdown: string): number {
+  return markdown.split('\n').filter((line) => /^\|/.test(line.trim())).length;
+}
+
+function countContentLines(markdown: string): number {
+  return markdown.split('\n').filter((line) => line.trim().length > 0).length;
+}
+
 function excerpt(markdown: string, phrase: string): string {
   const normalized = normalizeText(markdown);
   const normalizedPhrase = normalizeText(phrase);
@@ -92,17 +100,26 @@ function auditProfileDepth(profile: ReportProfile, markdown: string, findings: R
     });
   }
 
-  if (profile === 'executive') {
-    const headings = countHeading2(markdown);
-    if (markdown.length > 12000 || headings > 10) {
-      add(findings, {
-        severity: 'warning',
-        category: 'profile-depth',
-        title: 'Executive report may be too detailed for a decision brief.',
-        evidence: `length=${markdown.length}, h2=${headings}`,
-        recommendation: 'Prefer a one-page sign-off/fix queue summary; keep raw evidence and large matrices in sidecar artifacts.'
-      });
-    }
+  const headings = countHeading2(markdown);
+  const tableRows = countTableRows(markdown);
+  const contentLines = countContentLines(markdown);
+  if (profile === 'executive' && (markdown.length > 9000 || headings > 8 || tableRows > 45 || contentLines > 120)) {
+    add(findings, {
+      severity: 'warning',
+      category: 'profile-depth',
+      title: 'Executive report may be too detailed for a decision brief.',
+      evidence: `length=${markdown.length}, h2=${headings}, tableRows=${tableRows}, contentLines=${contentLines}`,
+      recommendation: 'Prefer a one-page sign-off/fix queue summary; keep raw evidence and large matrices in sidecar artifacts.'
+    });
+  }
+  if (profile === 'professional' && (markdown.length > 24000 || headings > 16 || tableRows > 140 || contentLines > 260)) {
+    add(findings, {
+      severity: 'warning',
+      category: 'profile-depth',
+      title: 'Professional report may be too detailed for default review.',
+      evidence: `length=${markdown.length}, h2=${headings}, tableRows=${tableRows}, contentLines=${contentLines}`,
+      recommendation: 'Keep report.md focused on sign-off, proof-ready root causes, non-defect buckets, coverage gaps, and next actions; move selector-level evidence to evidence-report.md sidecars.'
+    });
   }
 }
 
@@ -200,7 +217,7 @@ export function runReportContentAudit(result: QaResult, markdown: string): Repor
     findings,
     notes: [
       'Report content audit inspects the generated human-facing Markdown, not only result.json.',
-      'It prevents forbidden overclaim wording, raw-evidence leakage into concise profiles, missing raw-score caveats, and hidden coverage/artifact boundaries.'
+      'It prevents forbidden overclaim wording, raw-evidence leakage or excessive detail in concise profiles, missing raw-score caveats, and hidden coverage/artifact boundaries.'
     ]
   };
 }

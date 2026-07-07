@@ -50,3 +50,15 @@ test('report content audit warns when raw score lacks caveat', () => {
 
   assert.equal(audit.findings.some((item) => item.category === 'raw-score-caveat' && item.severity === 'warning'), true);
 });
+
+
+test('report content audit warns when professional report is too detailed for default review', () => {
+  const result = baseResult();
+  result.metadata.config.report.profile = 'professional';
+  const largeTable = Array.from({ length: 150 }, (_, index) => `| ISSUE-${index} | high | raw selector detail |`).join('\n');
+  const markdown = `# FrontLens Professional QA Report\n\nQA sign-off ok\nAdjusted score 90/100\nFix queue 0\nRaw score: 90/100（原始扫描趋势分，不能直接等同页面质量）\nQA coverage gap: none\n\n## 结论\n\n| Issue | Severity | Detail |\n| --- | --- | --- |\n${largeTable}\n`;
+
+  const audit = runReportContentAudit(result, markdown);
+
+  assert.equal(audit.findings.some((item) => item.category === 'profile-depth' && /too detailed/.test(item.title)), true);
+});

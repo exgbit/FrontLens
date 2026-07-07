@@ -89,6 +89,7 @@ Default final answers should fit in one decision screen unless the user asks for
 - List at most the top proof-ready P0/P1/P2 root causes first; merge duplicated raw findings by implementation cause.
 - Summarize product/style/device-scope observations as bucket counts plus one representative example, not per-selector tasks.
 - Never restate every raw issue when `issueDisposition`, `professionalSummary`, or `qa-review.md` already downgraded it.
+- If `reportContentAudit` raises a profile-depth/compactness warning, use `brief.md` or `qa-review.md` as the answer shape and link to `evidence-report.md` for raw selector/network detail.
 - If there are no proof-ready defects, say that explicitly and provide the missing inputs needed to turn conditional observations into defects.
 - Expand raw evidence only for retained core defects or when the user explicitly requests deep drill-down.
 

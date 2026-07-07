@@ -234,6 +234,9 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     .map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.category)}</td><td>${escapeHtml(item.question)}</td><td>${escapeHtml(item.defaultDisposition)}</td></tr>`)
     .join('\n');
   const scopeConfigSnippet = JSON.stringify(result.scopeReview.configSnippet, null, 2);
+  const claimGuardRows = result.claimGuard.items
+    .map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.claim)}</td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.confidence)}</td><td>${escapeHtml(item.allowedWording)}</td><td>${escapeHtml(item.forbiddenWording.join('; '))}</td></tr>`)
+    .join('\n');
   const rootCauseRows = result.rootCauseGroups
     .slice(0, 80)
     .map((group) => {
@@ -352,6 +355,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Environment</span><strong>${escapeHtml(result.environment.kind)}</strong></div>
           <div class="metric"><span>Page Profile</span><strong>${escapeHtml(result.pageProfile.pageType)}</strong></div>
           <div class="metric"><span>Scope Review</span><strong>${escapeHtml(result.scopeReview.status)} / ${result.scopeReview.questions.length}</strong></div>
+          <div class="metric"><span>Claim Guard</span><strong>${escapeHtml(result.claimGuard.status)} / ${result.claimGuard.forbiddenClaims.length}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
@@ -453,6 +457,20 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <summary>Suggested productContext</summary>
           <pre>${escapeHtml(scopeConfigSnippet)}</pre>
         </details>
+      </section>
+
+      <section>
+        <h2>Claim Guard / 结论护栏</h2>
+        <p>${escapeHtml(result.claimGuard.summary)}</p>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.claimGuard.status)}</strong></div>
+          <div class="metric"><span>Forbidden</span><strong>${result.claimGuard.forbiddenClaims.length}</strong></div>
+          <div class="metric"><span>Required inputs</span><strong>${result.claimGuard.requiredInputs.length}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Claim</th><th>Status</th><th>Confidence</th><th>Allowed wording</th><th>Forbidden wording</th></tr></thead>
+          <tbody>${claimGuardRows || '<tr><td colspan="6">No claim guard items</td></tr>'}</tbody>
+        </table>
       </section>
 
       <section>

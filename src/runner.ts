@@ -35,6 +35,7 @@ import { buildRequirementCoverage } from './requirements/requirementCoverage.js'
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
+import { buildClaimGuard } from './claims/claimGuard.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
@@ -761,6 +762,22 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     qaSignoff,
     regressionPlan
   });
+  const claimGuard = buildClaimGuard({
+    qaSignoff,
+    qualityGate,
+    requirementCoverage,
+    environment,
+    scopeReview,
+    sourceRuntimeCorrelation,
+    artifactIntegrity: initialArtifactIntegrity,
+    sourceHealth,
+    rootCauseGroups,
+    issueDisposition,
+    p2,
+    security,
+    artifacts,
+    journeyTests
+  });
   const summary = applyAdjustedScore(
     buildSummary({
       url: redactUrl(config.target.url),
@@ -824,6 +841,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     fixTasks,
     regressionPlan,
     professionalSummary,
+    claimGuard,
     qualityGate,
     qaSignoff,
     aiAnalysis,

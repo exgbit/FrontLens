@@ -1074,6 +1074,12 @@ async function main(): Promise<void> {
             questionCount: result.scopeReview.questions.length,
             summary: result.scopeReview.summary
           },
+          claimGuard: {
+            status: result.claimGuard.status,
+            forbiddenCount: result.claimGuard.forbiddenClaims.length,
+            requiredInputCount: result.claimGuard.requiredInputs.length,
+            summary: result.claimGuard.summary
+          },
           testData: {
             status: result.testData.status,
             environment: result.testData.environment,
@@ -1128,6 +1134,7 @@ async function main(): Promise<void> {
     console.log(`Environment: ${result.environment.kind}, trust perf/security ${result.environment.trust.performance}/${result.environment.trust.security}`);
     console.log(`Page profile: ${result.pageProfile.status}/${result.pageProfile.pageType} (${result.pageProfile.confidence})`);
     console.log(`Scope Review: ${result.scopeReview.status}, questions ${result.scopeReview.questions.length}`);
+    console.log(`Claim Guard: ${result.claimGuard.status}, forbidden ${result.claimGuard.forbiddenClaims.length}, required inputs ${result.claimGuard.requiredInputs.length}`);
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
     console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
@@ -1142,6 +1149,7 @@ async function main(): Promise<void> {
     console.log(`Markdown: ${result.artifacts.markdownReport ?? '(disabled)'}`);
     console.log(`QA Review: ${result.artifacts.qaReview ?? '(disabled)'}`);
     console.log(`Scope Review: ${result.artifacts.scopeReview ?? '(disabled)'}`);
+    console.log(`Claim Guard: ${result.artifacts.claimGuard ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

@@ -421,6 +421,12 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           questionCount: result.scopeReview.questions.length,
           summary: result.scopeReview.summary
         },
+        claimGuard: {
+          status: result.claimGuard.status,
+          forbiddenCount: result.claimGuard.forbiddenClaims.length,
+          requiredInputCount: result.claimGuard.requiredInputs.length,
+          summary: result.claimGuard.summary
+        },
         testData: {
           status: result.testData.status,
           environment: result.testData.environment,
@@ -497,6 +503,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         environment: result.environment,
         pageProfile: result.pageProfile,
         scopeReview: result.scopeReview,
+        claimGuard: result.claimGuard,
         testData: result.testData,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,

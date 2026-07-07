@@ -16,7 +16,7 @@ Report raw score separately from adjusted risk. If many findings are skipped, sy
 
 Use `qaSignoff`, `environment`, and `pageProfile` before final sign-off wording. If `qaSignoff.businessValidationConfidence` is not `runtime-verified`, or `environment.trust.performance/security` is not high for release claims, do not describe business validation or production readiness as fully passed even when `qualityGate.status=pass`.
 
-Use `scopeReview` before product/design conclusions. If `scopeReview.status=needs-input`, answer the questions in `scope-review.md` or copy the confirmed `configSnippet.productContext` into the next run before promoting style, pagination, export, refresh, responsive, visual-density, or device-scope findings to must-fix defects.
+Use `claimGuard` before final wording: if `claimGuard.status=limited|blocked`, remove or explicitly negate every `forbiddenClaims[]` phrase and use `items[].allowedWording` instead. Use `scopeReview` before product/design conclusions. If `scopeReview.status=needs-input`, answer the questions in `scope-review.md` or copy the confirmed `configSnippet.productContext` into the next run before promoting style, pagination, export, refresh, responsive, visual-density, or device-scope findings to must-fix defects.
 
 Apply an **actionability gate** before presenting final findings:
 

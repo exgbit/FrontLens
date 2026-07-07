@@ -1476,6 +1476,38 @@ export interface ProfessionalSummaryResult {
   notes: string[];
 }
 
+export type ClaimGuardClaimType =
+  | 'business-validation'
+  | 'release-signoff'
+  | 'production-performance'
+  | 'production-security'
+  | 'frontend-defect'
+  | 'api-ui-data-binding'
+  | 'download-export'
+  | 'source-health';
+
+export interface ClaimGuardItem {
+  id: string;
+  claim: ClaimGuardClaimType;
+  status: 'allowed' | 'limited' | 'blocked';
+  confidence: 'high' | 'medium' | 'low';
+  summary: string;
+  allowedWording: string;
+  forbiddenWording: string[];
+  evidenceRefs: string[];
+  requiredInputs: string[];
+}
+
+export interface ClaimGuardResult {
+  generatedAt: string;
+  status: 'clear' | 'limited' | 'blocked';
+  summary: string;
+  items: ClaimGuardItem[];
+  forbiddenClaims: string[];
+  requiredInputs: string[];
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -1705,6 +1737,8 @@ export interface ArtifactIndex {
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
+  claimGuard?: string;
+  claimGuardLog?: string;
   downloadDir?: string;
   downloadedFiles?: string[];
   sourceAnalysisLog?: string;
@@ -1855,6 +1889,7 @@ export interface QaResult {
   fixTasks: FixTask[];
   regressionPlan: RegressionPlanResult;
   professionalSummary: ProfessionalSummaryResult;
+  claimGuard: ClaimGuardResult;
   qualityGate: QaQualityGate;
   qaSignoff: QaSignoffResult;
   aiAnalysis: AiAnalysisResult;

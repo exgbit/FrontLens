@@ -39,8 +39,9 @@ import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 import { buildScopeReview } from './product/scopeReview.js';
+import { buildClaimGuard } from './claims/claimGuard.js';
 
-export const RESULT_SCHEMA_VERSION = '1.28.0';
+export const RESULT_SCHEMA_VERSION = '1.29.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1064,6 +1065,7 @@ export function normalizeResult(raw: unknown): QaResult {
   const pageModel = normalizePageModel(raw.pageModel, url);
   const coverage = normalizeCoverage(raw.coverage, browser);
   const security = normalizeSecurity(raw.security);
+  const p2 = normalizeP2(raw.p2);
   const phaseErrors = asArray<PhaseError>(metadataRaw.phaseErrors);
   const interactionTests = asArray<InteractionTestResult>(raw.interactionTests);
   const journeyTests = asArray<JourneyTestResult>(raw.journeyTests);
@@ -1149,6 +1151,25 @@ export function normalizeResult(raw: unknown): QaResult {
     qaSignoff,
     regressionPlan
   });
+  const claimGuard = buildClaimGuard({
+    qaSignoff,
+    qualityGate,
+    requirementCoverage,
+    environment,
+    scopeReview,
+    sourceRuntimeCorrelation,
+    artifactIntegrity,
+    sourceHealth,
+    rootCauseGroups,
+    issueDisposition,
+    p2,
+    security,
+    artifacts: {
+      ...artifactsRaw,
+      outputDir: asString(artifactsRaw.outputDir)
+    } as ArtifactIndex,
+    journeyTests
+  });
 
   return {
     summary,
@@ -1176,13 +1197,14 @@ export function normalizeResult(raw: unknown): QaResult {
     pageProfile,
     scopeReview,
     testData,
-    p2: normalizeP2(raw.p2),
+    p2,
     artifactIntegrity,
     rootCauseGroups,
     issueDisposition,
     fixTasks,
     regressionPlan,
     professionalSummary,
+    claimGuard,
     qualityGate,
     qaSignoff,
     aiAnalysis,

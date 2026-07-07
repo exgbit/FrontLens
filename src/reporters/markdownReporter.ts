@@ -331,6 +331,24 @@ ${configJson}
 `;
 }
 
+function formatClaimGuard(result: QaResult): string {
+  const guard = result.claimGuard;
+  const rows = guard.items.map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.claim)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(truncateMiddle(item.allowedWording, 120))} | ${markdownEscape(truncateMiddle(item.forbiddenWording.join('；'), 140))} |`);
+  return `## Claim Guard / 结论护栏
+
+- Status：**${guard.status}**
+- Summary：${markdownEscape(guard.summary)}
+- Required inputs：${guard.requiredInputs.length ? markdownEscape(guard.requiredInputs.join('；')) : '-'}
+- Notes：${guard.notes.length ? markdownEscape(guard.notes.join('；')) : '-'}
+
+${rows.length ? ['| ID | Claim | Status | Confidence | Allowed wording | Forbidden wording |', '| --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '当前报告缺少 claim guard 明细。'}
+
+### Forbidden claims
+
+${guard.forbiddenClaims.length ? guard.forbiddenClaims.map((item) => `- ${markdownEscape(item)}`).join('\n') : '-'}
+`;
+}
+
 function formatTestDataAssessment(result: QaResult): string {
   const testData = result.testData;
   const rows = testData.findings.slice(0, 30).map((finding) => `| ${markdownEscape(finding.id)} | ${finding.severity} | ${finding.category} | ${markdownEscape(finding.recordId ?? '-')} | ${markdownEscape(finding.operationId ?? '-')} | ${markdownEscape(finding.message)} |`);
@@ -958,6 +976,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Adjusted score：**${result.summary.adjustedScore}/100**（基于 ${result.summary.adjustedIssueCount} 个 actionable finding）
 - QA sign-off：**${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
 - Professional summary：${markdownEscape(result.professionalSummary.headline)}
+- Claim guard：**${result.claimGuard.status}** / forbidden claims ${result.claimGuard.forbiddenClaims.length}
 - Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
 - Actionable root causes：${actionableGroups.length}（P0/P1 ${blockerGroups.length}）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
@@ -983,6 +1002,14 @@ ${nonDefectRows.join('\n')}
 ## 签核阻断、风险与待补证据
 
 ${gapRows.length ? ['| Type | Item |', '| --- | --- |', ...gapRows, ''].join('\n') : '未发现额外阻断、风险或待补证据。'}
+
+## 结论护栏 / 禁止过度承诺
+
+- Claim guard：**${result.claimGuard.status}**
+- Artifact：${artifactPath(result.artifacts.claimGuard)}
+- Required inputs：${result.claimGuard.requiredInputs.length ? markdownEscape(result.claimGuard.requiredInputs.slice(0, 5).join('；')) : '-'}
+
+${result.claimGuard.items.length ? ['| Claim | Status | Allowed wording | Forbidden wording |', '| --- | --- | --- | --- |', ...result.claimGuard.items.slice(0, 8).map((item) => `| ${markdownEscape(item.claim)} | ${markdownEscape(item.status)} | ${markdownEscape(item.allowedWording)} | ${markdownEscape(item.forbiddenWording.slice(0, 2).join('；'))} |`), ''].join('\n') : '暂无 claim guard 明细。'}
 
 ## 产品范围 / PRD 待确认
 
@@ -1015,10 +1042,12 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const evidencePath = path.join(result.artifacts.outputDir, 'evidence-report.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
+  const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
   result.artifacts.markdownReport = outputPath;
   result.artifacts.evidenceReport = evidencePath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
+  result.artifacts.claimGuard = claimGuardPath;
 
   const dispositionByIssue = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
   const isReportActionable = (issue: Issue): boolean => dispositionByIssue.get(issue.id)?.actionability === 'actionable' || (!dispositionByIssue.has(issue.id) && isActionableIssue(issue));
@@ -1050,6 +1079,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Raw Finding Disposition：${result.issueDisposition.summary.actionableCount} actionable / ${result.issueDisposition.summary.conditionalCount} conditional / ${result.issueDisposition.summary.nonActionableCount} non-actionable
 - Fix Tasks：${result.fixTasks.length}
 - Professional Summary：${result.professionalSummary.status} / must-fix ${result.professionalSummary.mustFix.length} / non-defect ${result.professionalSummary.nonDefectObservations.length}
+- Claim Guard：${result.claimGuard.status} / forbidden ${result.claimGuard.forbiddenClaims.length}
 - QA Sign-off：${result.qaSignoff.status} / ${result.qaSignoff.confidence} / ${result.qaSignoff.businessValidationConfidence}
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
@@ -1073,6 +1103,8 @@ ${formatEnvironmentAssessment(result)}
 ${formatPageProfileAssessment(result)}
 
 ${formatScopeReview(result)}
+
+${formatClaimGuard(result)}
 
 ${formatTestDataAssessment(result)}
 
@@ -1184,4 +1216,5 @@ ${formatArtifacts(result)}
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);
   await writeText(scopeReviewPath, formatScopeReview(result));
+  await writeText(claimGuardPath, formatClaimGuard(result));
 }

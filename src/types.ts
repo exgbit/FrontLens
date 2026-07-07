@@ -1508,6 +1508,42 @@ export interface ClaimGuardResult {
   notes: string[];
 }
 
+export type QaIntakeCategory =
+  | 'requirements'
+  | 'product-scope'
+  | 'role-auth'
+  | 'test-data'
+  | 'environment'
+  | 'source-health'
+  | 'journey'
+  | 'download-export'
+  | 'claim-guard'
+  | 'artifact-integrity'
+  | 'regression';
+
+export interface QaIntakeQuestion {
+  id: string;
+  category: QaIntakeCategory;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  question: string;
+  why: string;
+  howToAnswer: string;
+  evidenceRefs: string[];
+  blocksClaims: ClaimGuardClaimType[];
+  configHint?: string;
+}
+
+export interface QaIntakeResult {
+  generatedAt: string;
+  status: 'ready' | 'needs-input' | 'blocked';
+  summary: string;
+  topQuestions: QaIntakeQuestion[];
+  questions: QaIntakeQuestion[];
+  readyToProceed: string[];
+  configHints: string[];
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -1739,6 +1775,8 @@ export interface ArtifactIndex {
   scopeReviewLog?: string;
   claimGuard?: string;
   claimGuardLog?: string;
+  qaIntake?: string;
+  qaIntakeLog?: string;
   downloadDir?: string;
   downloadedFiles?: string[];
   sourceAnalysisLog?: string;
@@ -1890,6 +1928,7 @@ export interface QaResult {
   regressionPlan: RegressionPlanResult;
   professionalSummary: ProfessionalSummaryResult;
   claimGuard: ClaimGuardResult;
+  qaIntake: QaIntakeResult;
   qualityGate: QaQualityGate;
   qaSignoff: QaSignoffResult;
   aiAnalysis: AiAnalysisResult;

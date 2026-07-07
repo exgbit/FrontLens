@@ -8,7 +8,7 @@ FrontLens is the evidence engine; the skill is the QA engineer. Do not present r
 
 A professional-test-engineer answer must include:
 
-1. **Scope and assumptions**: target URL, route/page, sourceRoot, environment, pageProfile/scopeReview/product scope, claimGuard wording limits, auth role, selected modules, allowed/destructive actions, known missing inputs.
+1. **Scope and assumptions**: target URL, route/page, sourceRoot, environment, pageProfile/scopeReview/product scope, claimGuard wording limits, qaIntake top questions, auth role, selected modules, allowed/destructive actions, known missing inputs.
 2. **Requirement coverage matrix**: business requirement / evidence / confidence / result / gaps. If no PRD or acceptance criteria was provided, infer only obvious page capabilities and mark them `inferred`, not `confirmed requirement`.
 3. **Execution evidence**: report-relative screenshot/DOM/network/console/download/source file references that exist; treat `artifactIntegrity.status === failed` as a report-quality defect.
 4. **Defect triage**: core defects by root cause, raw-finding disposition, severity, owner, reproduction, fix surface, and merged raw issue IDs. Do not list every raw issue as a separate bug.
@@ -16,7 +16,7 @@ A professional-test-engineer answer must include:
 6. **Regression pack**: use `result.json.regressionPlan` first; include exact FrontLens rerun commands, blocked/needs-input items, journey/requirement/download/environment checks, and focused verification steps after fixes.
 7. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
-Use `result.json.professionalSummary` as the first human-facing triage summary, `result.json.claimGuard` as the anti-overclaim wording gate, and `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `claimGuard`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, scope questions, or relevant journeys are missing.
+Use `result.json.professionalSummary` as the first human-facing triage summary, `result.json.claimGuard` as the anti-overclaim wording gate, `result.json.qaIntake` as the professional follow-up question list, and `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `claimGuard`, `qaIntake`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, scope questions, or relevant journeys are missing.
 
 ## Inputs a human QA would ask for
 
@@ -97,6 +97,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No business pass from a recorded journey that only contains `click`/`fill`/`press`; add `expectVisible`/`expectText`/`expectUrl`/`expectRequest` or requirement evidence first.
 - No release sign-off solely from `summary.score`; use `claimGuard`, `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
 - No final answer may use a phrase listed in `claimGuard.forbiddenClaims[]` as a positive conclusion.
+- No product/design/style/API-data mismatch uncertainty should be promoted to a must-fix bug while `qaIntake.topQuestions[]` still blocks the linked claim.
 
 ## Output template
 

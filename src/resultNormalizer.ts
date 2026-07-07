@@ -40,8 +40,9 @@ import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 import { buildScopeReview } from './product/scopeReview.js';
 import { buildClaimGuard } from './claims/claimGuard.js';
+import { buildQaIntake } from './intake/qaIntake.js';
 
-export const RESULT_SCHEMA_VERSION = '1.29.0';
+export const RESULT_SCHEMA_VERSION = '1.30.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1170,6 +1171,26 @@ export function normalizeResult(raw: unknown): QaResult {
     } as ArtifactIndex,
     journeyTests
   });
+  const qaIntake = buildQaIntake({
+    claimGuard,
+    scopeReview,
+    qaSignoff,
+    qualityGate,
+    requirementCoverage,
+    environment,
+    sourceAnalysis,
+    sourceRuntimeCorrelation,
+    sourceHealth,
+    artifactIntegrity,
+    testData,
+    regressionPlan,
+    rootCauseGroups,
+    issueDisposition,
+    artifacts: {
+      ...artifactsRaw,
+      outputDir: asString(artifactsRaw.outputDir)
+    } as ArtifactIndex
+  });
 
   return {
     summary,
@@ -1205,6 +1226,7 @@ export function normalizeResult(raw: unknown): QaResult {
     regressionPlan,
     professionalSummary,
     claimGuard,
+    qaIntake,
     qualityGate,
     qaSignoff,
     aiAnalysis,

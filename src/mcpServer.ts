@@ -427,6 +427,13 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           requiredInputCount: result.claimGuard.requiredInputs.length,
           summary: result.claimGuard.summary
         },
+        qaIntake: {
+          status: result.qaIntake.status,
+          questionCount: result.qaIntake.questions.length,
+          topQuestionCount: result.qaIntake.topQuestions.length,
+          summary: result.qaIntake.summary,
+          topQuestions: result.qaIntake.topQuestions.map((item) => ({ id: item.id, priority: item.priority, category: item.category, question: item.question }))
+        },
         testData: {
           status: result.testData.status,
           environment: result.testData.environment,
@@ -504,6 +511,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         pageProfile: result.pageProfile,
         scopeReview: result.scopeReview,
         claimGuard: result.claimGuard,
+        qaIntake: result.qaIntake,
         testData: result.testData,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,

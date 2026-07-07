@@ -1080,6 +1080,13 @@ async function main(): Promise<void> {
             requiredInputCount: result.claimGuard.requiredInputs.length,
             summary: result.claimGuard.summary
           },
+          qaIntake: {
+            status: result.qaIntake.status,
+            questionCount: result.qaIntake.questions.length,
+            topQuestionCount: result.qaIntake.topQuestions.length,
+            summary: result.qaIntake.summary,
+            topQuestions: result.qaIntake.topQuestions.map((item) => ({ id: item.id, priority: item.priority, category: item.category, question: item.question }))
+          },
           testData: {
             status: result.testData.status,
             environment: result.testData.environment,
@@ -1135,6 +1142,7 @@ async function main(): Promise<void> {
     console.log(`Page profile: ${result.pageProfile.status}/${result.pageProfile.pageType} (${result.pageProfile.confidence})`);
     console.log(`Scope Review: ${result.scopeReview.status}, questions ${result.scopeReview.questions.length}`);
     console.log(`Claim Guard: ${result.claimGuard.status}, forbidden ${result.claimGuard.forbiddenClaims.length}, required inputs ${result.claimGuard.requiredInputs.length}`);
+    console.log(`QA Intake: ${result.qaIntake.status}, questions ${result.qaIntake.questions.length}, top ${result.qaIntake.topQuestions.length}`);
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
     console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
@@ -1150,6 +1158,7 @@ async function main(): Promise<void> {
     console.log(`QA Review: ${result.artifacts.qaReview ?? '(disabled)'}`);
     console.log(`Scope Review: ${result.artifacts.scopeReview ?? '(disabled)'}`);
     console.log(`Claim Guard: ${result.artifacts.claimGuard ?? '(disabled)'}`);
+    console.log(`QA Intake: ${result.artifacts.qaIntake ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

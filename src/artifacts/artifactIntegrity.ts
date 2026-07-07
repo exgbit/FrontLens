@@ -26,6 +26,8 @@ const FILE_ARTIFACT_KEYS = [
   'scopeReviewLog',
   'claimGuard',
   'claimGuardLog',
+  'qaIntake',
+  'qaIntakeLog',
   'sourceAnalysisLog',
   'sourceRuntimeLog',
   'sourceHealthLog',

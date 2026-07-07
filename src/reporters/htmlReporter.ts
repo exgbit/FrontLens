@@ -237,6 +237,10 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
   const claimGuardRows = result.claimGuard.items
     .map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.claim)}</td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.confidence)}</td><td>${escapeHtml(item.allowedWording)}</td><td>${escapeHtml(item.forbiddenWording.join('; '))}</td></tr>`)
     .join('\n');
+  const qaIntakeRows = result.qaIntake.questions
+    .slice(0, 50)
+    .map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.priority)}</td><td>${escapeHtml(item.category)}</td><td>${escapeHtml(item.question)}</td><td>${escapeHtml(truncateText(item.why, 220))}</td><td>${escapeHtml(truncateText(item.howToAnswer, 220))}</td></tr>`)
+    .join('\n');
   const rootCauseRows = result.rootCauseGroups
     .slice(0, 80)
     .map((group) => {
@@ -356,6 +360,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Page Profile</span><strong>${escapeHtml(result.pageProfile.pageType)}</strong></div>
           <div class="metric"><span>Scope Review</span><strong>${escapeHtml(result.scopeReview.status)} / ${result.scopeReview.questions.length}</strong></div>
           <div class="metric"><span>Claim Guard</span><strong>${escapeHtml(result.claimGuard.status)} / ${result.claimGuard.forbiddenClaims.length}</strong></div>
+          <div class="metric"><span>QA Intake</span><strong>${escapeHtml(result.qaIntake.status)} / ${result.qaIntake.questions.length}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
@@ -470,6 +475,21 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>ID</th><th>Claim</th><th>Status</th><th>Confidence</th><th>Allowed wording</th><th>Forbidden wording</th></tr></thead>
           <tbody>${claimGuardRows || '<tr><td colspan="6">No claim guard items</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>QA Intake / 专业测试待补输入</h2>
+        <p>${escapeHtml(result.qaIntake.summary)}</p>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.qaIntake.status)}</strong></div>
+          <div class="metric"><span>Questions</span><strong>${result.qaIntake.questions.length}</strong></div>
+          <div class="metric"><span>Top questions</span><strong>${result.qaIntake.topQuestions.length}</strong></div>
+          <div class="metric"><span>Config hints</span><strong>${result.qaIntake.configHints.length}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Priority</th><th>Category</th><th>Question</th><th>Why</th><th>How to answer</th></tr></thead>
+          <tbody>${qaIntakeRows || '<tr><td colspan="6">No intake questions</td></tr>'}</tbody>
         </table>
       </section>
 

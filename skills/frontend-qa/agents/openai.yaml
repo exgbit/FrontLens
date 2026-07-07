@@ -1,4 +1,4 @@
 interface:
   display_name: "Frontend QA"
-  short_description: "Evidence-backed frontend QA with claim guard"
-  default_prompt: "Use $frontend-qa to run evidence-backed frontend QA, correlate with source/PRD when available, apply claimGuard to avoid overclaims, and return professional root-cause fixes, QA sign-off, and regression steps."
+  short_description: "Professional frontend QA with intake guard"
+  default_prompt: "Use $frontend-qa to run evidence-backed frontend QA, correlate with source/PRD when available, apply claimGuard/qaIntake to avoid overclaims and guessing, and return professional root-cause fixes, QA sign-off, and regression steps."

@@ -17,6 +17,7 @@ import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 import { buildScopeReview } from './product/scopeReview.js';
 import { buildClaimGuard } from './claims/claimGuard.js';
+import { buildQaIntake } from './intake/qaIntake.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
@@ -111,6 +112,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     regressionPlan: result.regressionPlan
   });
   result.claimGuard = buildClaimGuard(result);
+  result.qaIntake = buildQaIntake(result);
 }
 
 export async function writeReports(result: QaResult): Promise<QaResult> {
@@ -160,6 +162,7 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
       regressionPlan: result.regressionPlan
     });
     result.claimGuard = buildClaimGuard(result);
+    result.qaIntake = buildQaIntake(result);
     if (formats.has('markdown')) {
       await writeMarkdownReport(result);
       await normalizeAndRebuildSummary(result);

@@ -36,6 +36,7 @@ import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 import { buildClaimGuard } from './claims/claimGuard.js';
+import { buildQaIntake } from './intake/qaIntake.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
@@ -44,7 +45,7 @@ import { analyzeSource, createEmptySourceAnalysis } from './source/sourceAnalyze
 import { buildSourceRuntimeCorrelation, createEmptySourceRuntimeCorrelation } from './source/sourceRuntimeCorrelation.js';
 import { analyzeSourceHealth, createEmptySourceHealth } from './source/sourceHealth.js';
 import { sessionStorageSidecarPath } from './auth.js';
-import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, EnvironmentAssessment, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, PageProfileAssessment, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, ScopeReviewResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult, TestDataAssessmentResult } from './types.js';
+import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, EnvironmentAssessment, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, PageProfileAssessment, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaIntakeResult, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, ScopeReviewResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult, TestDataAssessmentResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
 import { RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 import { redactText, redactUrl } from './utils/redact.js';
@@ -778,6 +779,23 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     artifacts,
     journeyTests
   });
+  const qaIntake: QaIntakeResult = buildQaIntake({
+    claimGuard,
+    scopeReview,
+    qaSignoff,
+    qualityGate,
+    requirementCoverage,
+    environment,
+    sourceAnalysis,
+    sourceRuntimeCorrelation,
+    sourceHealth,
+    artifactIntegrity: initialArtifactIntegrity,
+    testData,
+    regressionPlan,
+    rootCauseGroups,
+    issueDisposition,
+    artifacts
+  });
   const summary = applyAdjustedScore(
     buildSummary({
       url: redactUrl(config.target.url),
@@ -842,6 +860,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     regressionPlan,
     professionalSummary,
     claimGuard,
+    qaIntake,
     qualityGate,
     qaSignoff,
     aiAnalysis,

@@ -349,6 +349,29 @@ ${guard.forbiddenClaims.length ? guard.forbiddenClaims.map((item) => `- ${markdo
 `;
 }
 
+function formatQaIntake(result: QaResult): string {
+  const intake = result.qaIntake;
+  const rows = intake.questions.slice(0, 40).map((item) => {
+    const blocks = item.blocksClaims.length ? item.blocksClaims.join(', ') : '-';
+    const refs = item.evidenceRefs.length ? item.evidenceRefs.slice(0, 6).join(', ') : '-';
+    return `| ${markdownEscape(item.id)} | ${item.priority} | ${markdownEscape(item.category)} | ${markdownEscape(truncateMiddle(item.question, 120))} | ${markdownEscape(truncateMiddle(item.why, 150))} | ${markdownEscape(truncateMiddle(item.howToAnswer, 150))} | ${markdownEscape(blocks)} | ${markdownEscape(refs)} |`;
+  });
+  const topRows = intake.topQuestions.map((item) => `- **${item.priority} ${markdownEscape(item.category)}**：${markdownEscape(item.question)}`);
+  return `## QA Intake / 专业测试待补输入
+
+- Status：**${intake.status}**
+- Summary：${markdownEscape(intake.summary)}
+- Top questions：${intake.topQuestions.length}
+- Total questions：${intake.questions.length}
+- Config hints：${intake.configHints.length ? markdownEscape(intake.configHints.join('；')) : '-'}
+- Ready to proceed：${intake.readyToProceed.length ? markdownEscape(intake.readyToProceed.join('；')) : '-'}
+
+${topRows.length ? topRows.join('\n') : '当前没有必须追问的输入项。'}
+
+${rows.length ? ['| ID | Priority | Category | Question | Why | How to answer | Blocks claims | Evidence refs |', '| --- | --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '当前 QA intake 已就绪。'}
+`;
+}
+
 function formatTestDataAssessment(result: QaResult): string {
   const testData = result.testData;
   const rows = testData.findings.slice(0, 30).map((finding) => `| ${markdownEscape(finding.id)} | ${finding.severity} | ${finding.category} | ${markdownEscape(finding.recordId ?? '-')} | ${markdownEscape(finding.operationId ?? '-')} | ${markdownEscape(finding.message)} |`);
@@ -977,6 +1000,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - QA sign-off：**${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
 - Professional summary：${markdownEscape(result.professionalSummary.headline)}
 - Claim guard：**${result.claimGuard.status}** / forbidden claims ${result.claimGuard.forbiddenClaims.length}
+- QA intake：**${result.qaIntake.status}** / questions ${result.qaIntake.questions.length}（top ${result.qaIntake.topQuestions.length}）
 - Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
 - Actionable root causes：${actionableGroups.length}（P0/P1 ${blockerGroups.length}）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
@@ -1011,6 +1035,14 @@ ${gapRows.length ? ['| Type | Item |', '| --- | --- |', ...gapRows, ''].join('\n
 
 ${result.claimGuard.items.length ? ['| Claim | Status | Allowed wording | Forbidden wording |', '| --- | --- | --- | --- |', ...result.claimGuard.items.slice(0, 8).map((item) => `| ${markdownEscape(item.claim)} | ${markdownEscape(item.status)} | ${markdownEscape(item.allowedWording)} | ${markdownEscape(item.forbiddenWording.slice(0, 2).join('；'))} |`), ''].join('\n') : '暂无 claim guard 明细。'}
 
+## 专业 QA 待补输入 / 避免猜测
+
+- QA intake：**${result.qaIntake.status}**
+- Artifact：${artifactPath(result.artifacts.qaIntake)}
+- Top questions：${result.qaIntake.topQuestions.length ? markdownEscape(result.qaIntake.topQuestions.map((item) => `${item.priority} ${item.category}: ${item.question}`).join('；')) : '-'}
+
+${result.qaIntake.topQuestions.length ? ['| Priority | Category | Question | Why | How to answer |', '| --- | --- | --- | --- | --- |', ...result.qaIntake.topQuestions.map((item) => `| ${item.priority} | ${markdownEscape(item.category)} | ${markdownEscape(item.question)} | ${markdownEscape(truncateMiddle(item.why, 140))} | ${markdownEscape(truncateMiddle(item.howToAnswer, 140))} |`), ''].join('\n') : '无必须追问项，可按当前证据范围签核。'}
+
 ## 产品范围 / PRD 待确认
 
 - Scope review：**${result.scopeReview.status}** / confidence **${result.scopeReview.confidence}**
@@ -1043,11 +1075,13 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
+  const qaIntakePath = path.join(result.artifacts.outputDir, 'qa-intake.md');
   result.artifacts.markdownReport = outputPath;
   result.artifacts.evidenceReport = evidencePath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
+  result.artifacts.qaIntake = qaIntakePath;
 
   const dispositionByIssue = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
   const isReportActionable = (issue: Issue): boolean => dispositionByIssue.get(issue.id)?.actionability === 'actionable' || (!dispositionByIssue.has(issue.id) && isActionableIssue(issue));
@@ -1080,6 +1114,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Fix Tasks：${result.fixTasks.length}
 - Professional Summary：${result.professionalSummary.status} / must-fix ${result.professionalSummary.mustFix.length} / non-defect ${result.professionalSummary.nonDefectObservations.length}
 - Claim Guard：${result.claimGuard.status} / forbidden ${result.claimGuard.forbiddenClaims.length}
+- QA Intake：${result.qaIntake.status} / questions ${result.qaIntake.questions.length} / top ${result.qaIntake.topQuestions.length}
 - QA Sign-off：${result.qaSignoff.status} / ${result.qaSignoff.confidence} / ${result.qaSignoff.businessValidationConfidence}
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
@@ -1105,6 +1140,8 @@ ${formatPageProfileAssessment(result)}
 ${formatScopeReview(result)}
 
 ${formatClaimGuard(result)}
+
+${formatQaIntake(result)}
 
 ${formatTestDataAssessment(result)}
 
@@ -1217,4 +1254,5 @@ ${formatArtifacts(result)}
   await writeText(evidencePath, evidenceMarkdown);
   await writeText(scopeReviewPath, formatScopeReview(result));
   await writeText(claimGuardPath, formatClaimGuard(result));
+  await writeText(qaIntakePath, formatQaIntake(result));
 }

@@ -172,6 +172,7 @@ export function createDefaultConfig(url = 'about:blank'): FrontLensConfig {
     },
     report: {
       formats: ['json', 'markdown'],
+      profile: 'professional',
       outputDir: './reports/frontlens',
       trace: false,
       screenshot: true,

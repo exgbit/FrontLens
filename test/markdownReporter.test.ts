@@ -88,6 +88,56 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(defectProof, /Proof status/);
 });
 
+test('markdown report profile controls primary report depth while preserving evidence appendix', async () => {
+  const makeResult = async (profile: 'executive' | 'full') => {
+    const outputDir = await mkdtemp(path.join(tmpdir(), `frontlens-profile-${profile}-`));
+    return normalizeResult({
+      summary: {
+        url: 'https://example.com/profile',
+        title: 'Profile',
+        testedAt: '2026-07-07T00:00:00.000Z',
+        browser: 'chromium',
+        viewport: { width: 1440, height: 900 }
+      },
+      metadata: { config: { report: { profile } } },
+      artifacts: { outputDir },
+      pageModel: {
+        url: 'https://example.com/profile',
+        title: 'Profile',
+        stats: { domNodes: 12, visibleTextLength: 80, bodyTextSample: 'Profile' }
+      },
+      issues: [
+        {
+          title: '确认按钮点击无响应',
+          category: 'frontend-ui',
+          severity: 'high',
+          confidence: 0.9,
+          description: 'Primary confirm action does not update visible state.',
+          evidence: { selector: '.confirm-button', details: { interactionTestId: 'IT-001' } },
+          reproduceSteps: ['Open page', 'Click confirm'],
+          reason: 'The button action is visible but has no runtime feedback.',
+          suggestion: { frontend: '补充点击处理、反馈状态和回归断言', priority: 'P1' }
+        }
+      ]
+    });
+  };
+
+  const executive = await makeResult('executive');
+  await writeMarkdownReport(executive);
+  const executiveReport = await readFile(executive.artifacts.markdownReport!, 'utf8');
+  const executiveEvidence = await readFile(executive.artifacts.evidenceReport!, 'utf8');
+  assert.match(executiveReport, /FrontLens Executive QA Report/);
+  assert.doesNotMatch(executiveReport, /## 十三、问题详情/);
+  assert.match(executiveEvidence, /## 十三、问题详情/);
+
+  const full = await makeResult('full');
+  await writeMarkdownReport(full);
+  const fullReport = await readFile(full.artifacts.markdownReport!, 'utf8');
+  assert.match(fullReport, /FrontLens Professional QA Report/);
+  assert.match(fullReport, /FrontLens QA Evidence Appendix/);
+  assert.match(fullReport, /## 十三、问题详情/);
+});
+
 test('writeReports rewrites human reports after final artifact integrity is known', async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'frontlens-stable-reports-'));
   const result = normalizeResult({

@@ -36,6 +36,7 @@ test('default config enables complete non-destructive QA capabilities', () => {
   assert.equal(config.source.runScripts, false);
   assert.deepEqual(config.source.scriptNames, ['typecheck', 'lint']);
   assert.equal(config.source.scriptTimeoutMs, 120_000);
+  assert.equal(config.report.profile, 'professional');
 
   assert.equal(config.safety.blockMutatingRequests, true);
   assert.equal(config.safety.allowCreate, false);
@@ -89,9 +90,10 @@ test('config file relative paths resolve from config directory and invalid neste
   const configPath = path.join(dir, 'frontlens.json');
   await writeFile(schemaPath, '{"openapi":"3.0.0","paths":{}}', 'utf8');
   await writeFile(adrPath, '# ADR', 'utf8');
-  await writeFile(configPath, JSON.stringify({ contract: { schemaPath: 'openapi.json' }, productContext: { deviceScope: 'desktop-first', optionalFeatures: ['mobile-touch-target'], adrRefs: ['adr-0001.md'] } }), 'utf8');
+  await writeFile(configPath, JSON.stringify({ contract: { schemaPath: 'openapi.json' }, report: { profile: 'executive' }, productContext: { deviceScope: 'desktop-first', optionalFeatures: ['mobile-touch-target'], adrRefs: ['adr-0001.md'] } }), 'utf8');
   const config = await loadConfig({ url: 'https://example.com', configPath });
   assert.equal(config.contract.schemaPath, schemaPath);
+  assert.equal(config.report.profile, 'executive');
   assert.equal(config.productContext.deviceScope, 'desktop-first');
   assert.deepEqual(config.productContext.optionalFeatures, ['mobile-touch-target']);
   assert.deepEqual(config.productContext.adrRefs, [adrPath]);
@@ -99,6 +101,10 @@ test('config file relative paths resolve from config directory and invalid neste
   const badConfigPath = path.join(dir, 'bad.json');
   await writeFile(badConfigPath, JSON.stringify({ browser: null }), 'utf8');
   await assert.rejects(() => loadConfig({ url: 'https://example.com', configPath: badConfigPath }), /Invalid FrontLens config: browser must be an object/);
+
+  const badProfilePath = path.join(dir, 'bad-profile.json');
+  await writeFile(badProfilePath, JSON.stringify({ report: { profile: 'verbose' } }), 'utf8');
+  await assert.rejects(() => loadConfig({ url: 'https://example.com', configPath: badProfilePath }), /Invalid FrontLens config: report\.profile must be executive, professional, or full/);
 });
 
 test('deepMerge ignores prototype pollution keys', () => {

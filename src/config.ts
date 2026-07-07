@@ -332,6 +332,10 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
     Array.isArray(config.report.formats) && config.report.formats.every((format) => format === 'json' || format === 'markdown' || format === 'html'),
     'report.formats must contain only json, markdown, html.'
   );
+  assert(
+    config.report.profile === 'executive' || config.report.profile === 'professional' || config.report.profile === 'full',
+    'report.profile must be executive, professional, or full.'
+  );
   assert(typeof config.report.outputDir === 'string' && config.report.outputDir.length > 0, 'report.outputDir is required.');
   assertBoolean(config.report.trace, 'report.trace');
   assertBoolean(config.report.screenshot, 'report.screenshot');
@@ -375,6 +379,9 @@ export async function loadConfig(input: QaRunInput): Promise<FrontLensConfig> {
   }
   if (input.screenshot !== undefined) {
     config.report.screenshot = input.screenshot;
+  }
+  if (input.reportProfile !== undefined) {
+    config.report.profile = input.reportProfile;
   }
   if (input.simulateExceptions !== undefined) {
     config.exception.enabled = input.simulateExceptions;

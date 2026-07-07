@@ -45,7 +45,7 @@ import { buildDefectProof } from './proof/defectProof.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 
-export const RESULT_SCHEMA_VERSION = '1.56.0';
+export const RESULT_SCHEMA_VERSION = '1.57.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));

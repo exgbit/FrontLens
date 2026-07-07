@@ -5,7 +5,7 @@ import { runCompatibility } from './matrix.js';
 import { runEnvironmentComparison } from './compare/environmentComparison.js';
 import { synthesizeRequirements } from './requirements/requirementWizard.js';
 import { runRoleMatrix } from './roles/roleMatrix.js';
-import type { BrowserName, Issue, QaResult, QaRunInput, Severity } from './types.js';
+import type { BrowserName, Issue, QaResult, QaRunInput, ReportProfile, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 import { runProfessionalAudit } from './audit/professionalAudit.js';
@@ -110,6 +110,7 @@ function listTools(): Record<string, unknown> {
             trace: { type: 'boolean' },
             video: { type: 'boolean' },
             screenshot: { type: 'boolean' },
+            reportProfile: { type: 'string', enum: ['executive', 'professional', 'full'], description: 'Primary report.md depth. Default: professional.' },
             simulateExceptions: { type: 'boolean', description: 'Enable or disable exception simulations. Default: enabled.' },
             ai: { type: 'boolean', description: 'Enable or disable heuristic AI analysis. Default: enabled.' },
             coverage: { type: 'boolean' },
@@ -230,6 +231,7 @@ function listTools(): Record<string, unknown> {
             trace: { type: 'boolean' },
             video: { type: 'boolean' },
             screenshot: { type: 'boolean' },
+            reportProfile: { type: 'string', enum: ['executive', 'professional', 'full'] },
             simulateExceptions: { type: 'boolean' },
             ai: { type: 'boolean' },
             coverage: { type: 'boolean' },
@@ -279,6 +281,7 @@ function listTools(): Record<string, unknown> {
             trace: { type: 'boolean' },
             video: { type: 'boolean' },
             screenshot: { type: 'boolean' },
+            reportProfile: { type: 'string', enum: ['executive', 'professional', 'full'] },
             simulateExceptions: { type: 'boolean' },
             ai: { type: 'boolean' },
             coverage: { type: 'boolean' },
@@ -311,6 +314,7 @@ function listTools(): Record<string, unknown> {
             trace: { type: 'boolean' },
             video: { type: 'boolean' },
             screenshot: { type: 'boolean' },
+            reportProfile: { type: 'string', enum: ['executive', 'professional', 'full'] },
             simulateExceptions: { type: 'boolean', description: 'Enable or disable exception simulations. Default: enabled.' },
             ai: { type: 'boolean', description: 'Enable or disable heuristic AI analysis. Default: enabled.' },
             coverage: { type: 'boolean' },
@@ -341,6 +345,12 @@ function validateArgs(args: unknown, allowed: string[], required: string[] = [])
     throw new RpcError(-32602, `Missing required argument(s): ${missing.join(', ')}`);
   }
   return args;
+}
+
+function normalizeReportProfile(value: unknown): ReportProfile | undefined {
+  if (value === undefined) return undefined;
+  if (value === 'executive' || value === 'professional' || value === 'full') return value;
+  throw new RpcError(-32602, `Invalid reportProfile: ${String(value)}. Expected executive, professional, or full.`);
 }
 
 function requireString(args: Record<string, unknown>, key: string): string {
@@ -377,7 +387,7 @@ function normalizeRoleMatrixRoles(value: unknown) {
 async function callTool(params: ToolCallParams): Promise<Record<string, unknown>> {
   switch (params.name) {
     case 'frontlens_qa': {
-      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
+      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
       const url = requireString(args, 'url');
       const input: QaRunInput = {
         url,
@@ -395,6 +405,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         trace: typeof args.trace === 'boolean' ? args.trace : undefined,
         video: typeof args.video === 'boolean' ? args.video : undefined,
         screenshot: typeof args.screenshot === 'boolean' ? args.screenshot : undefined,
+        reportProfile: normalizeReportProfile(args.reportProfile),
         simulateExceptions: typeof args.simulateExceptions === 'boolean' ? args.simulateExceptions : undefined,
         ai: typeof args.ai === 'boolean' ? args.ai : undefined,
         coverage: typeof args.coverage === 'boolean' ? args.coverage : undefined,
@@ -672,7 +683,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent(suggestions);
     }
     case 'frontlens_env_compare': {
-      const args = validateArgs(params.arguments ?? {}, ['devUrl', 'previewUrl', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['devUrl', 'previewUrl']);
+      const args = validateArgs(params.arguments ?? {}, ['devUrl', 'previewUrl', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['devUrl', 'previewUrl']);
       const result = await runEnvironmentComparison({
         devUrl: requireString(args, 'devUrl'),
         previewUrl: requireString(args, 'previewUrl'),
@@ -690,6 +701,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         trace: typeof args.trace === 'boolean' ? args.trace : undefined,
         video: typeof args.video === 'boolean' ? args.video : undefined,
         screenshot: typeof args.screenshot === 'boolean' ? args.screenshot : undefined,
+        reportProfile: normalizeReportProfile(args.reportProfile),
         simulateExceptions: typeof args.simulateExceptions === 'boolean' ? args.simulateExceptions : undefined,
         ai: typeof args.ai === 'boolean' ? args.ai : undefined,
         coverage: typeof args.coverage === 'boolean' ? args.coverage : undefined,
@@ -703,7 +715,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent(result);
     }
     case 'frontlens_role_matrix': {
-      const args = validateArgs(params.arguments ?? {}, ['url', 'roles', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url', 'roles']);
+      const args = validateArgs(params.arguments ?? {}, ['url', 'roles', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url', 'roles']);
       const result = await runRoleMatrix({
         url: requireString(args, 'url'),
         roles: normalizeRoleMatrixRoles(args.roles),
@@ -719,6 +731,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         trace: typeof args.trace === 'boolean' ? args.trace : undefined,
         video: typeof args.video === 'boolean' ? args.video : undefined,
         screenshot: typeof args.screenshot === 'boolean' ? args.screenshot : undefined,
+        reportProfile: normalizeReportProfile(args.reportProfile),
         simulateExceptions: typeof args.simulateExceptions === 'boolean' ? args.simulateExceptions : undefined,
         ai: typeof args.ai === 'boolean' ? args.ai : undefined,
         coverage: typeof args.coverage === 'boolean' ? args.coverage : undefined,
@@ -732,7 +745,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent(result);
     }
     case 'frontlens_matrix': {
-      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'browsers', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
+      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'browsers', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
       const browsers = (typeof args.browsers === 'string' ? args.browsers : 'chromium,firefox,webkit')
         .split(',')
         .map((item) => normalizeBrowser(item.trim()))
@@ -749,6 +762,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         trace: typeof args.trace === 'boolean' ? args.trace : undefined,
         video: typeof args.video === 'boolean' ? args.video : undefined,
         screenshot: typeof args.screenshot === 'boolean' ? args.screenshot : undefined,
+        reportProfile: normalizeReportProfile(args.reportProfile),
         simulateExceptions: typeof args.simulateExceptions === 'boolean' ? args.simulateExceptions : undefined,
         ai: typeof args.ai === 'boolean' ? args.ai : undefined,
         coverage: typeof args.coverage === 'boolean' ? args.coverage : undefined,

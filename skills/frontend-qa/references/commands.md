@@ -20,6 +20,16 @@ node dist/cli.js qa \
   --json
 ```
 
+Choose the primary human report depth when stakeholders need a shorter or exhaustive `report.md`:
+
+```bash
+node dist/cli.js qa \
+  --url "https://example.com/admin/users" \
+  --report-profile executive
+```
+
+`executive` is the shortest primary report, `professional` is the default decision-oriented report, and `full` appends the evidence appendix into `report.md`. `evidence-report.md` is always written.
+
 Run with source-code indexing:
 
 ```bash
@@ -348,3 +358,5 @@ node dist/cli.js suggestions --report "reports/frontlens/users/result.json"
 `brief` is the default one-page human/LLM summary. `audit` is the report-contract self-check; a failed audit should block trusting must-fix/fixTasks or broad sign-off claims until the report is corrected or downgraded.
 
 `--severity high` returns high and above (`critical` + `high`), not only exact high.
+
+Report depth: pass `--report-profile executive|professional|full` or set `report.profile` in config. Default `professional` keeps `report.md` decision-oriented; `executive` makes the primary report shortest; `full` appends the evidence appendix into `report.md`. `evidence-report.md` is always written.

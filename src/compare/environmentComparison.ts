@@ -2,7 +2,7 @@ import path from 'node:path';
 import { createDefaultConfig } from '../defaultConfig.js';
 import { createResultDiff } from '../diff/resultDiff.js';
 import { runQa } from '../runner.js';
-import type { BrowserName, EnvironmentComparisonResult, QaResult, QaRunInput, Severity } from '../types.js';
+import type { BrowserName, EnvironmentComparisonResult, QaResult, QaRunInput, ReportProfile, Severity } from '../types.js';
 import { ensureDir, resolveOutputDir, writeJson, writeText } from '../utils/fs.js';
 import { markdownEscape } from '../utils/text.js';
 
@@ -23,6 +23,7 @@ export interface EnvironmentComparisonRunInput {
   trace?: boolean;
   video?: boolean;
   screenshot?: boolean;
+  reportProfile?: ReportProfile;
   simulateExceptions?: boolean;
   coverage?: boolean;
   ai?: boolean;
@@ -191,6 +192,7 @@ function qaInput(input: EnvironmentComparisonRunInput, url: string, outputDir: s
     trace: input.trace,
     video: input.video,
     screenshot: input.screenshot,
+    reportProfile: input.reportProfile,
     simulateExceptions: input.simulateExceptions,
     coverage: input.coverage,
     ai: input.ai,

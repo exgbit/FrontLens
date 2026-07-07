@@ -1351,7 +1351,13 @@ ${formatArtifacts(result)}
 `;
 
   const reviewMarkdown = formatProfessionalReview(result);
-  const reportMarkdown = reviewMarkdown.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
+  const professionalReportMarkdown = reviewMarkdown.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
+  const executiveReportMarkdown = formatProfessionalBrief(result).replace('# FrontLens QA Brief', '# FrontLens Executive QA Report');
+  const reportMarkdown = result.metadata.config.report.profile === 'executive'
+    ? executiveReportMarkdown
+    : result.metadata.config.report.profile === 'full'
+      ? `${professionalReportMarkdown}\n\n---\n\n${evidenceMarkdown}`
+      : professionalReportMarkdown;
   await writeText(briefPath, formatProfessionalBrief(result));
   await writeText(auditPath, formatProfessionalAudit(runProfessionalAudit(result)));
   await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));

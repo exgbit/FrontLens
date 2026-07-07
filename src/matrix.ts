@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { createDefaultConfig } from './defaultConfig.js';
 import { runQa } from './runner.js';
-import type { BrowserName, QaResult } from './types.js';
+import type { BrowserName, QaResult, ReportProfile } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson, writeText } from './utils/fs.js';
 import { markdownEscape } from './utils/text.js';
 import { issueHasProofReadyRootCause } from './proof/proofReadiness.js';
@@ -19,6 +19,7 @@ export interface CompatibilityRunInput {
   trace?: boolean;
   video?: boolean;
   screenshot?: boolean;
+  reportProfile?: ReportProfile;
   simulateExceptions?: boolean;
   coverage?: boolean;
   ai?: boolean;
@@ -145,6 +146,7 @@ export async function runCompatibility(input: CompatibilityRunInput): Promise<Co
         trace: input.trace ?? false,
         video: input.video,
         screenshot: input.screenshot,
+        reportProfile: input.reportProfile,
         simulateExceptions: input.simulateExceptions,
         coverage: input.coverage,
         ai: input.ai,

@@ -329,8 +329,19 @@ export interface ResponsiveViewportConfig {
   height: number;
 }
 
+export type ReportProfile = 'executive' | 'professional' | 'full';
+
 export interface ReportConfig {
   formats: Array<'json' | 'markdown' | 'html'>;
+  /**
+   * Controls the primary human report depth.
+   * - executive: shortest decision summary in report.md.
+   * - professional: default decision-oriented QA review.
+   * - full: append the raw evidence appendix into report.md.
+   *
+   * Full raw evidence is always written to evidence-report.md regardless of profile.
+   */
+  profile: ReportProfile;
   outputDir: string;
   trace: boolean;
   screenshot: boolean;
@@ -388,6 +399,7 @@ export interface QaRunInput {
   trace?: boolean;
   video?: boolean;
   screenshot?: boolean;
+  reportProfile?: ReportProfile;
   simulateExceptions?: boolean;
   ai?: boolean;
   coverage?: boolean;

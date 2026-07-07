@@ -8,7 +8,7 @@ description: Run FrontLens Playwright QA for live webpage testing/auditing and e
 Use FrontLens to analyze a target webpage end-to-end and return primary artifacts:
 
 - `brief.md`: one-page professional QA brief; default shape for final user/LLM answer.
-- `report.md`: default decision-oriented professional QA report for humans.
+- `report.md`: primary human QA report; `report.profile` / `--report-profile` controls executive, professional, or full depth.
 - `professional-audit.md`: report-contract self-audit; flags coverage-boundary violations, overclaims, non-proof-ready fix queue entries, weak source evidence, scope gaps, and artifact integrity issues before another Agent trusts the report.
 - `qa-plan.md`: professional QA execution/acceptance plan; converts findings, scope gaps, journeys, product context, and rerun commands into a tester worklist.
 - `qa-coverage.md`: professional coverage matrix; marks runtime/API/source/a11y/responsive/performance/security/journey/requirements as covered, partial, skipped, needs-input, or failed.
@@ -80,7 +80,7 @@ If the user selects "all/default", run the full default QA command. If the user 
 9. For source-aware triage, use `rootCauseGroups[].sourceLocations`, medium/high `sourceRuntimeCorrelation.links[]`, and source findings (`ui-accessibility`, `error-state-gap`, route/static-import performance) before manual grep. Do not schedule frontend fixes whose `defectProof` remains `needs-evidence`.
 10. For API/UI data mismatch, require exact network request, visible DOM/screenshot state, source API/state/render file:line or medium/high link, and a product requirement that the UI should render that data. Otherwise keep it conditional/insufficient-evidence.
 11. For production-readiness claims on local/dev targets, run build/preview or `env-compare`; dev-source mode is valid for functional/source correlation but not production bundle/security conclusions.
-12. Return a concise summary with report paths, selected modules, QA sign-off, adjusted vs raw score, proof-ready root-cause count, non-defect buckets, skipped coverage caveats, source-correlation status, top fixes, and required follow-ups. Prefer the deterministic `brief` output as the shape, then add only user-requested detail. Read `references/reporting.md` for the full reporting checklist.
+12. Return a concise summary with report paths, selected modules, report profile, QA sign-off, adjusted vs raw score, proof-ready root-cause count, non-defect buckets, skipped coverage caveats, source-correlation status, top fixes, and required follow-ups. Prefer the deterministic `brief` output as the shape, then add only user-requested detail. Read `references/reporting.md` for the full reporting checklist.
 
 ## Safety Rules
 

@@ -9,7 +9,7 @@ import { runEnvironmentComparison } from './compare/environmentComparison.js';
 import { synthesizeRequirements } from './requirements/requirementWizard.js';
 import { loadRoleMatrixRoles, parseRoleSpec, runRoleMatrix } from './roles/roleMatrix.js';
 import { recordJourney } from './journeys/journeyRecorder.js';
-import type { BrowserName, Issue, QaResult, QaRunInput, RoleMatrixRoleConfig, Severity } from './types.js';
+import type { BrowserName, Issue, QaResult, QaRunInput, ReportProfile, RoleMatrixRoleConfig, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 import { evaluateMatrixItemCiGate, evaluateQaCiGate, type CiGateMode } from './gates/ciGate.js';
@@ -65,6 +65,7 @@ Options:
   --source-script-timeout-ms <ms>
                               Timeout per source script. Default: 120000.
   --output <dir>              Output report directory.
+  --report-profile <profile>  Primary report.md depth: executive | professional | full. Default: professional.
   --name <name>               Journey name for journey record.
   --browser <name>            chromium | firefox | webkit. Default: chromium.
   --headed                    Run headed browser.
@@ -117,6 +118,7 @@ Auth options:
 Examples:
   frontlens qa --url https://example.com
   frontlens qa --url https://example.com/admin --headed --output reports/admin
+  frontlens qa --url https://example.com/admin --report-profile executive
   frontlens qa --url https://example.com/admin --storage-state .frontlens/auth/admin.json
   frontlens auth save --url https://example.com/login --output .frontlens/auth/admin.json
   frontlens journey record --url https://example.com/admin/users --output journeys/users-smoke.json --name "Users smoke"
@@ -179,6 +181,12 @@ function normalizeGateMode(value: unknown): CiGateMode {
   if (value === undefined || value === 'professional') return 'professional';
   if (value === 'raw') return 'raw';
   throw new Error(`Invalid --gate-mode: ${String(value)}. Expected professional or raw.`);
+}
+
+function normalizeReportProfile(value: unknown): ReportProfile | undefined {
+  if (value === undefined) return undefined;
+  if (value === 'executive' || value === 'professional' || value === 'full') return value;
+  throw new Error(`Invalid --report-profile: ${String(value)}. Expected executive, professional, or full.`);
 }
 
 function normalizeStringList(value: unknown): string[] | undefined {
@@ -720,6 +728,7 @@ async function main(): Promise<void> {
         'source-scripts': { type: 'string' },
         'source-script-timeout-ms': { type: 'string' },
         output: { type: 'string' },
+        'report-profile': { type: 'string' },
         browser: { type: 'string' },
         headed: { type: 'boolean' },
         headless: { type: 'boolean' },
@@ -773,6 +782,7 @@ async function main(): Promise<void> {
       sourceScripts: normalizeStringList(parsed.values['source-scripts']),
       sourceScriptTimeoutMs: normalizePositiveNumber(parsed.values['source-script-timeout-ms'], '--source-script-timeout-ms'),
       outputDir: parsed.values.output,
+      reportProfile: normalizeReportProfile(parsed.values['report-profile']),
       browser: normalizeBrowser(parsed.values.browser),
       headless: parsed.values.headed ? false : parsed.values.headless,
       storageState: parsed.values['storage-state'],
@@ -815,6 +825,7 @@ async function main(): Promise<void> {
         'source-scripts': { type: 'string' },
         'source-script-timeout-ms': { type: 'string' },
         output: { type: 'string' },
+        'report-profile': { type: 'string' },
         browser: { type: 'string' },
         headed: { type: 'boolean' },
         headless: { type: 'boolean' },
@@ -870,6 +881,7 @@ async function main(): Promise<void> {
       sourceScripts: normalizeStringList(parsed.values['source-scripts']),
       sourceScriptTimeoutMs: normalizePositiveNumber(parsed.values['source-script-timeout-ms'], '--source-script-timeout-ms'),
       outputDir: parsed.values.output,
+      reportProfile: normalizeReportProfile(parsed.values['report-profile']),
       browser: normalizeBrowser(parsed.values.browser),
       headless: parsed.values.headed ? false : parsed.values.headless,
       roles,
@@ -908,6 +920,7 @@ async function main(): Promise<void> {
         requirements: { type: 'string' },
         'source-root': { type: 'string' },
         output: { type: 'string' },
+        'report-profile': { type: 'string' },
         browsers: { type: 'string' },
         headed: { type: 'boolean' },
         headless: { type: 'boolean' },
@@ -974,6 +987,7 @@ async function main(): Promise<void> {
       requirementsPath: parsed.values.requirements,
       sourceRoot: parsed.values['source-root'],
       outputDir: parsed.values.output,
+      reportProfile: normalizeReportProfile(parsed.values['report-profile']),
       browsers: uniqueBrowsers,
       headless: parsed.values.headed ? false : parsed.values.headless,
       storageState: parsed.values['storage-state'],
@@ -1035,6 +1049,7 @@ async function main(): Promise<void> {
       'source-scripts': { type: 'string' },
       'source-script-timeout-ms': { type: 'string' },
       output: { type: 'string' },
+      'report-profile': { type: 'string' },
       browser: { type: 'string' },
       headed: { type: 'boolean' },
       headless: { type: 'boolean' },
@@ -1100,6 +1115,7 @@ async function main(): Promise<void> {
     sourceScripts: normalizeStringList(parsed.values['source-scripts']),
     sourceScriptTimeoutMs: normalizePositiveNumber(parsed.values['source-script-timeout-ms'], '--source-script-timeout-ms'),
     outputDir: parsed.values.output,
+    reportProfile: normalizeReportProfile(parsed.values['report-profile']),
     browser: normalizeBrowser(parsed.values.browser),
     headless: parsed.values.headed ? false : parsed.values.headless,
     storageState: parsed.values['storage-state'],

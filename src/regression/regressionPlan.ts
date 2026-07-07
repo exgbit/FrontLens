@@ -1,6 +1,7 @@
 import type { ArtifactIntegrityResult, DefectProofResult, EnvironmentAssessment, FixTask, InteractionTestResult, JourneyTestResult, PageModel, PageProfileAssessment, PermissionCheckResult, QaQualityGate, QaSignoffResult, RegressionPlanItem, RegressionPlanResult, RequirementCoverageResult, RootCauseGroup, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
 import { proofNeedsEvidenceItems, proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 import { buildRoleMatrixNeed } from '../permissions/roleMatrixNeed.js';
+import { buildSourceScriptPlanNeed } from '../source/sourceScriptPlan.js';
 
 export interface RegressionPlanInput {
   targetUrl: string;
@@ -206,6 +207,22 @@ export function buildRegressionPlan(input: RegressionPlanInput): RegressionPlanR
       expected: ['sourceHealth.syntaxErrorCount 为 0。'],
       evidenceRefs: input.sourceHealth.findings.map((finding) => finding.id),
       notes: input.sourceHealth.findings.slice(0, 5).map((finding) => `${finding.file}:${finding.line ?? '?'} ${finding.message}`)
+    });
+  }
+
+  const sourceScriptNeed = buildSourceScriptPlanNeed(input.sourceHealth);
+  if (sourceScriptNeed.needed) {
+    addItem(items, {
+      type: 'source-health',
+      priority: sourceScriptNeed.priority,
+      title: '补跑项目已有自动化脚本后再做专业签核',
+      owner: 'test',
+      status: 'needs-input',
+      commands: [...sourceScriptNeed.commands, baseCommand],
+      steps: ['在 sourceRoot 下运行项目已有 build/typecheck/test/e2e/lint 脚本。', '若脚本失败，先修复源码或测试夹具。', '再重跑 FrontLens 并确认 sourceHealth.scriptChecks 记录对应结果。'],
+      expected: ['关键 build/typecheck/test/e2e 脚本通过或被明确接受为本轮范围外。', 'sourceHealth.scriptChecks 不再缺少项目已有的关键自动化证据。'],
+      evidenceRefs: ['sourceHealth.packageScripts', 'sourceHealth.scriptChecks'],
+      notes: sourceScriptNeed.signals
     });
   }
 

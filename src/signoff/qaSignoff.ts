@@ -1,4 +1,5 @@
 import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyStepAction, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
+import { buildSourceScriptPlanNeed } from '../source/sourceScriptPlan.js';
 
 function passedCount(items: Array<{ status: string }>): number {
   return items.filter((item) => item.status === 'passed').length;
@@ -101,6 +102,7 @@ export function buildQaSignoff(input: {
   const passedSourceScriptChecks = input.sourceHealth.scriptChecks.filter((check) => check.status === 'passed').length;
   const failedSourceScriptChecks = input.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out');
   const skippedSourceScriptChecks = input.sourceHealth.scriptChecks.filter((check) => check.status === 'skipped');
+  const sourceScriptNeed = buildSourceScriptPlanNeed(input.sourceHealth);
   const destructiveActionsAllowed = Boolean(
     input.config.safety.allowCreate ||
     input.config.safety.allowEdit ||
@@ -180,8 +182,8 @@ export function buildQaSignoff(input: {
       followups.push('为 generated/seeded 数据补 cleanupSteps 或 cleanupOperationId 后再执行破坏性 journey。');
     }
   }
-  if (input.sourceHealth.scriptChecks.length === 0 && input.sourceHealth.packageScripts.some((script) => script.category === 'build' || script.category === 'typecheck' || script.category === 'lint')) {
-    followups.push('运行 package.json 中的 build/typecheck/lint 脚本，确认源码健康不只停留在语法解析层。');
+  if (sourceScriptNeed.needed) {
+    followups.push(`补跑项目已有自动化脚本（${sourceScriptNeed.commands.join('，')}），或明确接受为本轮范围外；源码健康不能只停留在语法解析层。`);
   }
   if (skippedSourceScriptChecks.length > 0) {
     followups.push(`补跑 skipped 的源码脚本检查：${skippedSourceScriptChecks.map((check) => check.scriptName).join(', ')}。`);

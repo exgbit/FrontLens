@@ -183,7 +183,7 @@ function addRegressionQuestions(result: QaIntakeInput, questions: DraftQuestion[
   for (const item of result.regressionPlan.items) {
     if (item.status === 'ready') continue;
     pushUnique(questions, {
-      category: item.type === 'environment' ? 'environment' : item.type === 'artifact-integrity' ? 'artifact-integrity' : item.type === 'download' ? 'download-export' : item.type === 'role-matrix' ? 'role-auth' : 'regression',
+      category: item.type === 'environment' ? 'environment' : item.type === 'artifact-integrity' ? 'artifact-integrity' : item.type === 'download' ? 'download-export' : item.type === 'role-matrix' ? 'role-auth' : item.type === 'source-health' ? 'source-health' : 'regression',
       priority: item.status === 'blocked' ? 'P0' : item.priority,
       question: item.title,
       why: item.notes?.join('；') || '该复测项缺少输入或被阻断，修复后不能直接签核。',

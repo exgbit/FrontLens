@@ -41,6 +41,7 @@ Summarize:
 - regression plan status/items from `result.json.regressionPlan` for repair verification;
 - QA execution plan status/items from `result.json.qaPlan` and `qa-plan.md` so follow-up work is a tester worklist, not a raw issue dump;
 - if `qaPlan.items[]` or `regressionPlan.items[]` contains `type=role-matrix`, report it as a permission sign-off input gap until role storage states and expected allowed/forbidden contracts are provided;
+- if `qaPlan.items[]` or `regressionPlan.items[]` contains `type=source-health` for detected-but-unexecuted package scripts, report it as a source/CI sign-off gap until build/typecheck/test/e2e/lint evidence is attached or explicitly scoped out;
 - QA coverage matrix status/items from `result.json.qaCoverage` and `qa-coverage.md`; skipped and needs-input rows must be phrased as coverage gaps, not passes;
 - generated-report content audit from `result.json.reportContentAudit` and `report-content-audit.md`; blockers mean the report text itself overclaims or violates the selected depth profile; compactness warnings mean the report should be summarized rather than copied into the final answer;
 - journey assertion audit from `result.json.journeyAssertionAudit` and `journey-assertion-audit.md`; path-only click/fill journeys are coverage gaps, not business passes;

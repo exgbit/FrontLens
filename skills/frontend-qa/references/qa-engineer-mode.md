@@ -31,6 +31,7 @@ If missing, continue with best effort but mark coverage gaps:
 - Product scope/ADR context. Inspect `pageProfile` and `scopeReview`; if scope is inferred or `scopeReview.status=needs-input`, answer its questions before promoting style/product findings. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
 - Login state and role matrix, including admin/normal/readonly/unauthorized when relevant; if `qaPlan` or `regressionPlan` contains a `role-matrix` item, treat permission sign-off as needs-input until role expectations and storage states are supplied.
 - When multiple storage states are available, run `node dist/cli.js role-matrix --url <url> --roles roles.json --output <output>-roles` and include the generated `role-matrix.md` in the evidence set.
+- Project-owned automated gates. If `sourceHealth.packageScripts` detects build/typecheck/test/e2e/lint scripts and `qaPlan` or `regressionPlan` contains a `source-health` item, treat source-health/release sign-off as needs-input until those scripts pass, fail with owned follow-up, or Product/QA explicitly accepts them out of scope for this run.
 - Test data requirements and whether create/edit/delete/download/upload are allowed.
 - Test data lifecycle: isolated records, fixture/seed source, setup steps, cleanup/rollback steps, environment, sensitive-data handling, and whether production writes are explicitly prohibited or approved.
 - API contract/OpenAPI or backend envelope conventions.
@@ -42,7 +43,7 @@ If missing, continue with best effort but mark coverage gaps:
 Use these categories to design/triage, but only retain findings with evidence:
 
 - **Navigation and route health**: direct URL load, refresh, login redirects, empty/error/loading states.
-- **Source health**: package scripts, syntax parse errors, optional controlled `typecheck/lint` script checks, build/typecheck/lint availability. Syntax errors and failed/timed-out typecheck/build/test checks are source-confirmed blockers; passing source health is not business validation.
+- **Source health**: package scripts, syntax parse errors, optional controlled `typecheck/lint` script checks, and build/typecheck/test/e2e/lint availability. Syntax errors and failed/timed-out typecheck/build/test/e2e checks are source-confirmed blockers; detected-but-unexecuted project scripts are sign-off gaps, not passes; passing source health is not business validation.
 - **Core business flows**: search/filter/sort/pagination/detail/modal/export/import/create/edit/delete only when present and safe/authorized.
 - **Recorded journeys**: convert human-executed business paths into reusable journey configs; require explicit assertions because click/fill replay alone only proves the path did not crash.
 - **Export/download evidence**: when export/download is in scope, require `safety.allowDownload=true`, `interactionTests[].observations.downloadPath` or `journeyTests[].steps[].downloadPath`, non-zero `downloadSizeBytes`, `downloadSha256`, `downloadContent` parse summary, and `artifactIntegrity` coverage before marking it runtime-verified.
@@ -98,6 +99,7 @@ Default final answers should fit in one decision screen unless the user asks for
 - No `100% business validation` without PRD + runtime evidence for all listed requirements.
 - No “业务功能验证通过可信度 100%” from generated requirement drafts alone; synthesized requirements are a checklist starter and must be reviewed/grounded in runtime evidence.
 - No business pass solely from `sourceHealth.status=passed`; it only means parsed source files had no syntax errors and any explicitly enabled source script checks passed.
+- No source-health/release sign-off while `qaPlan` or `regressionPlan` contains unresolved `source-health` follow-ups for detected-but-unexecuted build/typecheck/test/e2e/lint scripts.
 - No “API has data but UI empty” unless the exact list response is bound to the exact UI by DOM/source/E2E evidence; if `sourceRuntimeCorrelation.status=passed`, missing link or `confidence=none/low` means not a defect.
 - No style/design bug unless it violates an explicit design/ADR/accessibility requirement or blocks a task.
 - No product-scope assumption becomes must-fix while `scopeReview.status=needs-input`; keep it as a scope question or product decision unless direct user impact is proven.

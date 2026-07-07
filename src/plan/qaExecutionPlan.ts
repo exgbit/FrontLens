@@ -1,5 +1,6 @@
 import type { QaExecutionPlanItem, QaExecutionPlanResult, QaResult, RegressionPlanItem } from '../types.js';
 import { buildRoleMatrixNeed } from '../permissions/roleMatrixNeed.js';
+import { buildSourceScriptPlanNeed } from '../source/sourceScriptPlan.js';
 
 export type QaExecutionPlanInput = Pick<
   QaResult,
@@ -85,6 +86,7 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
     pageProfile: result.pageProfile,
     requirementCoverage: result.requirementCoverage
   });
+  const sourceScriptNeed = buildSourceScriptPlanNeed(result.sourceHealth);
   const productContextConfig = typeof result.artifacts.productContextConfig === 'string' ? result.artifacts.productContextConfig : undefined;
   const productContextRerun = productContextConfig
     ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(productContextConfig)} --output ${quote('reports/frontlens/qa-plan-product-context')} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
@@ -170,6 +172,22 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
       expected: ['低权限角色不可见或不可执行禁止能力。', '高权限角色具备应允许能力。', '权限差异均能对应到显式需求或产品决策。'],
       evidenceRefs: evidenceList(['permissionChecks', 'pageProfile', 'pageModel.buttons', 'requirementCoverage', ...roleNeed.permissionCheckIds]),
       notes: roleNeed.signals
+    });
+  }
+
+  if (sourceScriptNeed.needed) {
+    addItem(items, {
+      type: 'source-health',
+      priority: sourceScriptNeed.priority,
+      owner: 'test',
+      status: 'needs-input',
+      title: '补跑项目已有自动化脚本，避免只凭页面扫描签核',
+      why: '源码仓库存在 build/typecheck/test/e2e/lint 等项目自有质量门，但本轮 sourceHealth 没有执行这些脚本；专业 QA 需要把它们纳入签核或明确排除。',
+      commands: [...sourceScriptNeed.commands, fullRerun],
+      steps: ['在 sourceRoot 下运行列出的 package scripts。', '失败时先修复源码/测试夹具/环境。', '用 --source-run-scripts 或项目 CI 证据复跑并记录结果。'],
+      expected: ['关键项目脚本通过或范围外原因被明确记录。', 'sourceHealth.scriptChecks 或 CI 产物可证明脚本状态。'],
+      evidenceRefs: ['sourceHealth.packageScripts', 'sourceHealth.scriptChecks'],
+      notes: sourceScriptNeed.signals
     });
   }
 

@@ -120,3 +120,51 @@ test('normalizeResult adds role-matrix regression item for dangerous permission-
   assert.equal(result.regressionPlan.commands.some((command) => command.includes('role-matrix')), true);
   assert.ok(result.qaIntake.questions.some((question) => question.category === 'role-auth'));
 });
+
+test('normalizeResult adds source-health follow-up for unexecuted project test scripts', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/admin', title: 'Admin' },
+    pageModel: {
+      url: 'https://example.com/admin',
+      title: 'Admin',
+      stats: { domNodes: 40, visibleTextLength: 160, bodyTextSample: 'Admin' }
+    },
+    sourceHealth: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      root: '/tmp/project',
+      packageManager: 'npm',
+      packageScripts: [
+        { name: 'build', command: 'vite build', category: 'build' },
+        { name: 'test', command: 'vitest run', category: 'test' }
+      ],
+      scriptChecks: [
+        {
+          id: 'SRC-SCRIPT-001',
+          scriptName: 'build',
+          command: 'npm run build',
+          category: 'build',
+          status: 'passed',
+          durationMs: 1234
+        }
+      ],
+      scannedFiles: 2,
+      parsedFiles: 2,
+      skippedFiles: 0,
+      syntaxErrorCount: 0,
+      findings: []
+    }
+  });
+
+  const scriptItem = result.regressionPlan.items.find((item) =>
+    item.type === 'source-health' && item.title.includes('自动化脚本')
+  );
+
+  assert.equal(scriptItem?.status, 'needs-input');
+  assert.equal(scriptItem?.priority, 'P1');
+  assert.equal(scriptItem?.commands.some((command) => command.includes('npm run test')), true);
+  assert.ok(result.qaPlan.items.some((item) => item.type === 'source-health' && item.title.includes('自动化脚本')));
+  assert.ok(result.qaIntake.questions.some((question) => question.category === 'source-health'));
+  assert.ok(result.qaSignoff.requiredFollowups.some((followup) => followup.includes('npm run test')));
+});

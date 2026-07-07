@@ -1011,6 +1011,20 @@ export function formatProfessionalReview(result: QaResult): string {
     ['证据不足', disposition.insufficientEvidenceCount + disposition.needsSourceConfirmationCount, '需要源码/运行时双证据后再转缺陷。'],
     ['参考观察', disposition.referenceCount, '不计入修复工作量。']
   ].map(([type, count, decision]) => `| ${type} | ${count} | ${markdownEscape(String(decision))} |`);
+  const dispositionRank: Record<string, number> = {
+    'product-decision': 0,
+    'tool-limitation': 1,
+    'deployment-only': 2,
+    'needs-source-confirmation': 3,
+    'insufficient-evidence': 4,
+    reference: 5,
+    confirmed: 6
+  };
+  const dispositionSampleRows = result.issueDisposition.items
+    .filter((item) => item.actionability !== 'actionable' || item.status !== 'confirmed')
+    .sort((a, b) => (dispositionRank[a.status] ?? 99) - (dispositionRank[b.status] ?? 99) || severityOrder[a.severity] - severityOrder[b.severity] || a.issueId.localeCompare(b.issueId))
+    .slice(0, 12)
+    .map((item) => `| ${markdownEscape(item.issueId)} | ${severityLabel[item.severity]} | ${markdownEscape(item.status)} | ${markdownEscape(item.actionability)} | ${markdownEscape(item.owner)} | ${markdownEscape(truncateMiddle(item.reason, 150))} | ${markdownEscape(truncateMiddle(item.nextStep, 140))} |`);
   const gapRows = [
     ...result.qaSignoff.blockers.map((item) => `| blocker | ${markdownEscape(item)} |`),
     ...result.qaSignoff.risks.map((item) => `| risk | ${markdownEscape(item)} |`),
@@ -1072,6 +1086,10 @@ ${result.defectProof.items.length ? ['| Root cause | Proof | Score | Missing / w
 | Bucket | Count | Decision |
 | --- | --- | --- |
 ${nonDefectRows.join('\n')}
+
+### 降级 / 不修 / 待补证据样例
+
+${dispositionSampleRows.length ? ['| Issue | Severity | Disposition | Actionability | Owner | Why not a direct fix | Next step |', '| --- | --- | --- | --- | --- | --- | --- |', ...dispositionSampleRows, ''].join('\n') : '当前没有被降级或需补证据的 raw findings。'}
 
 ## 签核阻断、风险与待补证据
 

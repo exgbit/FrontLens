@@ -160,3 +160,64 @@ test('markdown reporter annotates missing local artifact references inline', asy
   assert.match(report, /Artifact integrity：failed（missing 1）/);
   assert.match(evidence, /screenshots\/missing\.png \(missing artifact\)/);
 });
+
+test('qa-review lists downgraded non-fix findings with reasons', async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), 'frontlens-review-disposition-'));
+  const result = normalizeResult({
+    summary: {
+      url: 'http://127.0.0.1:5173/admin',
+      title: 'Admin',
+      testedAt: '2026-07-07T00:00:00.000Z',
+      browser: 'chromium',
+      viewport: { width: 1440, height: 900 }
+    },
+    metadata: {
+      config: {
+        report: { formats: ['json', 'markdown'] }
+      }
+    },
+    artifacts: { outputDir },
+    pageModel: {
+      url: 'http://127.0.0.1:5173/admin',
+      title: 'Admin',
+      stats: { domNodes: 20, visibleTextLength: 80, bodyTextSample: 'Admin' }
+    },
+    issues: [
+      {
+        id: 'ISSUE-TAP',
+        title: '触控目标尺寸偏小',
+        category: 'frontend-accessibility',
+        severity: 'low',
+        confidence: 0.8,
+        description: 'Some icon buttons are below the mobile tap target threshold.',
+        evidence: { selector: '.toolbar .icon-button', details: { rule: 'tap-target' } },
+        reproduceSteps: ['Open mobile viewport'],
+        reason: 'Mobile tap target is small.',
+        suggestion: { product: '确认移动端支持范围。', frontend: '若移动端在范围内，在小屏断点扩大点击区。', priority: 'P3' }
+      },
+      {
+        id: 'ISSUE-DEV',
+        title: '未使用JS资源偏多：http://127.0.0.1:5173/src/App.vue',
+        category: 'resource-performance',
+        severity: 'low',
+        confidence: 0.72,
+        description: 'Vite dev module coverage noise.',
+        evidence: { resourceUrl: 'http://127.0.0.1:5173/src/App.vue', details: { coverageEntry: { url: 'http://127.0.0.1:5173/src/App.vue' } } },
+        reproduceSteps: ['Open Vite dev page'],
+        reason: 'Dev server module graph noise.',
+        suggestion: { frontend: '对该脚本做代码分割。', priority: 'P3' }
+      }
+    ]
+  });
+
+  await writeMarkdownReport(result);
+
+  const review = await readFile(result.artifacts.qaReview!, 'utf8');
+  assert.match(review, /降级 \/ 不修 \/ 待补证据样例/);
+  assert.match(review, /ISSUE-TAP/);
+  assert.match(review, /product-decision/);
+  assert.match(review, /该类结论依赖产品需求、页面类型、设备范围或更强绑定证据/);
+  assert.match(review, /ISSUE-DEV/);
+  assert.match(review, /tool-limitation/);
+  assert.match(review, /Vite dev server 源码模块\/HMR/);
+});

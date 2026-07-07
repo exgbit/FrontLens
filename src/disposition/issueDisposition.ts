@@ -1,0 +1,409 @@
+import type { FrontLensConfig, Issue, IssueDispositionItem, IssueDispositionResult, RootCauseGroup } from '../types.js';
+
+type Status = IssueDispositionItem['status'];
+type Actionability = IssueDispositionItem['actionability'];
+type Bucket = IssueDispositionItem['bucket'];
+type Owner = IssueDispositionItem['owner'];
+type EvidenceStrength = IssueDispositionItem['evidenceStrength'];
+
+function detailsOf(issue: Issue): Record<string, unknown> {
+  return issue.evidence.details && typeof issue.evidence.details === 'object' ? issue.evidence.details as Record<string, unknown> : {};
+}
+
+function textOf(issue: Issue): string {
+  return `${issue.title} ${issue.category} ${issue.description} ${issue.reason}`.toLowerCase();
+}
+
+function ruleText(issue: Issue): string {
+  const details = detailsOf(issue);
+  return `${String(details.category ?? '')} ${String(details.rule ?? '')} ${issue.title}`.toLowerCase();
+}
+
+function hasEvidence(issue: Issue): boolean {
+  return Boolean(
+    issue.evidence.screenshot ||
+    issue.evidence.dom ||
+    issue.evidence.networkRequestId ||
+    issue.evidence.consoleId ||
+    issue.evidence.pageErrorId ||
+    issue.evidence.pageErrorIds?.length ||
+    issue.evidence.selector ||
+    issue.evidence.componentId ||
+    issue.evidence.resourceUrl ||
+    issue.evidence.details
+  );
+}
+
+function ownerFor(issue: Issue, fallback: Owner = 'frontend'): Owner {
+  if (issue.ownerHint) return issue.ownerHint;
+  if (issue.category === 'security') {
+    const rule = ruleText(issue);
+    if (/xss|mixed-content|subresource-integrity|third-party/.test(rule)) return 'frontend';
+    if (/headers|transport|fingerprint|cookie/.test(rule)) return 'security';
+    return 'security';
+  }
+  if (issue.suggestion.backend && !issue.suggestion.frontend) return 'backend';
+  if (issue.category.startsWith('backend')) return 'backend';
+  if (issue.suggestion.product && !issue.suggestion.frontend && !issue.suggestion.backend) return 'product';
+  if (issue.suggestion.test && !issue.suggestion.frontend && !issue.suggestion.backend) return 'test';
+  return fallback;
+}
+
+function confidenceFor(status: Status, issue: Issue): IssueDispositionItem['confidence'] {
+  if (status === 'confirmed') return issue.confidence >= 0.8 ? 'high' : 'medium';
+  if (status === 'needs-source-confirmation' || status === 'insufficient-evidence') return 'medium';
+  if (status === 'deployment-only') return 'high';
+  if (status === 'product-decision' || status === 'tool-limitation' || status === 'reference') return 'high';
+  return 'medium';
+}
+
+function makeItem(
+  issue: Issue,
+  input: {
+    status: Status;
+    bucket: Bucket;
+    actionability: Actionability;
+    owner?: Owner;
+    evidenceStrength?: EvidenceStrength;
+    reason: string;
+    nextStep: string;
+    rootCauseGroupId?: string;
+  }
+): IssueDispositionItem {
+  return {
+    issueId: issue.id,
+    fingerprint: issue.fingerprint,
+    title: issue.title,
+    category: issue.category,
+    severity: issue.severity,
+    status: input.status,
+    bucket: input.bucket,
+    actionability: input.actionability,
+    owner: input.owner ?? ownerFor(issue),
+    evidenceStrength: input.evidenceStrength ?? (hasEvidence(issue) ? 'medium' : 'weak'),
+    confidence: confidenceFor(input.status, issue),
+    reason: input.reason,
+    nextStep: input.nextStep,
+    rootCauseGroupId: input.rootCauseGroupId
+  };
+}
+
+function classifySecurity(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+  if (issue.category !== 'security') return undefined;
+  const rule = ruleText(issue);
+  if (/headers|content-security-policy|csp|nosniff|frame|referrer|coop|corp|hsts|transport|https|fingerprint|server/.test(rule)) {
+    return makeItem(issue, {
+      status: 'deployment-only',
+      bucket: 'deployment-security-config',
+      actionability: 'conditional',
+      owner: 'security',
+      evidenceStrength: 'strong',
+      reason: '证据指向响应头、TLS/HSTS 或服务指纹，通常由网关/CDN/nginx/后端部署层负责，不应作为前端代码缺陷处理。',
+      nextStep: '生产发布前由部署/安全负责人配置并用 preview/生产域名复测；若前端仓库拥有部署配置，再关联对应配置文件修复。',
+      rootCauseGroupId
+    });
+  }
+  if (/sensitive-data|cookie|mixed-content|xss|subresource-integrity|third-party/.test(rule)) {
+    return makeItem(issue, {
+      status: 'confirmed',
+      bucket: 'deployment-security-config',
+      actionability: 'actionable',
+      owner: ownerFor(issue, 'security'),
+      evidenceStrength: hasEvidence(issue) ? 'strong' : 'medium',
+      reason: '安全扫描发现具有直接风险的敏感数据、Cookie、Mixed Content、XSS/SRI 或第三方依赖信号，需要安全/前后端共同处置。',
+      nextStep: '核对 security.checks 的具体证据，区分前端代码、接口响应和部署配置后修复并复测 security 模块。',
+      rootCauseGroupId
+    });
+  }
+  return makeItem(issue, {
+    status: 'needs-source-confirmation',
+    bucket: 'deployment-security-config',
+    actionability: 'conditional',
+    owner: 'security',
+    reason: '安全规则需要结合部署环境和源码/网关归属确认，不能仅凭关键词当作前端代码缺陷。',
+    nextStep: '查看 security.checks[].evidence 并确认 owner，再决定是否修复代码或部署配置。',
+    rootCauseGroupId
+  });
+}
+
+function classifyException(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+  const details = detailsOf(issue);
+  if (!details.exceptionSimulationId) return undefined;
+  const text = textOf(issue);
+  if (/断网 reload 未能加载 spa|无法评估应用内离线反馈|offline/.test(text) && issue.severity === 'info') {
+    return makeItem(issue, {
+      status: 'tool-limitation',
+      bucket: 'tool-limitation',
+      actionability: 'non-actionable',
+      owner: 'test',
+      evidenceStrength: 'medium',
+      reason: '断网时 SPA 入口未加载属于测试方法限制，不能证明应用内离线反馈缺失。',
+      nextStep: '若产品要求离线体验，改用已加载页面后的离线 journey 或 Service Worker/PWA 专项测试。',
+      rootCauseGroupId
+    });
+  }
+  if (/console\/page error|page error|刷新失败|路由|白屏|runtime/i.test(`${issue.title} ${issue.description}`)) {
+    return makeItem(issue, {
+      status: 'confirmed',
+      bucket: 'real-frontend-fix',
+      actionability: 'actionable',
+      owner: 'frontend',
+      evidenceStrength: 'strong',
+      reason: '异常模拟产生了可见运行时错误、Page Error 或路由失败，属于可复现的韧性缺陷。',
+      nextStep: '定位相关 view/composable/router 错误处理路径，补错误边界、空值保护、错误态和回归用例。',
+      rootCauseGroupId
+    });
+  }
+  if (issue.category === 'integration-no-feedback') {
+    return makeItem(issue, {
+      status: 'needs-source-confirmation',
+      bucket: 'real-frontend-fix',
+      actionability: 'conditional',
+      owner: 'frontend',
+      evidenceStrength: 'medium',
+      reason: '异常模拟观察到无错误反馈，但是否为真实代码缺陷需要确认页面是否消费 error/ref、是否区分错误态和空态。',
+      nextStep: '结合源码核对 API 调用链、error state 渲染和 retry 入口；源码确认后合并为一个错误态根因修复。',
+      rootCauseGroupId
+    });
+  }
+  return undefined;
+}
+
+function classifyProductOrSpec(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+  const text = textOf(issue);
+  if (issue.severity === 'info') {
+    return makeItem(issue, {
+      status: issue.suggestion.product ? 'product-decision' : 'reference',
+      bucket: issue.suggestion.product ? 'product-decision' : 'reference',
+      actionability: 'non-actionable',
+      owner: issue.suggestion.product ? 'product' : ownerFor(issue, 'test'),
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '该项是参考观察或产品体验建议，不应进入必须修复缺陷列表。',
+      nextStep: issue.suggestion.product ? '由产品/设计确认是否纳入需求；确认前不作为代码缺陷。' : '保留为观察项；如要提升为缺陷，需要补充明确需求和运行证据。',
+      rootCauseGroupId
+    });
+  }
+  if (/触控目标|tap target|smalltap|按钮层级|视觉密度|style|seo|导出|下载|刷新|分页控件|未发现分页参数|empty state|空状态/.test(text)) {
+    const isHardOverflow = /横向滚动|元素溢出|clipped|overflow/.test(text) && !/触控目标|tap target/.test(text);
+    if (!isHardOverflow) {
+      return makeItem(issue, {
+        status: /疑似|未发现|空状态|分页参数/.test(text) ? 'insufficient-evidence' : 'product-decision',
+        bucket: /疑似|未发现|空状态|分页参数/.test(text) ? 'coverage-gap' : 'product-decision',
+        actionability: 'conditional',
+        owner: /seo|触控|视觉|按钮层级|导出|下载|刷新/.test(text) ? 'product' : ownerFor(issue),
+        evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+        reason: '该类结论依赖产品需求、页面类型、设备范围或更强绑定证据，默认不能作为必须修复项。',
+        nextStep: '只有在 PRD/ADR/a11y 标准或核心任务阻塞明确要求时才升级为缺陷；否则放入产品决策/参考观察。',
+        rootCauseGroupId
+      });
+    }
+  }
+  return undefined;
+}
+
+function classifyIntegration(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+  if (!issue.category.startsWith('integration')) return undefined;
+  if (issue.category === 'integration-data-mismatch') {
+    return makeItem(issue, {
+      status: 'needs-source-confirmation',
+      bucket: 'coverage-gap',
+      actionability: 'conditional',
+      owner: 'frontend',
+      evidenceStrength: issue.evidence.networkRequestId && issue.evidence.screenshot ? 'medium' : 'weak',
+      reason: '“接口有数据但页面为空”是高风险推断；需要证明具体列表响应绑定当前 UI，单凭全局 Network 与 DOM 空态不足以定责。',
+      nextStep: '核对响应字段、可见 DOM 和源码数据流；只有 source/E2E 证明绑定关系后才升级为前端或后端缺陷。',
+      rootCauseGroupId
+    });
+  }
+  if (issue.category === 'integration-no-feedback') {
+    return makeItem(issue, {
+      status: 'confirmed',
+      bucket: 'real-frontend-fix',
+      actionability: 'actionable',
+      owner: 'frontend',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '真实页面加载或交互中发现接口异常且页面文本无错误/重试/权限反馈，用户会误判为空数据或无响应。',
+      nextStep: '按源码核对错误态渲染和重试入口；若异常请求来自 exception/P2/offline 模块，则按异常模拟规则降级。',
+      rootCauseGroupId
+    });
+  }
+  if (/filter|pagination|journey/.test(issue.category) && issue.confidence < 0.75) {
+    return makeItem(issue, {
+      status: 'needs-source-confirmation',
+      bucket: 'coverage-gap',
+      actionability: 'conditional',
+      owner: ownerFor(issue),
+      reason: '筛选/分页/旅程类信号可能受页面类型、参数命名或本地状态影响，需要源码或需求确认。',
+      nextStep: '确认该能力属于当前页面需求，并用具体交互、URL/query、接口参数和 DOM 变化复核。',
+      rootCauseGroupId
+    });
+  }
+  return makeItem(issue, {
+    status: 'confirmed',
+    bucket: 'real-frontend-fix',
+    actionability: issue.severity === 'low' ? 'conditional' : 'actionable',
+    owner: ownerFor(issue),
+    evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+    reason: '前后端联动问题具有用户可见影响，但仍应结合需求和源码确定最终 owner。',
+    nextStep: '对齐请求参数、响应字段、loading/empty/error 状态和用户旅程断言。',
+    rootCauseGroupId
+  });
+}
+
+function classifyAccessibility(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+  if (issue.category !== 'frontend-accessibility') return undefined;
+  const text = textOf(issue);
+  if (/触控目标|tap target/.test(text)) {
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'conditional',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '小触控目标在 PC-first 或管理后台页面常是信息密度取舍；是否必须修复取决于移动端支持范围和显式 a11y 标准。',
+      nextStep: '若移动端/触屏是目标范围，再在 <768 断点扩大点击区并补响应式回归；否则作为可选优化。',
+      rootCauseGroupId
+    });
+  }
+  return makeItem(issue, {
+    status: 'confirmed',
+    bucket: 'real-frontend-fix',
+    actionability: issue.severity === 'low' ? 'conditional' : 'actionable',
+    owner: 'frontend',
+    evidenceStrength: issue.evidence.selector ? 'strong' : 'medium',
+    reason: '可访问名称、label、键盘焦点等硬性 a11y 问题可由 DOM/selector 复现，属于前端可执行缺陷。',
+    nextStep: '按 selector 定位组件，补 aria-label/label/focus/键盘行为，并增加 a11y 回归。',
+    rootCauseGroupId
+  });
+}
+
+function classifyPerformance(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+  if (!['frontend-performance', 'resource-performance', 'resource-loading'].includes(String(issue.category))) return undefined;
+  const text = `${textOf(issue)} ${issue.evidence.resourceUrl ?? ''}`.toLowerCase();
+  const details = detailsOf(issue);
+  if (/\/src\/|@vite\/client|node_modules\/\.vite|hmr|vite dev/.test(text)) {
+    return makeItem(issue, {
+      status: 'tool-limitation',
+      bucket: 'tool-limitation',
+      actionability: 'non-actionable',
+      owner: 'test',
+      evidenceStrength: 'strong',
+      reason: '证据来自 Vite dev server 源码模块/HMR，不能作为生产性能或安全结论。',
+      nextStep: '使用 build + preview 或生产构建复测；dev module graph 只能作为源码懒加载线索。',
+      rootCauseGroupId
+    });
+  }
+  if (typeof details.metric === 'string' || typeof details.actual === 'number' || issue.category === 'resource-loading') {
+    return makeItem(issue, {
+      status: 'confirmed',
+      bucket: 'real-frontend-fix',
+      actionability: issue.severity === 'low' ? 'conditional' : 'actionable',
+      owner: 'frontend',
+      evidenceStrength: hasEvidence(issue) ? 'strong' : 'medium',
+      reason: '性能预算或资源加载问题有明确运行时指标/资源证据。',
+      nextStep: '在生产构建确认后做路由拆包、懒加载、资源压缩或静态资源修复，并保留预算回归。',
+      rootCauseGroupId
+    });
+  }
+  return makeItem(issue, {
+    status: 'needs-source-confirmation',
+    bucket: 'coverage-gap',
+    actionability: 'conditional',
+    owner: 'frontend',
+    evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+    reason: '性能/Coverage 结论需要区分 dev 与 production，并结合源码确认是否是首屏必须加载。',
+    nextStep: '检查构建产物、路由懒加载、重型依赖和实际性能预算；确认后再列为修复。',
+    rootCauseGroupId
+  });
+}
+
+function classifyDefault(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem {
+  if (issue.category.startsWith('backend')) {
+    return makeItem(issue, {
+      status: 'confirmed',
+      bucket: 'backend-api-fix',
+      actionability: 'actionable',
+      owner: 'backend',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '后端/API 类问题有网络、契约、状态码或响应证据，默认由后端/API owner 处置； synthetic traffic 需在 triage 中另行排除。',
+      nextStep: '核对 Network/API contract 证据和真实环境请求，修复接口契约、状态码、性能或权限语义。',
+      rootCauseGroupId
+    });
+  }
+  if (issue.category === 'console-error' || issue.category === 'frontend-routing') {
+    return makeItem(issue, {
+      status: 'confirmed',
+      bucket: 'real-frontend-fix',
+      actionability: 'actionable',
+      owner: 'frontend',
+      evidenceStrength: hasEvidence(issue) ? 'strong' : 'medium',
+      reason: '运行时 Console/Page Error 或路由失败通常直接影响用户可用性。',
+      nextStep: '定位堆栈/路由/组件源码，补空值保护、错误边界和回归用例。',
+      rootCauseGroupId
+    });
+  }
+  const status: Status = issue.confidence >= 0.8 && hasEvidence(issue) ? 'confirmed' : 'insufficient-evidence';
+  return makeItem(issue, {
+    status,
+    bucket: status === 'confirmed' ? 'real-frontend-fix' : 'coverage-gap',
+    actionability: status === 'confirmed' && issue.severity !== 'low' ? 'actionable' : 'conditional',
+    owner: ownerFor(issue),
+    evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+    reason: status === 'confirmed' ? '该问题具备运行时证据和较高置信度，可进入修复候选。' : '该问题证据或置信度不足，需补充源码、需求或运行时复验后再定责。',
+    nextStep: status === 'confirmed' ? '按 evidence 定位源码并补回归。' : '补充更强证据；不要在最终报告中当作核心缺陷。',
+    rootCauseGroupId
+  });
+}
+
+function summarize(items: IssueDispositionItem[]): IssueDispositionResult['summary'] {
+  const count = <T extends string>(value: T, selector: (item: IssueDispositionItem) => T): number => items.filter((item) => selector(item) === value).length;
+  const bucketCounts = items.reduce<Record<Bucket, number>>((acc, item) => {
+    acc[item.bucket] = (acc[item.bucket] ?? 0) + 1;
+    return acc;
+  }, {} as Record<Bucket, number>);
+  const statusCounts = items.reduce<Record<Status, number>>((acc, item) => {
+    acc[item.status] = (acc[item.status] ?? 0) + 1;
+    return acc;
+  }, {} as Record<Status, number>);
+  return {
+    totalCount: items.length,
+    actionableCount: count('actionable', (item) => item.actionability),
+    conditionalCount: count('conditional', (item) => item.actionability),
+    nonActionableCount: count('non-actionable', (item) => item.actionability),
+    confirmedCount: count('confirmed', (item) => item.status),
+    needsSourceConfirmationCount: count('needs-source-confirmation', (item) => item.status),
+    deploymentOnlyCount: count('deployment-only', (item) => item.status),
+    productDecisionCount: count('product-decision', (item) => item.status),
+    toolLimitationCount: count('tool-limitation', (item) => item.status),
+    insufficientEvidenceCount: count('insufficient-evidence', (item) => item.status),
+    referenceCount: count('reference', (item) => item.status),
+    bucketCounts,
+    statusCounts
+  };
+}
+
+export function buildIssueDisposition(issues: Issue[], config: FrontLensConfig, rootCauseGroups: RootCauseGroup[] = []): IssueDispositionResult {
+  const groupByIssueId = new Map<string, string>();
+  for (const group of rootCauseGroups) {
+    for (const issueId of group.issueIds) groupByIssueId.set(issueId, group.id);
+  }
+  const items = issues.map((issue) => {
+    const rootCauseGroupId = groupByIssueId.get(issue.id);
+    return (
+      classifySecurity(issue, rootCauseGroupId) ??
+      classifyException(issue, rootCauseGroupId) ??
+      classifyProductOrSpec(issue, rootCauseGroupId) ??
+      classifyIntegration(issue, rootCauseGroupId) ??
+      classifyAccessibility(issue, rootCauseGroupId) ??
+      classifyPerformance(issue, rootCauseGroupId) ??
+      classifyDefault(issue, rootCauseGroupId)
+    );
+  });
+
+  return {
+    checkedAt: new Date().toISOString(),
+    targetUrl: config.target.url,
+    summary: summarize(items),
+    items
+  };
+}

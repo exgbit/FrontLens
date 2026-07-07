@@ -177,13 +177,13 @@ Skill 会按规则：
 - 证据路径
 - 复测命令
 
-从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`；从 `1.4.0` 开始包含 `requirementCoverage`；从 `1.5.0` 开始包含 `artifactIntegrity`；从 `1.6.0` 开始包含 `rootCauseGroups`：
+从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`；从 `1.4.0` 开始包含 `requirementCoverage`；从 `1.5.0` 开始包含 `artifactIntegrity`；从 `1.6.0` 开始包含 `rootCauseGroups`；从 `1.7.0` 开始包含 `issueDisposition`：
 
 - `status`: `pass` / `pass-with-risks` / `fail` / `blocked`
 - `confidence`: `high` / `medium` / `low`
 - `reasons` / `coverageGaps`: 为什么可以验收、为什么有风险、或为什么阻断
 
-`requirementCoverage` 会区分用户提供的验收标准和从页面推断的能力覆盖；推断项只能说明覆盖缺口，不能代表 100% 业务通过。`artifactIntegrity` 会检查报告引用的本地证据路径是否存在，缺失路径不能作为证据。`rootCauseGroups` 会把多个 raw issue 合并成实现层根因，避免把同一 bug 的 500/404/timeout/a11y 多条证据当作多份工作量。CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate` + `requirementCoverage` + `artifactIntegrity` + `rootCauseGroups`，再结合需求、源码和运行证据做最终验收判断。
+`requirementCoverage` 会区分用户提供的验收标准和从页面推断的能力覆盖；推断项只能说明覆盖缺口，不能代表 100% 业务通过。`artifactIntegrity` 会检查报告引用的本地证据路径是否存在，缺失路径不能作为证据。`rootCauseGroups` 会把多个 raw issue 合并成实现层根因，避免把同一 bug 的 500/404/timeout/a11y 多条证据当作多份工作量。`issueDisposition` 会给每条 raw issue 标注 confirmed、needs-source-confirmation、deployment-only、product-decision、tool-limitation、insufficient-evidence 或 reference，并区分 actionable / conditional / non-actionable。CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate` + `requirementCoverage` + `artifactIntegrity` + `issueDisposition` + `rootCauseGroups`，再结合需求、源码和运行证据做最终验收判断。
 
 ## 误报降噪原则
 
@@ -196,7 +196,7 @@ Skill 会按规则：
 - URL path 中的 `credentials` 不等于敏感信息泄露。
 - CSS 类名如 `.el-input__password` 不等于真实密码泄露。
 - 所有 retained 前端问题必须尽量给出源码 file:line 证据。
-- 多个 raw issue 如果指向同一实现缺陷，应合并为一个根因修复；新报告会在 `rootCauseGroups` 中机器化输出。
+- 多个 raw issue 如果指向同一实现缺陷，应合并为一个根因修复；新报告会在 `issueDisposition` 中先过滤行动性，再在 `rootCauseGroups` 中机器化输出根因。
 
 ## 证据采集引擎开发
 
@@ -236,6 +236,7 @@ node dist/cli.js qa \
 
 ```bash
 node dist/cli.js qa --url "https://example.com" --requirements "requirements.json"
+node dist/cli.js disposition --report "reports/frontlens/example/result.json"
 node dist/cli.js root-causes --report "reports/frontlens/example/result.json"
 ```
 

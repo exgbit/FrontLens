@@ -47,6 +47,8 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.equal(result.rootCauseGroups.length, 1);
   assert.equal(result.rootCauseGroups[0].issueCount, 1);
   assert.equal(result.rootCauseGroups[0].owner, 'backend');
+  assert.equal(result.issueDisposition.summary.actionableCount, 1);
+  assert.equal(result.issueDisposition.items[0].status, 'confirmed');
   assert.equal(result.fixTasks[0].owner, 'backend');
   assert.match(result.fixTasks[0].verificationCommand, /node dist\/cli\.js qa --url/);
   assert.ok(result.issues[0].fingerprint);

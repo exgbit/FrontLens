@@ -911,6 +911,62 @@ export interface RootCauseGroup {
   verificationCommand: string;
 }
 
+export type IssueDispositionStatus =
+  | 'confirmed'
+  | 'needs-source-confirmation'
+  | 'deployment-only'
+  | 'product-decision'
+  | 'tool-limitation'
+  | 'insufficient-evidence'
+  | 'reference';
+
+export type IssueDispositionBucket =
+  | 'real-frontend-fix'
+  | 'backend-api-fix'
+  | 'deployment-security-config'
+  | 'product-decision'
+  | 'tool-limitation'
+  | 'coverage-gap'
+  | 'reference';
+
+export interface IssueDispositionItem {
+  issueId: string;
+  fingerprint?: string;
+  title: string;
+  category: IssueCategory;
+  severity: Severity;
+  status: IssueDispositionStatus;
+  bucket: IssueDispositionBucket;
+  actionability: 'actionable' | 'conditional' | 'non-actionable';
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  evidenceStrength: 'strong' | 'medium' | 'weak';
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+  nextStep: string;
+  rootCauseGroupId?: string;
+}
+
+export interface IssueDispositionResult {
+  checkedAt: string;
+  targetUrl: string;
+  summary: {
+    totalCount: number;
+    actionableCount: number;
+    conditionalCount: number;
+    nonActionableCount: number;
+    confirmedCount: number;
+    needsSourceConfirmationCount: number;
+    deploymentOnlyCount: number;
+    productDecisionCount: number;
+    toolLimitationCount: number;
+    insufficientEvidenceCount: number;
+    referenceCount: number;
+    bucketCounts: Record<IssueDispositionBucket, number>;
+    statusCounts: Record<IssueDispositionStatus, number>;
+  };
+  items: IssueDispositionItem[];
+}
+
 export interface FixTask {
   id: string;
   issueIds: string[];
@@ -1116,6 +1172,7 @@ export interface QaResult {
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];
+  issueDisposition: IssueDispositionResult;
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
   aiAnalysis: AiAnalysisResult;

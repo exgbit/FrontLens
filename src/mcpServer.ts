@@ -128,6 +128,11 @@ function listTools(): Record<string, unknown> {
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
+        name: 'frontlens_disposition',
+        description: 'Read result.json and return raw-finding disposition: confirmed, source-confirmation-needed, deployment-only, product-decision, tool-limitation, or insufficient-evidence.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
         name: 'frontlens_network',
         description: 'Read result.json and return failed, slow, duplicated, and suspicious API/network requests.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
@@ -269,6 +274,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           actionable: result.rootCauseGroups.filter((group) => group.status === 'actionable').length,
           reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
         },
+        issueDisposition: result.issueDisposition.summary,
         fixTaskCount: result.fixTasks.length,
         qualityGate: result.qualityGate
       });
@@ -304,6 +310,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           actionable: result.rootCauseGroups.filter((group) => group.status === 'actionable').length,
           reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
         },
+        issueDisposition: result.issueDisposition.summary,
         qualityGate: result.qualityGate
       });
     }
@@ -338,6 +345,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(result.rootCauseGroups);
+    }
+    case 'frontlens_disposition': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(result.issueDisposition);
     }
     case 'frontlens_network': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

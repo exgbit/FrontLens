@@ -30,6 +30,7 @@ import { buildQualityGate } from './qualityGate.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
+import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { sessionStorageSidecarPath } from './auth.js';
 import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
@@ -649,6 +650,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     }
   };
   const rootCauseGroups = buildRootCauseGroups(issues, resultConfig);
+  const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
 
   const result: QaResult = {
     summary: buildSummary({
@@ -696,6 +698,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     p2,
     artifactIntegrity: createEmptyArtifactIntegrity(),
     rootCauseGroups,
+    issueDisposition,
     fixTasks,
     qualityGate: buildQualityGate({
       issues,
@@ -706,7 +709,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
       exceptionSimulations,
       coverage,
       security,
-      requirementCoverage
+      requirementCoverage,
+      issueDisposition
     }),
     aiAnalysis,
     artifacts,

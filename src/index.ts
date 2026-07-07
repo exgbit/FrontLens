@@ -8,4 +8,5 @@ export { buildQualityGate, isActionableIssue } from './qualityGate.js';
 export { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 export { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
+export { buildIssueDisposition } from './disposition/issueDisposition.js';
 export type * from './types.js';

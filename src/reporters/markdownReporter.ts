@@ -236,6 +236,20 @@ ${rows.length ? ['| ID | 优先级 | 等级 | 状态 | Owner | 根因 | Raw Issu
 `;
 }
 
+function formatIssueDisposition(result: QaResult): string {
+  const disposition = result.issueDisposition;
+  const rows = disposition.items.slice(0, 80).map((item) => `| ${item.issueId} | ${item.actionability} | ${item.status} | ${item.bucket} | ${item.owner} | ${item.evidenceStrength} | ${markdownEscape(truncateMiddle(item.reason, 180))} | ${markdownEscape(truncateMiddle(item.nextStep, 180))} |`);
+  return `## Raw Finding Disposition / 原始问题处置
+
+本节把 raw issue 分为可执行缺陷、需确认项和非缺陷，避免把扫描器噪音、产品取舍或部署项混入核心修复列表。
+
+- Actionable / Conditional / Non-actionable：${disposition.summary.actionableCount} / ${disposition.summary.conditionalCount} / ${disposition.summary.nonActionableCount}
+- Confirmed / Needs source / Deployment / Product / Tool / Insufficient / Reference：${disposition.summary.confirmedCount} / ${disposition.summary.needsSourceConfirmationCount} / ${disposition.summary.deploymentOnlyCount} / ${disposition.summary.productDecisionCount} / ${disposition.summary.toolLimitationCount} / ${disposition.summary.insufficientEvidenceCount} / ${disposition.summary.referenceCount}
+
+${rows.length ? ['| Issue | Actionability | Status | Bucket | Owner | Evidence | Reason | Next step |', '| --- | --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '未生成 raw finding 处置。'}
+`;
+}
+
 function formatNetworkSummary(result: QaResult): string {
   const failed = result.network.failedRequests.slice(0, 20);
   const slow = result.network.slowRequests.slice(0, 20);
@@ -649,8 +663,10 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const outputPath = path.join(result.artifacts.outputDir, 'report.md');
   result.artifacts.markdownReport = outputPath;
 
-  const actionableIssues = result.issues.filter(isActionableIssue);
-  const referenceIssues = result.issues.filter((issue) => !isActionableIssue(issue));
+  const dispositionByIssue = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
+  const isReportActionable = (issue: Issue): boolean => dispositionByIssue.get(issue.id)?.actionability === 'actionable' || (!dispositionByIssue.has(issue.id) && isActionableIssue(issue));
+  const actionableIssues = result.issues.filter(isReportActionable);
+  const referenceIssues = result.issues.filter((issue) => !isReportActionable(issue));
   const frontendIssues = actionableIssues.filter((issue) => issue.category.startsWith('frontend') || issue.category === 'resource-loading' || issue.category === 'resource-performance' || issue.category === 'console-error' || issue.category === 'seo');
   const backendIssues = actionableIssues.filter((issue) => issue.category.startsWith('backend'));
   const integrationIssues = actionableIssues.filter((issue) => issue.category.startsWith('integration'));
@@ -673,6 +689,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - API Contract：${result.apiContract.summary.endpointCount} endpoints / ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings
 - Realtime：GraphQL ${result.realtime.summary.graphqlOperationCount} / WS ${result.realtime.summary.webSocketCount} / SSE ${result.realtime.summary.sseCount}
 - Root Causes：${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total
+- Raw Finding Disposition：${result.issueDisposition.summary.actionableCount} actionable / ${result.issueDisposition.summary.conditionalCount} conditional / ${result.issueDisposition.summary.nonActionableCount} non-actionable
 - Fix Tasks：${result.fixTasks.length}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
@@ -684,6 +701,8 @@ ${formatPhaseErrors(result)}
 ${formatQualityGate(result)}
 
 ${formatRootCauseGroups(result)}
+
+${formatIssueDisposition(result)}
 
 ${formatRequirementCoverage(result)}
 

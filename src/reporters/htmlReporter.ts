@@ -201,6 +201,10 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
       return `<tr><td>${escapeHtml(group.id)}</td><td>${escapeHtml(group.priority)}</td><td>${issueBadge(group.severity)}</td><td>${escapeHtml(group.status)}</td><td>${escapeHtml(group.owner)}</td><td>${escapeHtml(group.title)}</td><td>${group.issueCount}</td><td>${escapeHtml(truncateText(evidence, 180))}</td><td>${escapeHtml(truncateText(group.suggestedFix, 220))}</td></tr>`;
     })
     .join('\n');
+  const dispositionRows = result.issueDisposition.items
+    .slice(0, 100)
+    .map((item) => `<tr><td>${escapeHtml(item.issueId)}</td><td>${escapeHtml(item.actionability)}</td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.bucket)}</td><td>${escapeHtml(item.owner)}</td><td>${escapeHtml(item.evidenceStrength)}</td><td>${escapeHtml(truncateText(item.reason, 220))}</td><td>${escapeHtml(truncateText(item.nextStep, 220))}</td></tr>`)
+    .join('\n');
   const requirementRows = result.requirementCoverage.items
     .map((item) => {
       const evidence = [
@@ -262,6 +266,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Low</span><strong>${result.summary.lowCount}</strong></div>
           <div class="metric"><span>Security</span><strong>${result.security.score}/100</strong></div>
           <div class="metric"><span>Root Causes</span><strong>${result.rootCauseGroups.filter((group) => group.status === 'actionable').length}/${result.rootCauseGroups.length}</strong></div>
+          <div class="metric"><span>Disposition</span><strong>${result.issueDisposition.summary.actionableCount}/${result.issueDisposition.summary.conditionalCount}/${result.issueDisposition.summary.nonActionableCount}</strong></div>
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
@@ -298,6 +303,23 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>ID</th><th>Priority</th><th>Severity</th><th>Status</th><th>Owner</th><th>Root cause</th><th>Raw issues</th><th>Evidence</th><th>Suggested fix</th></tr></thead>
           <tbody>${rootCauseRows || '<tr><td colspan="9">No root-cause groups</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Raw Finding Disposition / 原始问题处置</h2>
+        <p>本节把 raw issue 分为可执行缺陷、需确认项和非缺陷，避免把扫描器噪音、产品取舍或部署项混入核心修复列表。</p>
+        <div class="grid">
+          <div class="metric"><span>Actionable</span><strong>${result.issueDisposition.summary.actionableCount}</strong></div>
+          <div class="metric"><span>Conditional</span><strong>${result.issueDisposition.summary.conditionalCount}</strong></div>
+          <div class="metric"><span>Non-actionable</span><strong>${result.issueDisposition.summary.nonActionableCount}</strong></div>
+          <div class="metric"><span>Confirmed</span><strong>${result.issueDisposition.summary.confirmedCount}</strong></div>
+          <div class="metric"><span>Product</span><strong>${result.issueDisposition.summary.productDecisionCount}</strong></div>
+          <div class="metric"><span>Tool limitation</span><strong>${result.issueDisposition.summary.toolLimitationCount}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>Issue</th><th>Actionability</th><th>Status</th><th>Bucket</th><th>Owner</th><th>Evidence</th><th>Reason</th><th>Next step</th></tr></thead>
+          <tbody>${dispositionRows || '<tr><td colspan="8">No disposition items</td></tr>'}</tbody>
         </table>
       </section>
 

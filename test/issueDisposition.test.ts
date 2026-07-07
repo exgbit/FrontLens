@@ -1,0 +1,109 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createDefaultConfig } from '../src/defaultConfig.ts';
+import { buildIssueDisposition } from '../src/disposition/issueDisposition.ts';
+import { buildRootCauseGroups } from '../src/rootCause/rootCauseGroups.ts';
+import { normalizeResult } from '../src/resultNormalizer.ts';
+import type { Issue } from '../src/types.ts';
+
+function issue(overrides: Partial<Issue>): Issue {
+  return {
+    id: 'ISSUE-001',
+    title: 'Test issue',
+    category: 'frontend-ui',
+    severity: 'medium',
+    confidence: 0.8,
+    description: 'desc',
+    evidence: {},
+    reproduceSteps: ['Open page'],
+    reason: 'reason',
+    suggestion: { frontend: 'fix', priority: 'P2' },
+    source: 'rule',
+    ...overrides
+  };
+}
+
+test('issue disposition separates confirmed fixes, product decisions, deployment work, and source-confirmation gaps', () => {
+  const config = createDefaultConfig('https://example.com/admin');
+  const issues = [
+    issue({
+      id: 'ISSUE-001',
+      title: '按钮缺少可访问名称',
+      category: 'frontend-accessibility',
+      severity: 'medium',
+      evidence: { selector: 'button.icon' },
+      suggestion: { frontend: 'add aria-label', priority: 'P2' }
+    }),
+    issue({
+      id: 'ISSUE-002',
+      title: '触控目标尺寸偏小：mobile 390x844',
+      category: 'frontend-accessibility',
+      severity: 'low',
+      evidence: { details: { smallTapTargetCount: 8 } },
+      suggestion: { frontend: 'increase target', priority: 'P3' }
+    }),
+    issue({
+      id: 'ISSUE-003',
+      title: '缺少 Content-Security-Policy',
+      category: 'security',
+      severity: 'medium',
+      evidence: { details: { category: 'headers', rule: 'content-security-policy' } },
+      suggestion: { backend: 'set csp', priority: 'P2' }
+    }),
+    issue({
+      id: 'ISSUE-004',
+      title: '接口返回疑似有列表数据，但页面表格为空',
+      category: 'integration-data-mismatch',
+      severity: 'medium',
+      evidence: { networkRequestId: 'REQ-1', screenshot: '/tmp/page.png' },
+      suggestion: { frontend: 'verify binding', priority: 'P2' }
+    })
+  ];
+  const groups = buildRootCauseGroups(issues, config);
+  const disposition = buildIssueDisposition(issues, config, groups);
+  const byId = new Map(disposition.items.map((item) => [item.issueId, item]));
+
+  assert.equal(byId.get('ISSUE-001')?.status, 'confirmed');
+  assert.equal(byId.get('ISSUE-001')?.actionability, 'actionable');
+  assert.equal(byId.get('ISSUE-002')?.status, 'product-decision');
+  assert.equal(byId.get('ISSUE-002')?.actionability, 'conditional');
+  assert.equal(byId.get('ISSUE-003')?.status, 'deployment-only');
+  assert.equal(byId.get('ISSUE-003')?.bucket, 'deployment-security-config');
+  assert.equal(byId.get('ISSUE-004')?.status, 'needs-source-confirmation');
+  assert.equal(byId.get('ISSUE-004')?.actionability, 'conditional');
+  assert.equal(disposition.summary.actionableCount, 1);
+  assert.equal(disposition.summary.conditionalCount, 3);
+});
+
+test('quality gate uses disposition so speculative high findings become pass-with-risks, not fail', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/admin', title: 'Admin' },
+    pageModel: {
+      url: 'https://example.com/admin',
+      title: 'Admin',
+      stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: 'ok' }
+    },
+    interactionTests: [{ id: 'IT-001', kind: 'search', target: 'search', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, actions: [], observations: {} }],
+    journeyTests: [{ id: 'JOURNEY-001', name: 'smoke', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, startUrl: 'https://example.com/admin', steps: [] }],
+    exceptionSimulations: [{ id: 'EX-001', kind: 'page-refresh', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, observations: {} }],
+    issues: [
+      {
+        title: '接口返回疑似有列表数据，但页面表格为空',
+        category: 'integration-data-mismatch',
+        severity: 'high',
+        confidence: 0.66,
+        description: 'speculative mismatch',
+        evidence: { networkRequestId: 'REQ-1', screenshot: '/tmp/page.png' },
+        reproduceSteps: ['Open page'],
+        reason: 'requires source confirmation',
+        suggestion: { frontend: 'verify binding', priority: 'P2' }
+      }
+    ]
+  });
+
+  assert.equal(result.issueDisposition.items[0].status, 'needs-source-confirmation');
+  assert.equal(result.issueDisposition.items[0].actionability, 'conditional');
+  assert.equal(result.qualityGate.status, 'pass-with-risks');
+  assert.equal(result.qualityGate.blockingIssueCount, 0);
+  assert.equal(result.qualityGate.coverageGaps.some((gap) => gap.includes('Raw finding')), true);
+});

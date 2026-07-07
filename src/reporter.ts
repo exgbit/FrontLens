@@ -10,6 +10,7 @@ import { buildQualityGate } from './qualityGate.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
+import { buildIssueDisposition } from './disposition/issueDisposition.js';
 
 async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.issues = result.issues.map((issue, index) =>
@@ -37,6 +38,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   });
   result.artifactIntegrity = await buildArtifactIntegrity(result);
   result.rootCauseGroups = buildRootCauseGroups(result.issues, result.metadata.config);
+  result.issueDisposition = buildIssueDisposition(result.issues, result.metadata.config, result.rootCauseGroups);
   result.qualityGate = buildQualityGate({
     issues: result.issues,
     pageModel: result.pageModel,
@@ -47,7 +49,8 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     coverage: result.coverage,
     security: result.security,
     requirementCoverage: result.requirementCoverage,
-    artifactIntegrity: result.artifactIntegrity
+    artifactIntegrity: result.artifactIntegrity,
+    issueDisposition: result.issueDisposition
   });
 }
 
@@ -72,6 +75,7 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
   if (result.metadata.config.plugins.reporters.length > 0 || result.issues.length !== issueCountBeforePlugins) {
     await normalizeAndRebuildSummary(result);
     result.rootCauseGroups = buildRootCauseGroups(result.issues, result.metadata.config);
+    result.issueDisposition = buildIssueDisposition(result.issues, result.metadata.config, result.rootCauseGroups);
     result.fixTasks = generateFixTasks(result.issues, result.metadata.config);
     if (formats.has('markdown')) {
       await writeMarkdownReport(result);

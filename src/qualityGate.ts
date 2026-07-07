@@ -1,7 +1,16 @@
-import type { ArtifactIntegrityResult, CoverageResult, ExceptionSimulationResult, InteractionTestResult, Issue, JourneyTestResult, PageModel, PhaseError, QaQualityGate, RequirementCoverageResult, SecurityScanResult } from './types.js';
+import type { ArtifactIntegrityResult, CoverageResult, ExceptionSimulationResult, InteractionTestResult, Issue, IssueDispositionResult, JourneyTestResult, PageModel, PhaseError, QaQualityGate, RequirementCoverageResult, SecurityScanResult } from './types.js';
 
 export function isActionableIssue(issue: Issue): boolean {
   return issue.severity !== 'info';
+}
+
+function dispositionFor(issue: Issue, issueDisposition?: IssueDispositionResult) {
+  return issueDisposition?.items.find((item) => item.issueId === issue.id);
+}
+
+function isActionableIssueForGate(issue: Issue, issueDisposition?: IssueDispositionResult): boolean {
+  const disposition = dispositionFor(issue, issueDisposition);
+  return disposition ? disposition.actionability === 'actionable' : isActionableIssue(issue);
 }
 
 function allSkipped(items: Array<{ status: string }>): boolean {
@@ -24,6 +33,7 @@ function collectCoverageGaps(input: {
   security: SecurityScanResult;
   requirementCoverage?: RequirementCoverageResult;
   artifactIntegrity?: ArtifactIntegrityResult;
+  issueDisposition?: IssueDispositionResult;
 }): string[] {
   const gaps: string[] = [];
   if (input.phaseErrors.length > 0) gaps.push(`${input.phaseErrors.length} 个采集阶段异常，部分证据可能缺失。`);
@@ -39,6 +49,7 @@ function collectCoverageGaps(input: {
     for (const gap of input.requirementCoverage.gaps) gaps.push(`需求覆盖：${gap}`);
   }
   if (input.artifactIntegrity && input.artifactIntegrity.status === 'failed') gaps.push(`证据产物：${input.artifactIntegrity.missingCount} 个引用路径不存在。`);
+  if (input.issueDisposition && input.issueDisposition.summary.conditionalCount > 0) gaps.push(`Raw finding 处置：${input.issueDisposition.summary.conditionalCount} 个问题需要源码、需求或部署归属确认。`);
   return gaps;
 }
 
@@ -53,9 +64,10 @@ export function buildQualityGate(input: {
   security: SecurityScanResult;
   requirementCoverage?: RequirementCoverageResult;
   artifactIntegrity?: ArtifactIntegrityResult;
+  issueDisposition?: IssueDispositionResult;
 }): QaQualityGate {
-  const actionableIssues = input.issues.filter(isActionableIssue);
-  const referenceIssues = input.issues.filter((issue) => !isActionableIssue(issue));
+  const actionableIssues = input.issues.filter((issue) => isActionableIssueForGate(issue, input.issueDisposition));
+  const referenceIssues = input.issues.filter((issue) => !isActionableIssueForGate(issue, input.issueDisposition));
   const blockers = actionableIssues.filter((issue) => issue.severity === 'critical' || issue.severity === 'high');
   const mediumRisks = actionableIssues.filter((issue) => issue.severity === 'medium');
   const failedJourneys = input.journeyTests.filter((journey) => journey.status === 'failed');
@@ -80,6 +92,7 @@ export function buildQualityGate(input: {
     status = 'pass-with-risks';
     if (mediumRisks.length > 0) reasons.push(`${mediumRisks.length} 个 Medium 可执行风险。`);
     if (failedExceptions.length > 0) reasons.push(`${failedExceptions.length} 个异常场景失败。`);
+    if (input.issueDisposition && input.issueDisposition.summary.conditionalCount > 0) reasons.push(`${input.issueDisposition.summary.conditionalCount} 个 raw finding 需要源码/需求/部署确认。`);
     if (coverageGaps.length > 0) reasons.push(`${coverageGaps.length} 个覆盖缺口。`);
   } else {
     status = 'pass';

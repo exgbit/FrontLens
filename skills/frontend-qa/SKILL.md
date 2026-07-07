@@ -1,6 +1,6 @@
 ---
 name: frontend-qa
-description: Run FrontLens Playwright QA for live webpage testing/auditing and produce evidence-backed Markdown/JSON reports covering frontend UI/interaction issues, user journeys, console errors, network/API failures, API schema/contract drift, GraphQL/WebSocket/SSE realtime issues, frontend-backend data mismatch, resource/performance/P2 budget and visual checks, accessibility, permissions, passive security scanning, machine-executable fix tasks, root-cause grouping, diff/baseline comparison, artifact path integrity validation, source-code correlation when a repo path is provided, optional local build/serve before analysis, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare QA runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/rootCauseGroups/fixTasks to drive frontend/backend/security fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
+description: Run FrontLens Playwright QA for live webpage testing/auditing and evidence-backed Markdown/JSON reports covering UI/interaction, user journeys, Console, Network/API, contract drift, realtime GraphQL/WebSocket/SSE, data mismatch, performance/P2, accessibility, permissions, passive security, root-cause grouping, raw-finding disposition/actionability, fix tasks, diff/baseline, artifact integrity, source-code correlation when a repo path is provided, optional local build/serve, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/issueDisposition/rootCauseGroups/fixTasks to drive fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
 ---
 
 # Frontend QA
@@ -16,7 +16,7 @@ For every target-page QA run:
 
 1. Ask the user to choose analysis modules before running FrontLens, unless the user already provided a module set or explicitly said "全选 / all / default".
 2. Do not run target-page QA in the main session. Spawn a fresh worker subagent with `fork_context=false` and let it run the CLI, read `report.md`/`result.json`, and return a concise Markdown summary plus artifact paths. The main session should only coordinate module selection and return the subagent summary to avoid context pollution.
-3. Keep the "core safe scan" mandatory: page load, screenshot/DOM snapshot, page model, Console, Network collection, non-destructive interaction discovery, JSON/Markdown report, rootCauseGroups, fixTasks, and safety blocking. Destructive actions remain disabled unless explicitly authorized.
+3. Keep the "core safe scan" mandatory: page load, screenshot/DOM snapshot, page model, Console, Network collection, non-destructive interaction discovery, JSON/Markdown report, issueDisposition, rootCauseGroups, fixTasks, and safety blocking. Destructive actions remain disabled unless explicitly authorized.
 4. Read `references/module-options.md` when preparing the module checklist or translating selected modules into CLI flags/config.
 5. After the run, read `references/triage-guidelines.md` and calibrate raw findings before reporting. Do not treat raw score or raw issue count as the final truth when findings are synthetic, skipped, deployment-only, or page-type mismatches.
 6. When the user provides a frontend source path, or when a known source mapping exists, source-aware triage is mandatory. Read `references/source-code-correlation.md`, pass the `sourceRoot` to the worker, and require file:line evidence for every retained frontend defect.
@@ -70,9 +70,9 @@ If the user selects "all/default", run the full default QA command. If the user 
 7. If source-aware analysis is enabled, the worker first verifies the target page is reachable from the intended deployment URL. If not, it follows `references/source-code-correlation.md` to build/start the local app, then reruns the reachability check before QA.
 8. The worker reads `result.json` for structured findings, `report.md` for narrative evidence, `references/triage-guidelines.md` for post-run calibration, and `references/source-code-correlation.md` when a source root is available.
 9. The worker must bucket findings into real frontend fixes, backend/API fixes, deployment/security config, product decisions, and false positives/tool limitations. For real frontend fixes, include source file paths and line numbers that confirm the defect and the likely fix surface. Source-aware triage must also retain source-discovered defects even when the raw browser finding was downgraded as dev-mode/synthetic noise; for example, a dev-server request-count finding may be false as a production metric but still reveal a real eager route import/code-splitting problem.
-10. Before returning fixes, group raw issues by implementation root cause. Do not treat raw issue count, heuristic AI issue count, or `fixTasks[]` length as workload. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
+10. Before returning fixes, read `issueDisposition` to separate actionable, conditional, and non-actionable raw findings, then group actionable/conditional raw issues by implementation root cause. Do not treat raw issue count, heuristic AI issue count, or `fixTasks[]` length as workload. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
 11. Apply the professional QA actionability gate: a bug needs user impact, evidence, reproducibility, and an owner/fix surface. Move style/product choices and single-signal guesses to non-defect observations.
-12. Return the report path, JSON path, raw score, raw issue count, root-cause fix count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, and the highest-priority fixes.
+12. Return the report path, JSON path, raw score, raw issue count, raw-finding disposition counts, root-cause fix count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, and the highest-priority fixes.
 
 ## Safety Rules
 
@@ -198,6 +198,7 @@ node dist/cli.js security --report "reports/frontlens/users/result.json"
 Inspect machine-readable fix tasks or compare two reports:
 
 ```bash
+node dist/cli.js disposition --report "reports/frontlens/users/result.json"
 node dist/cli.js root-causes --report "reports/frontlens/users/result.json"
 node dist/cli.js fix-tasks --report "reports/frontlens/users/result.json"
 node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "reports/frontlens/new/result.json" --output "reports/frontlens/diff"
@@ -263,6 +264,7 @@ Minimum stable fields:
 - `p2`
 - `requirementCoverage`
 - `artifactIntegrity`
+- `issueDisposition`
 - `rootCauseGroups[]`
 - `fixTasks[]`
 - `qualityGate`
@@ -280,6 +282,7 @@ node dist/cli.js issues --report "reports/frontlens/users/result.json" --severit
 node dist/cli.js network --report "reports/frontlens/users/result.json"
 node dist/cli.js coverage --report "reports/frontlens/users/result.json"
 node dist/cli.js security --report "reports/frontlens/users/result.json"
+node dist/cli.js disposition --report "reports/frontlens/users/result.json"
 node dist/cli.js root-causes --report "reports/frontlens/users/result.json"
 node dist/cli.js fix-tasks --report "reports/frontlens/users/result.json"
 node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "reports/frontlens/new/result.json"

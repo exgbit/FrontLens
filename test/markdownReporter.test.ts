@@ -44,6 +44,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   const report = await readFile(result.artifacts.markdownReport!, 'utf8');
   const brief = await readFile(result.artifacts.professionalBrief!, 'utf8');
   const audit = await readFile(result.artifacts.professionalAudit!, 'utf8');
+  const reportContentAudit = await readFile(result.artifacts.reportContentAudit!, 'utf8');
   const productContext = await readFile(result.artifacts.productContext!, 'utf8');
   const review = await readFile(result.artifacts.qaReview!, 'utf8');
   const evidence = await readFile(result.artifacts.evidenceReport!, 'utf8');
@@ -55,10 +56,14 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(report, /FrontLens Professional QA Report/);
   assert.match(brief, /FrontLens QA Brief/);
   assert.match(audit, /FrontLens Professional Audit/);
+  assert.match(reportContentAudit, /FrontLens Report Content Audit/);
+  assert.match(reportContentAudit, /Status: \*\*(passed|warning|failed)\*\*/);
   assert.match(productContext, /FrontLens Product Context Suggestion/);
   assert.match(brief, /Core fixes/);
   assert.match(brief, /Professional audit:/);
   assert.match(brief, /professional-audit\.md/);
+  assert.match(brief, /Report content audit:/);
+  assert.match(brief, /report-content-audit\.md/);
   assert.match(brief, /product-context\.md/);
   assert.match(brief, /product-context\.config\.json/);
   assert.match(brief, /qa-plan\.md/);
@@ -173,6 +178,8 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.professionalBrief' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.professionalAudit' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.professionalAuditLog' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.reportContentAudit' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.reportContentAuditLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContext' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextConfig' && entry.exists), true);

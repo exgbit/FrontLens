@@ -5,6 +5,7 @@ export type ProfessionalAuditStatus = 'passed' | 'warning' | 'failed';
 export type ProfessionalAuditSeverity = 'blocker' | 'warning' | 'info';
 export type ProfessionalAuditCategory =
   | 'artifact-integrity'
+  | 'report-content'
   | 'claim-guard'
   | 'qa-signoff'
   | 'overclaim'
@@ -188,6 +189,23 @@ function auditEnvironmentAndScope(result: QaResult, findings: ProfessionalAuditF
       title: `Artifact integrity failed with ${result.artifactIntegrity.missingCount} missing artifact(s).`,
       evidenceRefs: ['artifactIntegrity'],
       recommendation: 'Regenerate missing screenshots/DOM/downloads/reports before citing them as professional QA evidence.'
+    });
+  }
+  if (result.reportContentAudit.status === 'failed') {
+    add(findings, {
+      severity: 'blocker',
+      category: 'report-content',
+      title: `Report content audit failed with ${result.reportContentAudit.summary.blockerCount} blocker(s).`,
+      evidenceRefs: ['reportContentAudit', 'artifacts.reportContentAudit'],
+      recommendation: 'Fix generated-report wording/depth blockers before trusting or echoing the human-facing report conclusion.'
+    });
+  } else if (result.reportContentAudit.status === 'warning') {
+    add(findings, {
+      severity: 'warning',
+      category: 'report-content',
+      title: `Report content audit has ${result.reportContentAudit.summary.warningCount} warning(s).`,
+      evidenceRefs: ['reportContentAudit', 'artifacts.reportContentAudit'],
+      recommendation: 'Review report-content-audit.md and keep final wording within profile/coverage/raw-score boundaries.'
     });
   }
   if (result.claimGuard.status === 'blocked') {

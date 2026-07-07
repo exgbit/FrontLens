@@ -474,6 +474,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           counts: result.defectProof.counts,
           summary: result.defectProof.summary
         },
+        reportContentAudit: {
+          status: result.reportContentAudit.status,
+          profile: result.reportContentAudit.profile,
+          summary: result.reportContentAudit.summary
+        },
         testData: {
           status: result.testData.status,
           environment: result.testData.environment,
@@ -553,6 +558,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         claimGuard: result.claimGuard,
         qaIntake: result.qaIntake,
         defectProof: result.defectProof,
+        reportContentAudit: result.reportContentAudit,
         testData: result.testData,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,

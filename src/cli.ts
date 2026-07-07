@@ -1189,6 +1189,11 @@ async function main(): Promise<void> {
             counts: result.defectProof.counts,
             summary: result.defectProof.summary
           },
+          reportContentAudit: {
+            status: result.reportContentAudit.status,
+            profile: result.reportContentAudit.profile,
+            summary: result.reportContentAudit.summary
+          },
           testData: {
             status: result.testData.status,
             environment: result.testData.environment,
@@ -1246,6 +1251,7 @@ async function main(): Promise<void> {
     console.log(`Claim Guard: ${result.claimGuard.status}, forbidden ${result.claimGuard.forbiddenClaims.length}, required inputs ${result.claimGuard.requiredInputs.length}`);
     console.log(`QA Intake: ${result.qaIntake.status}, questions ${result.qaIntake.questions.length}, top ${result.qaIntake.topQuestions.length}`);
     console.log(`Defect Proof: ${result.defectProof.status}, proven ${result.defectProof.counts.proven}, needs-evidence ${result.defectProof.counts.needsEvidence}`);
+    console.log(`Report Content Audit: ${result.reportContentAudit.status}, blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}`);
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
     console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
@@ -1263,6 +1269,7 @@ async function main(): Promise<void> {
     console.log(`Claim Guard: ${result.artifacts.claimGuard ?? '(disabled)'}`);
     console.log(`QA Intake: ${result.artifacts.qaIntake ?? '(disabled)'}`);
     console.log(`Defect Proof: ${result.artifacts.defectProof ?? '(disabled)'}`);
+    console.log(`Report Content Audit: ${result.artifacts.reportContentAudit ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { normalizeResult } from '../src/resultNormalizer.ts';
+import { formatReportContentAudit, runReportContentAudit } from '../src/audit/reportContentAudit.ts';
+
+function baseResult() {
+  return normalizeResult({
+    summary: { url: 'https://example.com/app', title: 'App', testedAt: '2026-07-07T00:00:00.000Z', browser: 'chromium' },
+    pageModel: { url: 'https://example.com/app', title: 'App', stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: 'App' } }
+  });
+}
+
+test('report content audit blocks forbidden claimGuard wording in generated Markdown', () => {
+  const result = baseResult();
+  result.claimGuard.forbiddenClaims = ['业务功能验证通过可信度 100%'];
+
+  const audit = runReportContentAudit(result, '# Report\n\n业务功能验证通过可信度 100%\n');
+
+  assert.equal(audit.status, 'failed');
+  assert.equal(audit.findings.some((item) => item.category === 'forbidden-wording' && item.severity === 'blocker'), true);
+  assert.match(formatReportContentAudit(audit), /Report Content Audit/);
+});
+
+test('report content audit blocks raw evidence leakage in professional profile', () => {
+  const result = baseResult();
+  result.metadata.config.report.profile = 'professional';
+
+  const audit = runReportContentAudit(result, '# FrontLens Professional QA Report\n\n## 十三、问题详情\n\n<details><summary>Evidence details</summary>raw</details>\n');
+
+  assert.equal(audit.status, 'failed');
+  assert.equal(audit.findings.some((item) => item.category === 'profile-depth' && item.severity === 'blocker'), true);
+});
+
+test('report content audit allows raw evidence in full profile but warns when coverage gaps are hidden', () => {
+  const result = baseResult();
+  result.metadata.config.report.profile = 'full';
+  result.qaCoverage.status = 'partial';
+  result.qaCoverage.summary.partialCount = 1;
+
+  const audit = runReportContentAudit(result, '# FrontLens Professional QA Report\n\nRaw score: 90/100（不能直接等同页面质量）\n\n## 十三、问题详情\n');
+
+  assert.notEqual(audit.findings.some((item) => item.category === 'profile-depth'), true);
+  assert.equal(audit.findings.some((item) => item.category === 'coverage-boundary' && item.severity === 'warning'), true);
+});
+
+test('report content audit warns when raw score lacks caveat', () => {
+  const result = baseResult();
+
+  const audit = runReportContentAudit(result, '# Report\n\nQA sign-off ok\nAdjusted score 95/100\nFix queue 0\nRaw score: 100/100\nQA coverage gap: none\n');
+
+  assert.equal(audit.findings.some((item) => item.category === 'raw-score-caveat' && item.severity === 'warning'), true);
+});

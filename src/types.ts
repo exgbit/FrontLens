@@ -331,6 +331,39 @@ export interface ResponsiveViewportConfig {
 
 export type ReportProfile = 'executive' | 'professional' | 'full';
 
+export type ReportContentAuditStatus = 'passed' | 'warning' | 'failed' | 'skipped';
+export type ReportContentAuditSeverity = 'blocker' | 'warning' | 'info';
+export type ReportContentAuditCategory =
+  | 'forbidden-wording'
+  | 'profile-depth'
+  | 'raw-score-caveat'
+  | 'coverage-boundary'
+  | 'artifact-reference'
+  | 'summary-shape';
+
+export interface ReportContentAuditFinding {
+  id: string;
+  severity: ReportContentAuditSeverity;
+  category: ReportContentAuditCategory;
+  title: string;
+  evidence: string;
+  recommendation: string;
+}
+
+export interface ReportContentAuditResult {
+  status: ReportContentAuditStatus;
+  checkedAt: string;
+  profile: ReportProfile;
+  summary: {
+    findingCount: number;
+    blockerCount: number;
+    warningCount: number;
+    infoCount: number;
+  };
+  findings: ReportContentAuditFinding[];
+  notes: string[];
+}
+
 export interface ReportConfig {
   formats: Array<'json' | 'markdown' | 'html'>;
   /**
@@ -1947,6 +1980,8 @@ export interface ArtifactIndex {
   professionalBrief?: string;
   /** Professional report-contract self-audit Markdown. */
   professionalAudit?: string;
+  /** Generated Markdown content self-audit; checks forbidden wording and report depth. */
+  reportContentAudit?: string;
   /** Reviewable productContext suggestion Markdown. */
   productContext?: string;
   /** Direct FrontLens config JSON containing the suggested/reviewed productContext snippet. */
@@ -1974,6 +2009,7 @@ export interface ArtifactIndex {
   testDataLog?: string;
   professionalSummaryLog?: string;
   professionalAuditLog?: string;
+  reportContentAuditLog?: string;
   productContextLog?: string;
   qaPlanLog?: string;
   qaCoverageLog?: string;
@@ -2137,6 +2173,7 @@ export interface QaResult {
   regressionPlan: RegressionPlanResult;
   qaPlan: QaExecutionPlanResult;
   qaCoverage: QaCoverageMatrixResult;
+  reportContentAudit: ReportContentAuditResult;
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
   claimGuard: ClaimGuardResult;

@@ -82,6 +82,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Proof-ready root causes: **${result.professionalSummary.counts.proofReadyRootCauseCount}** / actionable ${result.professionalSummary.counts.actionableRootCauseCount}
 - Must-fix / should-fix: **${result.professionalSummary.mustFix.length} / ${result.professionalSummary.shouldFix.length}**
 - Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）
+- Report content audit: **${result.reportContentAudit.status}**（blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}）
 - Claim guard: **${result.claimGuard.status}**；QA intake: **${result.qaIntake.status}**；Defect proof: **${result.defectProof.status}**
 - QA execution plan: **${result.qaPlan.status}** / confidence **${result.qaPlan.confidence}**
 - QA coverage matrix: **${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}**（covered ${result.qaCoverage.summary.coveredCount}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}）
@@ -108,6 +109,7 @@ ${forbidden.length ? ['以下结论当前不能正向使用：', ...forbidden].j
 - result.json: \`${markdownEscape(artifactPath(result, 'jsonReport'))}\`
 - report.md: \`${markdownEscape(artifactPath(result, 'markdownReport'))}\`
 - professional-audit.md: \`${markdownEscape(artifactPath(result, 'professionalAudit'))}\`
+- report-content-audit.md: \`${markdownEscape(artifactPath(result, 'reportContentAudit'))}\`
 - product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\`
 - product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\`
 - qa-plan.md: \`${markdownEscape(artifactPath(result, 'qaPlan'))}\`

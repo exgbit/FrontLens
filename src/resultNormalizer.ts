@@ -44,8 +44,9 @@ import { buildQaIntake } from './intake/qaIntake.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
+import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 
-export const RESULT_SCHEMA_VERSION = '1.57.0';
+export const RESULT_SCHEMA_VERSION = '1.58.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -582,6 +583,33 @@ function normalizeArtifactIntegrity(raw: unknown): QaResult['artifactIntegrity']
     entries,
     missing,
     summary: asString(raw.summary, status)
+  };
+}
+
+function normalizeReportContentAudit(raw: unknown, profile: QaResult['metadata']['config']['report']['profile']): QaResult['reportContentAudit'] {
+  if (!isRecord(raw)) return createSkippedReportContentAudit(profile, 'Report content audit missing from report.');
+  const status = raw.status === 'passed' || raw.status === 'warning' || raw.status === 'failed' || raw.status === 'skipped' ? raw.status : 'skipped';
+  const auditProfile = raw.profile === 'executive' || raw.profile === 'professional' || raw.profile === 'full' ? raw.profile : profile;
+  const summary = isRecord(raw.summary) ? raw.summary : {};
+  return {
+    status,
+    checkedAt: asString(raw.checkedAt, new Date().toISOString()),
+    profile: auditProfile,
+    summary: {
+      findingCount: asNumber(summary.findingCount),
+      blockerCount: asNumber(summary.blockerCount),
+      warningCount: asNumber(summary.warningCount),
+      infoCount: asNumber(summary.infoCount)
+    },
+    findings: asArray(raw.findings).filter(isRecord).map((item, index) => ({
+      id: asString(item.id, `RCA-${String(index + 1).padStart(3, '0')}`),
+      severity: item.severity === 'blocker' || item.severity === 'warning' || item.severity === 'info' ? item.severity : 'info',
+      category: item.category === 'forbidden-wording' || item.category === 'profile-depth' || item.category === 'raw-score-caveat' || item.category === 'coverage-boundary' || item.category === 'artifact-reference' || item.category === 'summary-shape' ? item.category : 'summary-shape',
+      title: asString(item.title),
+      evidence: asString(item.evidence),
+      recommendation: asString(item.recommendation)
+    })),
+    notes: asArray<string>(raw.notes).filter((item) => typeof item === 'string')
   };
 }
 
@@ -1263,6 +1291,7 @@ export function normalizeResult(raw: unknown): QaResult {
     defectProof,
     qaSignoff
   });
+  const reportContentAudit = normalizeReportContentAudit(raw.reportContentAudit, metadataConfig.report.profile);
 
   return {
     summary,
@@ -1298,6 +1327,7 @@ export function normalizeResult(raw: unknown): QaResult {
     regressionPlan,
     qaPlan,
     qaCoverage,
+    reportContentAudit,
     professionalSummary,
     defectProof,
     claimGuard,

@@ -6,6 +6,7 @@ import { isActionableIssue } from '../qualityGate.js';
 import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 import { formatProfessionalBrief } from './briefReporter.js';
 import { formatProfessionalAudit, runProfessionalAudit } from '../audit/professionalAudit.js';
+import { formatReportContentAudit, runReportContentAudit } from '../audit/reportContentAudit.js';
 import { buildProductContextSuggestion, formatProductContextSuggestion } from '../product/productContextSuggestion.js';
 import { buildQaExecutionPlan, formatQaExecutionPlan } from '../plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix, formatQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
@@ -1162,6 +1163,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const evidencePath = path.join(result.artifacts.outputDir, 'evidence-report.md');
   const briefPath = path.join(result.artifacts.outputDir, 'brief.md');
   const auditPath = path.join(result.artifacts.outputDir, 'professional-audit.md');
+  const reportContentAuditPath = path.join(result.artifacts.outputDir, 'report-content-audit.md');
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
   const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
@@ -1174,6 +1176,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.evidenceReport = evidencePath;
   result.artifacts.professionalBrief = briefPath;
   result.artifacts.professionalAudit = auditPath;
+  result.artifacts.reportContentAudit = reportContentAuditPath;
   result.artifacts.productContext = productContextPath;
   result.artifacts.qaPlan = qaPlanPath;
   result.artifacts.qaCoverage = qaCoveragePath;
@@ -1358,8 +1361,10 @@ ${formatArtifacts(result)}
     : result.metadata.config.report.profile === 'full'
       ? `${professionalReportMarkdown}\n\n---\n\n${evidenceMarkdown}`
       : professionalReportMarkdown;
+  result.reportContentAudit = runReportContentAudit(result, reportMarkdown);
   await writeText(briefPath, formatProfessionalBrief(result));
   await writeText(auditPath, formatProfessionalAudit(runProfessionalAudit(result)));
+  await writeText(reportContentAuditPath, formatReportContentAudit(result.reportContentAudit));
   await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));
   result.qaPlan = buildQaExecutionPlan(result);
   await writeText(qaPlanPath, formatQaExecutionPlan(result.qaPlan));

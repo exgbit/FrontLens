@@ -16,7 +16,7 @@ A professional-test-engineer answer must include:
 6. **Regression pack**: exact FrontLens rerun command, any journey config needed, and focused verification steps after fixes.
 7. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
-Use `result.json.qualityGate` plus `result.json.requirementCoverage`, `result.json.sourceAnalysis`, `result.json.sourceRuntimeCorrelation`, `result.json.sourceHealth`, `result.json.artifactIntegrity`, `result.json.issueDisposition`, and `result.json.rootCauseGroups` as the first machine-readable gate, then adjust them with requirement/source context. For example, a raw `pass` can only become business `pass` when requirements, role, test data, and relevant journeys are actually verified; otherwise report `pass-with-risks` or `blocked` for acceptance.
+Use `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `qualityGate`, `requirementCoverage`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, or relevant journeys are missing.
 
 ## Inputs a human QA would ask for
 
@@ -79,7 +79,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No production performance/security conclusion from Vite dev server artifacts.
 - No backend contract failure from FrontLens exception mocks.
 - No missing export/refresh/pagination defect unless the requirement or page type demands it.
-- No release sign-off solely from `summary.score`; use `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
+- No release sign-off solely from `summary.score`; use `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
 
 ## Output template
 

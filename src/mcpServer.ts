@@ -283,7 +283,8 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         },
         issueDisposition: result.issueDisposition.summary,
         fixTaskCount: result.fixTasks.length,
-        qualityGate: result.qualityGate
+        qualityGate: result.qualityGate,
+        qaSignoff: result.qaSignoff
       });
     }
     case 'frontlens_inspect': {
@@ -319,7 +320,8 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
         },
         issueDisposition: result.issueDisposition.summary,
-        qualityGate: result.qualityGate
+        qualityGate: result.qualityGate,
+        qaSignoff: result.qaSignoff
       });
     }
     case 'frontlens_issues': {

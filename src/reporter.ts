@@ -11,6 +11,7 @@ import { buildRequirementCoverage } from './requirements/requirementCoverage.js'
 import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
+import { buildQaSignoff } from './signoff/qaSignoff.js';
 
 async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.issues = result.issues.map((issue, index) =>
@@ -51,6 +52,17 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     requirementCoverage: result.requirementCoverage,
     artifactIntegrity: result.artifactIntegrity,
     issueDisposition: result.issueDisposition
+  });
+  result.qaSignoff = buildQaSignoff({
+    config: result.metadata.config,
+    qualityGate: result.qualityGate,
+    requirementCoverage: result.requirementCoverage,
+    sourceHealth: result.sourceHealth,
+    artifactIntegrity: result.artifactIntegrity,
+    journeyTests: result.journeyTests,
+    interactionTests: result.interactionTests,
+    exceptionSimulations: result.exceptionSimulations,
+    pageDomNodes: result.pageModel.stats.domNodes
   });
 }
 

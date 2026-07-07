@@ -5,6 +5,7 @@ export { loadConfig } from './config.js';
 export { createDefaultConfig } from './defaultConfig.js';
 export { normalizeResult, normalizeIssueLike, fingerprintIssue, RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 export { buildQualityGate, isActionableIssue } from './qualityGate.js';
+export { buildQaSignoff } from './signoff/qaSignoff.js';
 export { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 export { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';

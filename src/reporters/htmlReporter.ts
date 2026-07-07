@@ -190,6 +190,13 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     ...result.qualityGate.reasons.map((item) => `<tr><td>reason</td><td>${escapeHtml(item)}</td></tr>`),
     ...result.qualityGate.coverageGaps.map((item) => `<tr><td>coverage-gap</td><td>${escapeHtml(item)}</td></tr>`)
   ].join('\n');
+  const qaSignoffRows = [
+    ...result.qaSignoff.blockers.map((item) => `<tr><td>blocker</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.qaSignoff.risks.map((item) => `<tr><td>risk</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.qaSignoff.coverageGaps.map((item) => `<tr><td>gap</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.qaSignoff.requiredFollowups.map((item) => `<tr><td>follow-up</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.qaSignoff.evidence.map((item) => `<tr><td>evidence</td><td>${escapeHtml(item)}</td></tr>`)
+  ].join('\n');
   const rootCauseRows = result.rootCauseGroups
     .slice(0, 80)
     .map((group) => {
@@ -294,6 +301,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Disposition</span><strong>${result.issueDisposition.summary.actionableCount}/${result.issueDisposition.summary.conditionalCount}/${result.issueDisposition.summary.nonActionableCount}</strong></div>
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
+          <div class="metric"><span>QA Sign-off</span><strong>${escapeHtml(result.qaSignoff.status)}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
@@ -317,6 +325,25 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>Type</th><th>Reason / Gap</th></tr></thead>
           <tbody>${qualityGateRows || '<tr><td colspan="2">No quality gate notes</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>QA Sign-off / 专业测试签核</h2>
+        <p>${escapeHtml(result.qaSignoff.summary)}</p>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.qaSignoff.status)}</strong></div>
+          <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qaSignoff.confidence)}</strong></div>
+          <div class="metric"><span>Business validation</span><strong>${escapeHtml(result.qaSignoff.businessValidationConfidence)}</strong></div>
+          <div class="metric"><span>Provided reqs</span><strong>${result.qaSignoff.scope.providedRequirementCount}</strong></div>
+          <div class="metric"><span>Journeys</span><strong>${result.qaSignoff.scope.passedJourneyCount}/${result.qaSignoff.scope.journeyCount}</strong></div>
+          <div class="metric"><span>Interactions</span><strong>${result.qaSignoff.scope.passedInteractionCount}/${result.qaSignoff.scope.interactionCount}</strong></div>
+          <div class="metric"><span>Auth</span><strong>${String(result.qaSignoff.scope.authStateProvided)}</strong></div>
+          <div class="metric"><span>Source health</span><strong>${escapeHtml(result.qaSignoff.scope.sourceHealthStatus)}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>Type</th><th>Note</th></tr></thead>
+          <tbody>${qaSignoffRows || '<tr><td colspan="2">No QA sign-off notes</td></tr>'}</tbody>
         </table>
       </section>
 

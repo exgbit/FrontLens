@@ -1174,6 +1174,40 @@ export interface QaQualityGate {
   summary: string;
 }
 
+export type BusinessValidationConfidence = 'runtime-verified' | 'runtime-partial' | 'static-source-only' | 'not-verified';
+
+export interface QaSignoffResult {
+  status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
+  confidence: 'high' | 'medium' | 'low';
+  businessValidationConfidence: BusinessValidationConfidence;
+  checkedAt: string;
+  summary: string;
+  scope: {
+    targetUrl: string;
+    sourceRoot?: string;
+    requirementSource: RequirementCoverageResult['source'];
+    providedRequirementCount: number;
+    inferredRequirementCount: number;
+    journeyCount: number;
+    passedJourneyCount: number;
+    failedJourneyCount: number;
+    interactionCount: number;
+    passedInteractionCount: number;
+    failedInteractionCount: number;
+    exceptionCount: number;
+    failedExceptionCount: number;
+    authStateProvided: boolean;
+    destructiveActionsAllowed: boolean;
+    sourceHealthStatus: SourceHealthResult['status'];
+    artifactIntegrityStatus: ArtifactIntegrityResult['status'];
+  };
+  blockers: string[];
+  risks: string[];
+  coverageGaps: string[];
+  requiredFollowups: string[];
+  evidence: string[];
+}
+
 export interface ResultDiff {
   before: { url: string; score: number; issueCount: number; testedAt: string };
   after: { url: string; score: number; issueCount: number; testedAt: string };
@@ -1361,6 +1395,7 @@ export interface QaResult {
   issueDisposition: IssueDispositionResult;
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
+  qaSignoff: QaSignoffResult;
   aiAnalysis: AiAnalysisResult;
   artifacts: ArtifactIndex;
   metadata: {

@@ -56,6 +56,8 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.ok(result.issues[0].fingerprint);
   assert.equal(result.qualityGate.status, 'fail');
   assert.equal(result.qualityGate.blockingIssueCount, 1);
+  assert.equal(result.qaSignoff.status, 'fail');
+  assert.equal(result.qaSignoff.businessValidationConfidence, 'not-verified');
 });
 
 test('normalizeResult recalculates missing score and normalizes P2 child records', () => {

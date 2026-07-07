@@ -8,13 +8,13 @@ Use this reference when consuming QA results from another skill.
 - Summary, page model, artifacts
 - Network, console, resources
 - Interactions, journeys, responsive, accessibility, permission, exceptions
-- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Source Analysis, Source Runtime Correlation, Source Health, Artifact Integrity, Root Cause Groups, Issue Disposition, Fix Tasks, QA Gate, AI
+- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Source Analysis, Source Runtime Correlation, Source Health, Artifact Integrity, Root Cause Groups, Issue Disposition, Fix Tasks, QA Gate, QA Sign-off, AI
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health when older reports do not contain them.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health when older reports do not contain them.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -47,6 +47,7 @@ interface QaResult {
   issueDisposition: IssueDispositionResult;
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
+  qaSignoff: QaSignoffResult;
   aiAnalysis: AiAnalysisResult; // always present; skipped when disabled
   artifacts: ArtifactIndex;
   metadata: {
@@ -352,9 +353,9 @@ interface ExceptionSimulationResult {
 }
 ```
 
-## API Contract, Realtime, Requirement Coverage, Product Context, Source Analysis, Source Runtime Correlation, Source Health, P2, Root Cause Groups, Issue Disposition, Fix Tasks, Diff
+## API Contract, Realtime, Requirement Coverage, Product Context, Source Analysis, Source Runtime Correlation, Source Health, P2, Root Cause Groups, Issue Disposition, Fix Tasks, QA Sign-off, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`; `metadata.schemaVersion >= 1.12.0` includes `sourceHealth`.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`; `metadata.schemaVersion >= 1.12.0` includes `sourceHealth`; `metadata.schemaVersion >= 1.13.0` includes `qaSignoff`.
 
 ```ts
 interface ApiContractResult {
@@ -683,6 +684,43 @@ If `sourceHealth.status=failed`, treat `frontend-source-health` issues as source
 
 `confidence` reflects collection quality, not product/business certainty. Missing PRD, roles, test data, or destructive-action authorization still lowers business-validation confidence at the skill triage layer.
 
+`qaSignoff` is the machine-readable professional testing sign-off. It wraps `qualityGate` with business-validation confidence and explicit follow-ups so raw scores are not mistaken for release approval.
+
+```ts
+interface QaSignoffResult {
+  status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
+  confidence: 'high' | 'medium' | 'low';
+  businessValidationConfidence: 'runtime-verified' | 'runtime-partial' | 'static-source-only' | 'not-verified';
+  summary: string;
+  scope: {
+    targetUrl: string;
+    sourceRoot?: string;
+    requirementSource: RequirementCoverageResult['source'];
+    providedRequirementCount: number;
+    inferredRequirementCount: number;
+    journeyCount: number;
+    passedJourneyCount: number;
+    failedJourneyCount: number;
+    interactionCount: number;
+    passedInteractionCount: number;
+    failedInteractionCount: number;
+    exceptionCount: number;
+    failedExceptionCount: number;
+    authStateProvided: boolean;
+    destructiveActionsAllowed: boolean;
+    sourceHealthStatus: SourceHealthResult['status'];
+    artifactIntegrityStatus: ArtifactIntegrityResult['status'];
+  };
+  blockers: string[];
+  risks: string[];
+  coverageGaps: string[];
+  requiredFollowups: string[];
+  evidence: string[];
+}
+```
+
+Use `qaSignoff.status` for release/sign-off conversations and `qaSignoff.businessValidationConfidence` for business-function claims. A raw `qualityGate.pass` can still become `qaSignoff.pass-with-risks` when no PRD, login/role state, or passed user journey proves the business flow.
+
 For batched GraphQL POSTs, `network.requests[]` keeps one request record while `realtime.graphql[]` expands the batch into one entry per operation. Those entries share the same `networkRequestId` and carry per-operation `operationName`, `operationType`, `variablesPreview`, and `hasErrors` where response batches can be parsed.
 
 Use `node dist/cli.js diff --before old/result.json --after new/result.json` to compare reports by stable fingerprints. The diff returns added, resolved, persistent, and severity-changed issues plus score/security/performance deltas.
@@ -903,7 +941,7 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Read `qualityGate`, `requirementCoverage`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, requirement gaps, static/runtime source binding, syntax/source-health status, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
+3. Read `qaSignoff`, `qualityGate`, `requirementCoverage`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, business-validation confidence, requirement gaps, static/runtime source binding, syntax/source-health status, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
 4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.

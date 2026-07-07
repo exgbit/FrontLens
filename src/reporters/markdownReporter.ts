@@ -213,6 +213,32 @@ ${rows.length ? ['| 类型 | 说明 |', '| --- | --- |', ...rows, ''].join('\n')
 `;
 }
 
+function formatQaSignoff(result: QaResult): string {
+  const signoff = result.qaSignoff;
+  const rows = [
+    ...signoff.blockers.map((item) => `| blocker | ${markdownEscape(item)} |`),
+    ...signoff.risks.map((item) => `| risk | ${markdownEscape(item)} |`),
+    ...signoff.coverageGaps.map((item) => `| gap | ${markdownEscape(item)} |`),
+    ...signoff.requiredFollowups.map((item) => `| follow-up | ${markdownEscape(item)} |`),
+    ...signoff.evidence.map((item) => `| evidence | ${markdownEscape(item)} |`)
+  ];
+  return `## QA Sign-off / 专业测试签核
+
+- Status：**${signoff.status}**
+- Confidence：**${signoff.confidence}**
+- Business validation confidence：**${signoff.businessValidationConfidence}**
+- Summary：${markdownEscape(signoff.summary)}
+- Requirements provided / inferred：${signoff.scope.providedRequirementCount} / ${signoff.scope.inferredRequirementCount}
+- Journeys passed / total：${signoff.scope.passedJourneyCount} / ${signoff.scope.journeyCount}
+- Interactions passed / total：${signoff.scope.passedInteractionCount} / ${signoff.scope.interactionCount}
+- Auth state provided：${signoff.scope.authStateProvided}
+- Destructive actions allowed：${signoff.scope.destructiveActionsAllowed}
+- Source health / artifacts：${signoff.scope.sourceHealthStatus} / ${signoff.scope.artifactIntegrityStatus}
+
+${rows.length ? ['| 类型 | 说明 |', '| --- | --- |', ...rows, ''].join('\n') : '未发现额外签核说明。'}
+`;
+}
+
 function formatSourceAnalysis(result: QaResult): string {
   const source = result.sourceAnalysis;
   const findingRows = source.findings.slice(0, 20).map((finding) => {
@@ -771,6 +797,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Root Causes：${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total
 - Raw Finding Disposition：${result.issueDisposition.summary.actionableCount} actionable / ${result.issueDisposition.summary.conditionalCount} conditional / ${result.issueDisposition.summary.nonActionableCount} non-actionable
 - Fix Tasks：${result.fixTasks.length}
+- QA Sign-off：${result.qaSignoff.status} / ${result.qaSignoff.confidence} / ${result.qaSignoff.businessValidationConfidence}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
@@ -779,6 +806,8 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 ${formatPhaseErrors(result)}
 
 ${formatQualityGate(result)}
+
+${formatQaSignoff(result)}
 
 ${formatRootCauseGroups(result)}
 

@@ -28,8 +28,9 @@ import { deepMerge } from './utils/deepMerge.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
+import { buildQaSignoff } from './signoff/qaSignoff.js';
 
-export const RESULT_SCHEMA_VERSION = '1.12.0';
+export const RESULT_SCHEMA_VERSION = '1.13.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -580,6 +581,60 @@ function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): 
   };
 }
 
+function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaResult['qaSignoff'] {
+  if (!isRecord(raw)) return fallback;
+  const status = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
+  const confidence = raw.confidence === 'high' || raw.confidence === 'medium' || raw.confidence === 'low' ? raw.confidence : fallback.confidence;
+  const businessValidationConfidence =
+    raw.businessValidationConfidence === 'runtime-verified' ||
+    raw.businessValidationConfidence === 'runtime-partial' ||
+    raw.businessValidationConfidence === 'static-source-only' ||
+    raw.businessValidationConfidence === 'not-verified'
+      ? raw.businessValidationConfidence
+      : fallback.businessValidationConfidence;
+  const scope = isRecord(raw.scope) ? raw.scope : {};
+  const requirementSource = scope.requirementSource === 'provided' || scope.requirementSource === 'inferred' || scope.requirementSource === 'mixed' || scope.requirementSource === 'none'
+    ? scope.requirementSource
+    : fallback.scope.requirementSource;
+  const sourceHealthStatus = scope.sourceHealthStatus === 'passed' || scope.sourceHealthStatus === 'failed' || scope.sourceHealthStatus === 'skipped'
+    ? scope.sourceHealthStatus
+    : fallback.scope.sourceHealthStatus;
+  const artifactIntegrityStatus = scope.artifactIntegrityStatus === 'passed' || scope.artifactIntegrityStatus === 'warning' || scope.artifactIntegrityStatus === 'failed' || scope.artifactIntegrityStatus === 'skipped'
+    ? scope.artifactIntegrityStatus
+    : fallback.scope.artifactIntegrityStatus;
+  return {
+    status,
+    confidence,
+    businessValidationConfidence,
+    checkedAt: asString(raw.checkedAt, fallback.checkedAt),
+    summary: asString(raw.summary, fallback.summary),
+    scope: {
+      targetUrl: asString(scope.targetUrl, fallback.scope.targetUrl),
+      sourceRoot: optionalString(scope.sourceRoot) ?? fallback.scope.sourceRoot,
+      requirementSource,
+      providedRequirementCount: asNumber(scope.providedRequirementCount, fallback.scope.providedRequirementCount),
+      inferredRequirementCount: asNumber(scope.inferredRequirementCount, fallback.scope.inferredRequirementCount),
+      journeyCount: asNumber(scope.journeyCount, fallback.scope.journeyCount),
+      passedJourneyCount: asNumber(scope.passedJourneyCount, fallback.scope.passedJourneyCount),
+      failedJourneyCount: asNumber(scope.failedJourneyCount, fallback.scope.failedJourneyCount),
+      interactionCount: asNumber(scope.interactionCount, fallback.scope.interactionCount),
+      passedInteractionCount: asNumber(scope.passedInteractionCount, fallback.scope.passedInteractionCount),
+      failedInteractionCount: asNumber(scope.failedInteractionCount, fallback.scope.failedInteractionCount),
+      exceptionCount: asNumber(scope.exceptionCount, fallback.scope.exceptionCount),
+      failedExceptionCount: asNumber(scope.failedExceptionCount, fallback.scope.failedExceptionCount),
+      authStateProvided: typeof scope.authStateProvided === 'boolean' ? scope.authStateProvided : fallback.scope.authStateProvided,
+      destructiveActionsAllowed: typeof scope.destructiveActionsAllowed === 'boolean' ? scope.destructiveActionsAllowed : fallback.scope.destructiveActionsAllowed,
+      sourceHealthStatus,
+      artifactIntegrityStatus
+    },
+    blockers: asArray<string>(raw.blockers).filter((item) => typeof item === 'string'),
+    risks: asArray<string>(raw.risks).filter((item) => typeof item === 'string'),
+    coverageGaps: asArray<string>(raw.coverageGaps).filter((item) => typeof item === 'string'),
+    requiredFollowups: asArray<string>(raw.requiredFollowups).filter((item) => typeof item === 'string'),
+    evidence: asArray<string>(raw.evidence).filter((item) => typeof item === 'string')
+  };
+}
+
 function normalizeSourceAnalysis(raw: unknown, config: FrontLensConfig): QaResult['sourceAnalysis'] {
   const empty = {
     enabled: config.source.enabled,
@@ -853,6 +908,18 @@ export function normalizeResult(raw: unknown): QaResult {
     issueDisposition
   });
   const qualityGate = isRecord(raw.qualityGate) ? normalizeQualityGate(raw.qualityGate, qualityGateFallback) : qualityGateFallback;
+  const qaSignoffFallback = buildQaSignoff({
+    config: metadataConfig,
+    qualityGate,
+    requirementCoverage,
+    sourceHealth,
+    artifactIntegrity,
+    journeyTests,
+    interactionTests,
+    exceptionSimulations,
+    pageDomNodes: pageModel.stats.domNodes
+  });
+  const qaSignoff = isRecord(raw.qaSignoff) ? normalizeQaSignoff(raw.qaSignoff, qaSignoffFallback) : qaSignoffFallback;
 
   return {
     summary,
@@ -882,6 +949,7 @@ export function normalizeResult(raw: unknown): QaResult {
     issueDisposition,
     fixTasks,
     qualityGate,
+    qaSignoff,
     aiAnalysis,
     artifacts: {
       ...artifactsRaw,

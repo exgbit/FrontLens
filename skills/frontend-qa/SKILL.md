@@ -118,7 +118,8 @@ If the user selects "all/default", run the full default QA command. If the user 
 9. The worker must bucket findings into real frontend fixes, backend/API fixes, deployment/security config, product decisions, and false positives/tool limitations. For real frontend fixes, include source file paths and line numbers that confirm the defect and the likely fix surface. Source-aware triage must also retain source-discovered defects even when the raw browser finding was downgraded as dev-mode/synthetic noise; for example, a dev-server request-count finding may be false as a production metric but still reveal a real eager route import/code-splitting problem.
 10. Before returning fixes, read `issueDisposition` to separate actionable, conditional, and non-actionable raw findings, then group actionable/conditional raw issues by implementation root cause. Do not treat raw issue count, heuristic AI issue count, or `fixTasks[]` length as workload. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
 11. Apply the professional QA actionability gate: a bug needs user impact, evidence, reproducibility, and an owner/fix surface. Move style/product choices and single-signal guesses to non-defect observations.
-12. Return the report path, JSON path, raw score, raw issue count, raw-finding disposition counts, root-cause fix count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, and the highest-priority fixes.
+12. Prefer `result.json.qaSignoff` for release/sign-off wording; it may downgrade a raw `qualityGate.pass` to `pass-with-risks` when PRD, auth/role state, or runtime journeys are missing.
+13. Return the report path, JSON path, raw score, raw issue count, raw-finding disposition counts, root-cause fix count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, and the highest-priority fixes.
 
 ## Safety Rules
 
@@ -328,6 +329,7 @@ Minimum stable fields:
 - `rootCauseGroups[]`
 - `fixTasks[]`
 - `qualityGate`
+- `qaSignoff`
 - `aiAnalysis`
 - custom plugin outputs under `artifacts`
 

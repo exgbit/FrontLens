@@ -27,6 +27,7 @@ import { applySuggestionTemplates } from './fix/suggestionTemplates.js';
 import { dedupeIssues } from './fix/issueDedupe.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
+import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
@@ -683,6 +684,31 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   };
   const rootCauseGroups = buildRootCauseGroups(issues, resultConfig);
   const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
+  const initialArtifactIntegrity = createEmptyArtifactIntegrity();
+  const qualityGate = buildQualityGate({
+    issues,
+    pageModel,
+    phaseErrors,
+    interactionTests,
+    journeyTests,
+    exceptionSimulations,
+    coverage,
+    security,
+    requirementCoverage,
+    artifactIntegrity: initialArtifactIntegrity,
+    issueDisposition
+  });
+  const qaSignoff = buildQaSignoff({
+    config: resultConfig,
+    qualityGate,
+    requirementCoverage,
+    sourceHealth,
+    artifactIntegrity: initialArtifactIntegrity,
+    journeyTests,
+    interactionTests,
+    exceptionSimulations,
+    pageDomNodes: pageModel.stats.domNodes
+  });
 
   const result: QaResult = {
     summary: buildSummary({
@@ -731,22 +757,12 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     sourceRuntimeCorrelation,
     sourceHealth,
     p2,
-    artifactIntegrity: createEmptyArtifactIntegrity(),
+    artifactIntegrity: initialArtifactIntegrity,
     rootCauseGroups,
     issueDisposition,
     fixTasks,
-    qualityGate: buildQualityGate({
-      issues,
-      pageModel,
-      phaseErrors,
-      interactionTests,
-      journeyTests,
-      exceptionSimulations,
-      coverage,
-      security,
-      requirementCoverage,
-      issueDisposition
-    }),
+    qualityGate,
+    qaSignoff,
     aiAnalysis,
     artifacts,
     metadata: {

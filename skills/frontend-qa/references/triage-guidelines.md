@@ -14,6 +14,8 @@ Create a concise triage table with these buckets:
 
 Report raw score separately from adjusted risk. If many findings are skipped, synthetic, or deployment-only, say the score is low-confidence and prioritize the triaged fix list instead of repeating every issue.
 
+Use `qaSignoff` before final sign-off wording. If `qaSignoff.businessValidationConfidence` is not `runtime-verified`, do not describe business validation as fully passed even when `qualityGate.status=pass`.
+
 Apply an **actionability gate** before presenting final findings:
 
 - Keep as **core fixes** only defects with direct user impact and evidence: runtime error, broken route, failed core journey, API failure with missing visible error state, a11y violation with selectors, confirmed data binding mismatch, or source-confirmed performance/bundle issue.

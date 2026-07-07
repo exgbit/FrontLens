@@ -3,6 +3,7 @@ import { stdin, stdout } from 'node:process';
 import { runQa } from './runner.js';
 import { runCompatibility } from './matrix.js';
 import { runEnvironmentComparison } from './compare/environmentComparison.js';
+import { synthesizeRequirements } from './requirements/requirementWizard.js';
 import type { BrowserName, Issue, QaResult, QaRunInput, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
@@ -116,6 +117,19 @@ function listTools(): Record<string, unknown> {
           },
           ['url']
         )
+      },
+      {
+        name: 'frontlens_requirements_synthesize',
+        description: 'Convert PRD/user-story/acceptance text into a reviewable FrontLens requirements draft with executable assertions/signals.',
+        inputSchema: schema({
+          inputPath: { type: 'string', description: 'Markdown/text file containing PRD, user stories, or acceptance criteria.' },
+          input: { type: 'string', description: 'Alias for inputPath.' },
+          text: { type: 'string', description: 'Inline PRD or acceptance text.' },
+          outputPath: { type: 'string', description: 'Optional output JSON path. A Markdown review file is written beside it.' },
+          output: { type: 'string', description: 'Alias for outputPath.' },
+          prefix: { type: 'string', description: 'Requirement id prefix, e.g. REQ-USER.' },
+          inferFromPage: { type: 'boolean', description: 'Keep page-inferred capability coverage enabled in generated requirements config.' }
+        })
       },
       {
         name: 'frontlens_inspect',
@@ -345,6 +359,22 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         qualityGate: result.qualityGate,
         qaSignoff: result.qaSignoff
       });
+    }
+    case 'frontlens_requirements_synthesize': {
+      const args = validateArgs(params.arguments ?? {}, ['inputPath', 'input', 'text', 'outputPath', 'output', 'prefix', 'inferFromPage']);
+      const inputPath = typeof args.inputPath === 'string' ? args.inputPath : typeof args.input === 'string' ? args.input : undefined;
+      const text = typeof args.text === 'string' ? args.text : undefined;
+      if ((!inputPath || inputPath.trim() === '') && (!text || text.trim() === '')) {
+        throw new RpcError(-32602, 'Missing inputPath/input or text for frontlens_requirements_synthesize.');
+      }
+      const result = await synthesizeRequirements({
+        inputPath,
+        text,
+        outputPath: typeof args.outputPath === 'string' ? args.outputPath : typeof args.output === 'string' ? args.output : undefined,
+        prefix: typeof args.prefix === 'string' ? args.prefix : undefined,
+        inferFromPage: typeof args.inferFromPage === 'boolean' ? args.inferFromPage : undefined
+      });
+      return textContent(result);
     }
     case 'frontlens_inspect': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

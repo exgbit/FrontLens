@@ -23,6 +23,7 @@ Use `result.json.qaSignoff` as the first machine-readable professional sign-off,
 If missing, continue with best effort but mark coverage gaps:
 
 - PRD / user stories / acceptance criteria. If available, encode them as `--requirements requirements.json` so FrontLens can produce machine-readable `requirementCoverage`.
+- If PRD/user stories are only Markdown or natural language, run `node dist/cli.js requirements synthesize --input <prd.md> --output <output>/requirements.json` first, review the generated `.md` questions, and keep `needsReview` or low-confidence items as coverage gaps rather than confirmed requirements.
 - For each acceptance criterion, prefer explicit runtime assertions: `selectors`, `expectedTexts`, and safe `journeySteps`. These generate `journeyTests[].source = requirement-generated` and allow high-confidence coverage. Criteria that are only free text remain coverage gaps unless other runtime evidence proves them.
 - Product scope/ADR context. Inspect `pageProfile`; if it is inferred, use its questions to ask for scope confirmation. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
 - Login state and role matrix, including admin/normal/readonly/unauthorized when relevant.
@@ -75,6 +76,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 ## Anti-overclaim rules
 
 - No `100% business validation` without PRD + runtime evidence for all listed requirements.
+- No “业务功能验证通过可信度 100%” from generated requirement drafts alone; synthesized requirements are a checklist starter and must be reviewed/grounded in runtime evidence.
 - No business pass solely from `sourceHealth.status=passed`; it only means parsed source files had no syntax errors and any explicitly enabled source script checks passed.
 - No “API has data but UI empty” unless the exact list response is bound to the exact UI by DOM/source/E2E evidence; if `sourceRuntimeCorrelation.status=passed`, missing link or `confidence=none/low` means not a defect.
 - No style/design bug unless it violates an explicit design/ADR/accessibility requirement or blocks a task.

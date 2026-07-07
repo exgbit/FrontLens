@@ -78,9 +78,12 @@ Smoke-test the MCP handshake:
 Tools exposed:
 
 - `frontlens_qa`: run QA for a URL and return summary + artifact paths.
+- `frontlens_requirements_synthesize`: convert PRD/user-story/acceptance text into a reviewable `requirements.json` draft plus questions for human confirmation.
 - `frontlens_matrix`: run browser compatibility matrix.
 - `frontlens_inspect`: summarize an existing `result.json`, including schema version and phase errors.
 - `frontlens_issues`: return issues, optionally filtered by severity; pass `full=true` for full Issue objects.
+- `frontlens_root_causes`: return implementation-level root-cause groups.
+- `frontlens_disposition`: return raw-finding actionability/disposition buckets.
 - `frontlens_network`: return all requests plus failed/slow/duplicated/suspicious groups.
 - `frontlens_coverage`: return Coverage totals and top unused JS/CSS resources.
 - `frontlens_security`: return passive security score, checks, evidence, and security issue suggestions.

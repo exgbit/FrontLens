@@ -23,7 +23,7 @@ For every target-page QA run:
 6. When the user provides a frontend source path, or when a known source mapping exists, source-aware triage is mandatory. Read `references/source-code-correlation.md`, pass the `sourceRoot` to the worker as `--source-root`, inspect `result.json.sourceAnalysis`, `result.json.sourceRuntimeCorrelation`, `result.json.sourceHealth`, and `result.json.pageProfile`, and require file:line plus runtime/source-health evidence for every retained frontend defect. For professional sign-off, enable controlled source script checks (`--source-run-scripts`, default scripts `typecheck,lint`) when dependencies exist and the user allowed a full local QA run.
 7. When the target URL is local/private and the source path is available, the worker may build/start/refresh the local dev or preview server before running QA if the page is unreachable, stale, or the user asks to deploy first. Keep the server non-destructive and do not modify business code.
 8. When the user asks for professional-QA replacement, full acceptance, release sign-off, business validation, or skill quality review, read `references/qa-engineer-mode.md` and require a QA sign-off, requirement coverage matrix, defect root-cause table, non-defect observations, and regression commands. Never claim full business pass without requirements and runtime evidence.
-9. When PRD/acceptance criteria are provided, encode them as `requirements.items[]` with explicit `selectors`, `expectedTexts`, and/or safe `journeySteps` whenever possible. FrontLens turns those fields into generated requirement journeys and links runtime evidence back to `requirementCoverage`; free-text requirements without explicit assertions remain coverage gaps, not inferred passes.
+9. When PRD/acceptance criteria are provided as Markdown or natural language, first run `frontlens requirements synthesize` to create a reviewable draft, read the generated Markdown questions, then pass the reviewed JSON as `--requirements`. If the user already provided structured JSON, use it directly. Encode explicit `selectors`, `expectedTexts`, `apiPatterns`, and/or safe `journeySteps` whenever possible. FrontLens turns those fields into generated requirement journeys and links runtime evidence back to `requirementCoverage`; free-text requirements without explicit assertions remain coverage gaps, not inferred passes.
 10. When product scope, ADRs, supported devices, or “this is designed this way” feedback is available, encode it in `productContext` before rerunning or triaging. Use `deviceScope`, `requiredFeatures`, `optionalFeatures`, `outOfScopeFeatures`, `decisions[]`, and `adrRefs[]` so style, export, pagination, refresh, and touch-target findings are classified by product scope rather than guesswork.
 
 Recommended checklist to show the user:
@@ -56,7 +56,10 @@ If the user selects "all/default", run the full default QA command. If the user 
    ```bash
    node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>-<timestamp>" --no-trace --json
 
-   # When PRD/acceptance criteria exist, put them in a JSON file and add:
+   # When PRD/acceptance criteria are natural-language Markdown/text, draft a requirements file first:
+   node dist/cli.js requirements synthesize --input "docs/prd.md" --output "reports/frontlens/<name>-<timestamp>/requirements.json"
+
+   # Then pass reviewed requirements JSON:
    # --requirements "path/to/requirements.json"
 
    # When frontend source is available, add:
@@ -159,6 +162,17 @@ node dist/cli.js qa \
   --no-trace \
   --json
 ```
+
+Draft requirements from PRD/acceptance text before a professional QA run:
+
+```bash
+node dist/cli.js requirements synthesize \
+  --input "docs/prd.md" \
+  --output "reports/frontlens/users/requirements.json" \
+  --prefix "REQ-USERS"
+```
+
+Review the generated `.md` questions; do not treat low-confidence draft items as confirmed business passes until selectors/text/API/journey or role/test-data gaps are resolved.
 
 Only enable `--trace` when the user explicitly asks for debugging artifacts.
 
@@ -370,6 +384,7 @@ node dist/cli.js root-causes --report "reports/frontlens/users/result.json"
 node dist/cli.js fix-tasks --report "reports/frontlens/users/result.json"
 node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "reports/frontlens/new/result.json"
 node dist/cli.js env-compare --dev-url "http://127.0.0.1:5173/users" --preview-url "http://127.0.0.1:4173/users"
+node dist/cli.js requirements synthesize --input "docs/prd.md" --output "reports/frontlens/users/requirements.json"
 node dist/cli.js suggestions --report "reports/frontlens/users/result.json"
 ```
 

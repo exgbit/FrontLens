@@ -36,8 +36,16 @@ For `全选/all/default`, use:
 
 ```bash
 node dist/cli.js qa --url "<URL>" --output "<OUTPUT_DIR>" --no-trace --json
-# 有 PRD/验收标准时追加：--requirements "requirements.json"
+# 有结构化 PRD/验收标准时追加：--requirements "requirements.json"
 ```
+
+If the user provides only Markdown/free-text PRD or acceptance criteria, generate a reviewable draft first:
+
+```bash
+node dist/cli.js requirements synthesize --input "docs/prd.md" --output "<OUTPUT_DIR>/requirements.json"
+```
+
+Read `<OUTPUT_DIR>/requirements.md` and treat low-confidence or `needsReview` items as coverage gaps until the user/source adds selectors, expected texts, API patterns, journey steps, roles, or test-data authorization.
 
 This default enables security, contract, realtime, safe smoke journey, exception simulation, heuristic AI, coverage, P2 visual capture, P2 budgets, P2 offline + slow-3g profiles, accessibility, responsive, performance, resource, integration, Console, Network, reports, issueDisposition, rootCauseGroups, and fixTasks. It keeps destructive actions disabled.
 

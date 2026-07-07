@@ -32,6 +32,7 @@ FrontLens 的推荐使用方式是：
 - 性能、资源体积、Coverage、P2 预算检查
 - 结合前端源码进行 file:line 级别的问题定位
 - 基于 PRD/验收标准 JSON 生成需求覆盖矩阵和 QA Gate
+- 将 Markdown/自然语言 PRD 草案转换为可复核的 `requirements.json` 初稿
 - 自动校验证据截图、DOM、trace、视频和报告路径是否真实存在
 - 生成可交给后续修复 Agent 使用的 fix tasks
 
@@ -124,6 +125,24 @@ Skill 会自动执行：
 如果用户没有明确选择模块，skill 会先询问；如果用户说“全选”，则直接启用默认完整扫描。
 
 ### 3. 带验收标准分析
+
+如果只有 Markdown/自然语言 PRD，先让引擎生成一个**待人工确认**的验收标准初稿：
+
+```bash
+node dist/cli.js requirements synthesize \
+  --input docs/prd.md \
+  --output requirements.json \
+  --prefix REQ-USERS
+```
+
+它会输出：
+
+- `requirements.json`：可直接传给 `--requirements` 的需求覆盖配置。
+- `requirements.md`：逐条列出提取依据、置信度、需要补充的问题。
+
+注意：该命令只做确定性提取，不把自由文本自动当作“业务已通过”。低置信需求、角色权限、数据准确性和新增/编辑/删除/上传/下载等有副作用流程都会标记为 `needsReview`，需要补 selector、期望文案、接口模式、角色状态或授权测试数据后再作为发布阻断项。
+
+如果你已经有结构化验收标准，可直接编写 JSON：
 
 ```json
 [
@@ -340,14 +359,18 @@ node dist/cli.js mcp
 可用工具包括：
 
 - `frontlens_qa`
+- `frontlens_requirements_synthesize`
 - `frontlens_matrix`
 - `frontlens_inspect`
 - `frontlens_issues`
+- `frontlens_root_causes`
+- `frontlens_disposition`
 - `frontlens_network`
 - `frontlens_coverage`
 - `frontlens_security`
 - `frontlens_fix_tasks`
 - `frontlens_diff`
+- `frontlens_env_compare`
 - `frontlens_suggestions`
 
 ## 推荐协作模式

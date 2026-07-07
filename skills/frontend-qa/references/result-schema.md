@@ -12,6 +12,22 @@ Use this reference when consuming QA results from another skill.
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
+## Requirement draft output
+
+`frontlens requirements synthesize` writes a `RequirementWizardResult`, not a `QaResult`. Use it before QA when the user provides PRD/user-story/acceptance text in Markdown or natural language.
+
+Stable fields:
+
+- `requirementCount`
+- `executableAssertionCount`
+- `needsReviewCount`
+- `requirements`: a FrontLens requirements config object that can be reviewed and passed to `--requirements`
+- `candidates[]`: draft items with `confidence`, `sourceText`, `rationale`, `needsReview`, and `reviewNotes`
+- `warnings[]`
+- `questions[]`
+
+Do not treat this output as runtime evidence. Low-confidence or `needsReview` candidates remain coverage gaps until grounded by selectors, expected texts, API patterns, safe journey steps, role state, and test data authorization.
+
 ## Top-level shape and schema version
 
 `metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`; reports before `1.15.0` may miss `environment`; reports before `1.16.0` may miss `pageProfile`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health / environment / pageProfile when older reports do not contain them.

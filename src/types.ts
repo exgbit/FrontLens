@@ -135,6 +135,26 @@ export interface RequirementCoverageConfig {
   items: RequirementConfigItem[];
 }
 
+export interface RequirementWizardCandidate extends RequirementConfigItem {
+  confidence: 'high' | 'medium' | 'low';
+  sourceText: string;
+  rationale: string[];
+  needsReview: boolean;
+  reviewNotes: string[];
+}
+
+export interface RequirementWizardResult {
+  generatedAt: string;
+  inputPath?: string;
+  requirementCount: number;
+  executableAssertionCount: number;
+  needsReviewCount: number;
+  requirements: RequirementCoverageConfig;
+  candidates: RequirementWizardCandidate[];
+  warnings: string[];
+  questions: string[];
+}
+
 export type ProductDeviceScope = 'unknown' | 'desktop-only' | 'desktop-first' | 'responsive' | 'mobile-first';
 export type ProductAccessibilityTarget = 'unknown' | 'basic' | 'wcag-aa' | 'wcag-aaa';
 

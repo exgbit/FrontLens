@@ -6,12 +6,13 @@ import { runCompatibility } from './matrix.js';
 import { saveAuthState } from './auth.js';
 import { startMcpServer } from './mcpServer.js';
 import { runEnvironmentComparison } from './compare/environmentComparison.js';
+import { synthesizeRequirements } from './requirements/requirementWizard.js';
 import type { BrowserName, Issue, QaResult, QaRunInput, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'matrix', 'env-compare', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'matrix', 'env-compare', 'requirements', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -20,6 +21,7 @@ Usage:
   frontlens qa --url <url> [options]
   frontlens --url <url> [options]
   frontlens auth save --url <login-url> --output <storage-state-path>
+  frontlens requirements synthesize --input <prd.md> --output <requirements.json>
   frontlens matrix --url <url> --browsers chromium,firefox,webkit
   frontlens env-compare --dev-url <vite-dev-url> --preview-url <build-preview-url>
   frontlens mcp
@@ -38,6 +40,8 @@ Options:
   --url <url>                 Target page URL.
   --dev-url <url>             Dev/source-module URL for env-compare.
   --preview-url <url>         Build/preview URL for env-compare.
+  --input <path>              Requirements synthesize input Markdown/text file.
+  --text <text>               Inline PRD/acceptance text for requirements synthesize.
   --config <path>             Optional config file (.json/.js/.mjs).
   --requirements <path>       Optional requirements/acceptance criteria JSON file.
   --source-root <path>        Optional frontend source repository root for static source correlation.
@@ -92,6 +96,7 @@ Examples:
   frontlens qa --url https://example.com/admin --headed --output reports/admin
   frontlens qa --url https://example.com/admin --storage-state .frontlens/auth/admin.json
   frontlens auth save --url https://example.com/login --output .frontlens/auth/admin.json
+  frontlens requirements synthesize --input docs/prd.md --output requirements.json
   frontlens matrix --url https://example.com --browsers chromium,firefox,webkit --output reports/compat
   frontlens env-compare --dev-url http://127.0.0.1:5173/users --preview-url http://127.0.0.1:4173/users --output reports/env-users
   frontlens mcp
@@ -466,6 +471,52 @@ async function main(): Promise<void> {
 
   if (argv[0] === 'auth') {
     throw new Error(`Unsupported auth command: ${argv[1] ?? '(missing)'}. Expected: frontlens auth save --url <login-url> --output <storage-state-path>.`);
+  }
+
+  if (argv[0] === 'requirements') {
+    const subcommand = argv[1];
+    if (subcommand !== 'synthesize') {
+      printHelp();
+      throw new Error(`Unsupported requirements command: ${subcommand ?? '(missing)'}. Expected: frontlens requirements synthesize --input <prd.md> --output <requirements.json>.`);
+    }
+    const parsed = parseArgs({
+      args: argv.slice(2),
+      allowPositionals: true,
+      options: {
+        input: { type: 'string' },
+        text: { type: 'string' },
+        output: { type: 'string' },
+        prefix: { type: 'string' },
+        'infer-from-page': { type: 'boolean' },
+        'no-infer-from-page': { type: 'boolean' },
+        json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' }
+      }
+    });
+    if (parsed.values.help) {
+      printHelp();
+      return;
+    }
+    const inputPath = parsed.values.input ?? parsed.positionals[0];
+    const inlineText = parsed.values.text;
+    if (!inputPath && !inlineText) {
+      throw new Error('Missing requirements synthesize --input <prd.md> or --text <acceptance text>.');
+    }
+    const result = await synthesizeRequirements({
+      inputPath,
+      text: inlineText,
+      outputPath: parsed.values.output,
+      prefix: parsed.values.prefix,
+      inferFromPage: parsed.values['no-infer-from-page'] ? false : parsed.values['infer-from-page']
+    });
+    if (parsed.values.json || !parsed.values.output) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`Requirements synthesized: ${parsed.values.output}`);
+      console.log(`Requirements: ${result.requirementCount}, executable signals: ${result.executableAssertionCount}, needs review: ${result.needsReviewCount}`);
+      console.log(`Review notes: ${result.questions.length} question(s)`);
+    }
+    return;
   }
 
   if (argv[0] === 'env-compare') {

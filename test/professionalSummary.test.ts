@@ -30,7 +30,7 @@ test('professional summary separates actionable defects from product decisions a
         severity: 'high',
         confidence: 0.95,
         description: 'API 500 is rendered as empty state.',
-        evidence: { selector: '.empty', networkRequestId: 'REQ-500' },
+        evidence: { selector: '.empty', networkRequestId: 'REQ-500', details: { sourceFile: 'src/views/CredentialsView.vue', line: 88 } },
         reproduceSteps: ['Open page', 'Mock API 500'],
         reason: 'error state is required but not rendered',
         suggestion: { frontend: 'Render error state with retry.', priority: 'P1' }
@@ -54,6 +54,11 @@ test('professional summary separates actionable defects from product decisions a
   assert.equal(result.professionalSummary.status, 'fail');
   assert.equal(result.professionalSummary.mustFix.length, 1);
   assert.equal(result.professionalSummary.mustFix[0].issueIds?.includes('ISSUE-001'), true);
+  assert.equal(result.rootCauseGroups[0].sourceLocations[0].file, 'src/views/CredentialsView.vue');
+  assert.equal(result.professionalSummary.mustFix[0].evidenceRefs.includes('source:src/views/CredentialsView.vue:88'), true);
+  assert.deepEqual((result.fixTasks[0].evidence.details as { rootCauseSourceLocations?: unknown }).rootCauseSourceLocations, [
+    { file: 'src/views/CredentialsView.vue', line: 88 }
+  ]);
   assert.ok(result.professionalSummary.nonDefectObservations.some((item) => item.kind === 'product-decision' && item.issueIds?.includes('ISSUE-002')));
   assert.ok(result.professionalSummary.nextActions.some((item) => item.kind === 'next-action'));
   assert.match(result.professionalSummary.headline, /QA failed/);

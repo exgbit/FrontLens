@@ -87,3 +87,44 @@ test('buildRootCauseGroups groups deployment security headers separately from tr
   assert.equal(groups[1].rootCauseKey, 'backend:security:deployment-headers');
   assert.equal(groups[1].issueCount, 2);
 });
+
+test('buildRootCauseGroups carries source file locations into implementation root causes', () => {
+  const config = createDefaultConfig('https://example.com/orders');
+  const groups = buildRootCauseGroups([
+    issue({
+      id: 'ISSUE-001',
+      title: '接口返回疑似有列表数据，但页面表格为空',
+      category: 'integration-data-mismatch',
+      severity: 'medium',
+      evidence: {
+        networkRequestId: 'REQ-001',
+        details: {
+          target: 'https://example.com/api/orders',
+          sourceApiMatches: [{ file: 'src/api/orders.ts', line: 12, method: 'GET', path: '/api/orders' }],
+          sourceStateSignals: [{ file: 'src/views/OrdersView.vue', line: 45, kind: 'empty', text: 'empty state' }]
+        }
+      },
+      suggestion: { frontend: '修复列表数据绑定。', priority: 'P2' }
+    }),
+    issue({
+      id: 'ISSUE-002',
+      title: '同一列表源码确认空态判断错误',
+      category: 'integration-data-mismatch',
+      severity: 'low',
+      evidence: {
+        details: {
+          target: 'https://example.com/api/orders',
+          sourceFile: 'src/views/OrdersView.vue',
+          line: 45
+        }
+      },
+      suggestion: { frontend: '修复列表数据绑定。', priority: 'P2' }
+    })
+  ], config);
+
+  assert.equal(groups.length, 1);
+  assert.deepEqual(groups[0].sourceLocations, [
+    { file: 'src/api/orders.ts', line: 12 },
+    { file: 'src/views/OrdersView.vue', line: 45 }
+  ]);
+});

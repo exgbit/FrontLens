@@ -60,7 +60,8 @@ test('defect proof requires more evidence when source/runtime/product proof is w
     networkRequestIds: [],
     consoleIds: [],
     pageErrorIds: [],
-    resourceUrls: []
+    resourceUrls: [],
+    sourceLocations: []
   }));
   result.issueDisposition.items = result.issueDisposition.items.map((item) => ({ ...item, actionability: 'actionable' as const, status: 'confirmed' as const }));
   result.scopeReview.status = 'needs-input';

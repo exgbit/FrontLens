@@ -49,7 +49,15 @@ function defectItems(groups: RootCauseGroup[], defectProof?: DefectProofResult):
         title: group.title,
         rationale: `${group.summary} ${proofLabel(proof)}`,
         action: group.suggestedFix,
-        evidenceRefs: unique([group.id, proof?.id ?? '', ...group.issueIds, ...group.networkRequestIds, ...group.consoleIds, ...group.pageErrorIds]),
+        evidenceRefs: unique([
+          group.id,
+          proof?.id ?? '',
+          ...group.issueIds,
+          ...group.networkRequestIds,
+          ...group.consoleIds,
+          ...group.pageErrorIds,
+          ...group.sourceLocations.map((location) => `source:${location.file}:${location.line}`)
+        ]),
         issueIds: group.issueIds,
         rootCauseGroupId: group.id
       };

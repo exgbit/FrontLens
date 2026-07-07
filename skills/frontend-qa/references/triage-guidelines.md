@@ -29,7 +29,7 @@ Apply an **actionability gate** before presenting final findings:
 Also add a **root-cause grouping** before the final fix list:
 
 - Group multiple raw issue IDs that point to the same implementation defect, such as 500/401/403/404/timeout all rendering the same false empty state.
-- Count implementation work by proof-ready root cause, not by raw issue IDs. `fixTasks[]` is proof-aware in FrontLens 1.32+ but remains machine-oriented; `defectProof.needs-evidence` items are evidence-collection work, not implementation defects.
+- Count implementation work by proof-ready root cause, not by raw issue IDs. `fixTasks[]` is proof-aware in FrontLens 1.32+ but remains machine-oriented; `defectProof.needs-evidence` items are evidence-collection work, not implementation defects. In FrontLens 1.34+, use `rootCauseGroups[].sourceLocations` to report the normalized file:line fix surface instead of re-deriving it from each raw issue.
 - In FrontLens 1.33+, reproducible exception no-feedback findings retain their EX/network/console/page-error evidence and can become proof-ready root-cause candidates. Keep them as frontend error-state/retry defects when the user impact is visible; still do not reinterpret the synthetic status code as a backend contract failure.
 - If a generated suggestion does not match the issue category or evidence, mark it as template noise and replace it with a source/evidence-specific fix.
 

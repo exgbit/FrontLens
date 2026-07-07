@@ -45,6 +45,11 @@ function safeOutputName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'root-cause';
 }
 
+function sourceTarget(group: RootCauseGroup): string | undefined {
+  const first = group.sourceLocations[0];
+  return first ? `${first.file}:${first.line}` : undefined;
+}
+
 export function generateFixTasks(issues: Issue[], config: FrontLensConfig, rootCauseGroups?: RootCauseGroup[], defectProof?: DefectProofResult): FixTask[] {
   if (rootCauseGroups) {
     const issueById = new Map(issues.map((issue) => [issue.id, issue]));
@@ -59,9 +64,17 @@ export function generateFixTasks(issues: Issue[], config: FrontLensConfig, rootC
           type: typeForCategory(group.categories[0] ?? 'unknown'),
           title: group.title,
           priority: group.priority,
-          target: group.selectors[0] ?? group.networkRequestIds[0] ?? group.resourceUrls[0] ?? representative?.affectedUrl,
+          target: group.selectors[0] ?? sourceTarget(group) ?? group.networkRequestIds[0] ?? group.resourceUrls[0] ?? representative?.affectedUrl,
           expectedChange: group.suggestedFix,
-          evidence: representative?.evidence ?? {},
+          evidence: group.sourceLocations.length
+            ? {
+                ...(representative?.evidence ?? {}),
+                details: {
+                  ...((representative?.evidence.details && typeof representative.evidence.details === 'object') ? representative.evidence.details as Record<string, unknown> : {}),
+                  rootCauseSourceLocations: group.sourceLocations
+                }
+              }
+            : representative?.evidence ?? {},
           verificationCommand: `node dist/cli.js qa --url ${shellQuote(config.target.url)} --output ${shellQuote(verificationOutput)} --no-trace --json`
         };
       });

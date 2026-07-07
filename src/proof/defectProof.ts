@@ -84,7 +84,11 @@ function runtimeEvidenceDimension(group: RootCauseGroup, issues: Issue[]): Defec
 
 function sourceEvidenceDimension(input: DefectProofInput, group: RootCauseGroup, issues: Issue[], runtimeLinks: SourceRuntimeLink[]): DefectProofDimension {
   const sourceFiles = uniq(issues.map((issue) => String(issueDetails(issue).sourceFile ?? '')).filter(Boolean));
+  const sourceLocations = group.sourceLocations.map((location) => `${location.file}:${location.line}${location.column !== undefined ? `:${location.column}` : ''}`);
   const strongLinks = runtimeLinks.filter((link) => link.confidence === 'high' || link.confidence === 'medium');
+  if (sourceLocations.length) {
+    return dimension('strong', '根因已包含可执行源码 file:line 定位。', sourceLocations.map((location) => `source:${location}`));
+  }
   if (sourceFiles.length) {
     return dimension('strong', 'raw finding 已包含源码文件/行号证据。', sourceFiles.map((file) => `source:${file}`));
   }
@@ -207,6 +211,7 @@ function buildItem(input: DefectProofInput, group: RootCauseGroup): DefectProofI
       group.id,
       ...group.issueIds,
       ...group.networkRequestIds.map((id) => `network:${id}`),
+      ...group.sourceLocations.map((location) => `source:${location.file}:${location.line}`),
       ...runtimeLinks.map((link) => link.id),
       ...requirements.map((requirement) => requirement.id)
     ])

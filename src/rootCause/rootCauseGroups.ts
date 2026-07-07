@@ -1,4 +1,4 @@
-import type { FrontLensConfig, Issue, IssueCategory, RootCauseGroup, Severity } from '../types.js';
+import type { FrontLensConfig, Issue, IssueCategory, RootCauseGroup, Severity, SourceLocation } from '../types.js';
 
 const severityRank: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const priorityRank: Record<RootCauseGroup['priority'], number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -35,6 +35,10 @@ function shellQuote(value: string): string {
 
 function detailsOf(issue: Issue): Record<string, unknown> {
   return issue.evidence.details && typeof issue.evidence.details === 'object' ? issue.evidence.details as Record<string, unknown> : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
 function normalizeText(value: string): string {
@@ -86,6 +90,52 @@ function uniq<T>(items: Array<T | undefined | null>): T[] {
   return [...new Set(items.filter((item) => item !== undefined && item !== null))] as T[];
 }
 
+function sourceKey(location: SourceLocation): string {
+  return `${location.file}:${location.line}:${location.column ?? ''}`;
+}
+
+function uniqSourceLocations(items: SourceLocation[]): SourceLocation[] {
+  const seen = new Set<string>();
+  const result: SourceLocation[] = [];
+  for (const item of items) {
+    const key = sourceKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+  return result;
+}
+
+function maybeLocation(value: unknown): SourceLocation | undefined {
+  if (!isRecord(value)) return undefined;
+  const file = typeof value.file === 'string' ? value.file : typeof value.sourceFile === 'string' ? value.sourceFile : undefined;
+  const lineValue = typeof value.line === 'number' ? value.line : typeof value.lineNumber === 'number' ? value.lineNumber : undefined;
+  const columnValue = typeof value.column === 'number' ? value.column : undefined;
+  if (!file || !lineValue || lineValue < 1) return undefined;
+  const location: SourceLocation = {
+    file,
+    line: lineValue
+  };
+  if (columnValue !== undefined) location.column = columnValue;
+  return location;
+}
+
+function locationsFromArray(value: unknown): SourceLocation[] {
+  return Array.isArray(value) ? value.map(maybeLocation).filter((item): item is SourceLocation => Boolean(item)) : [];
+}
+
+function sourceLocationsFor(issue: Issue): SourceLocation[] {
+  const details = detailsOf(issue);
+  return uniqSourceLocations([
+    maybeLocation({ file: details.sourceFile, line: details.line, column: details.column }),
+    ...locationsFromArray(details.locations),
+    ...locationsFromArray(details.sourceApiMatches),
+    ...locationsFromArray(details.sourceStateSignals),
+    ...locationsFromArray(details.findings),
+    ...locationsFromArray(details.imports)
+  ].filter((item): item is SourceLocation => Boolean(item)));
+}
+
 function mergeSeverity(a: Severity, b: Severity): Severity {
   return severityRank[b] < severityRank[a] ? b : a;
 }
@@ -133,6 +183,7 @@ export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig): 
         consoleIds: issue.evidence.consoleId ? [issue.evidence.consoleId] : [],
         pageErrorIds: uniq([issue.evidence.pageErrorId, ...(issue.evidence.pageErrorIds ?? [])]),
         resourceUrls: issue.evidence.resourceUrl ? [issue.evidence.resourceUrl] : [],
+        sourceLocations: sourceLocationsFor(issue),
         suggestedFix: suggestedFix(issue),
         issues: [issue]
       });
@@ -151,6 +202,7 @@ export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig): 
     existing.consoleIds = uniq([...existing.consoleIds, ...(issue.evidence.consoleId ? [issue.evidence.consoleId] : [])]);
     existing.pageErrorIds = uniq([...existing.pageErrorIds, ...(issue.evidence.pageErrorId ? [issue.evidence.pageErrorId] : []), ...(issue.evidence.pageErrorIds ?? [])]);
     existing.resourceUrls = uniq([...existing.resourceUrls, ...(issue.evidence.resourceUrl ? [issue.evidence.resourceUrl] : [])]);
+    existing.sourceLocations = uniqSourceLocations([...existing.sourceLocations, ...sourceLocationsFor(issue)]);
     if (priorityRank[priority] < priorityRank[previousPriority] || severityRank[issue.severity] < severityRank[previousSeverity]) {
       existing.suggestedFix = suggestedFix(issue);
     }

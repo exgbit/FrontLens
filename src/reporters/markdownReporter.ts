@@ -518,11 +518,13 @@ ${findingRows.length ? ['| ID | Severity | Location | Message |', '| --- | --- |
 function formatRootCauseGroups(result: QaResult): string {
   const groups = result.rootCauseGroups ?? [];
   const rows = groups.slice(0, 50).map((group) => {
+    const sourceLocations = group.sourceLocations?.map((location) => `${location.file}:${location.line}`).slice(0, 4) ?? [];
     const evidence = [
       group.issueIds.length ? `issues:${group.issueIds.join(',')}` : '',
       group.networkRequestIds.length ? `network:${group.networkRequestIds.slice(0, 5).join(',')}` : '',
       group.consoleIds.length ? `console:${group.consoleIds.slice(0, 5).join(',')}` : '',
       group.pageErrorIds.length ? `pageError:${group.pageErrorIds.slice(0, 5).join(',')}` : '',
+      sourceLocations.length ? `source:${sourceLocations.join(', ')}` : '',
       group.selectors.length ? `selector:${truncateMiddle(group.selectors.slice(0, 3).join(' / '), 120)}` : ''
     ].filter(Boolean).join('；') || '-';
     return `| ${group.id} | ${group.priority} | ${severityLabel[group.severity]} | ${group.status} | ${group.owner} | ${markdownEscape(group.title)} | ${group.issueCount} | ${markdownEscape(truncateMiddle(evidence, 180))} | ${markdownEscape(truncateMiddle(group.suggestedFix, 180))} |`;

@@ -248,11 +248,13 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
   const rootCauseRows = result.rootCauseGroups
     .slice(0, 80)
     .map((group) => {
+      const sourceLocations = group.sourceLocations?.map((location) => `${location.file}:${location.line}`).slice(0, 4) ?? [];
       const evidence = [
         group.issueIds.length ? `issues:${group.issueIds.join(',')}` : '',
         group.networkRequestIds.length ? `network:${group.networkRequestIds.slice(0, 5).join(',')}` : '',
         group.consoleIds.length ? `console:${group.consoleIds.slice(0, 5).join(',')}` : '',
         group.pageErrorIds.length ? `pageError:${group.pageErrorIds.slice(0, 5).join(',')}` : '',
+        sourceLocations.length ? `source:${sourceLocations.join(', ')}` : '',
         group.selectors.length ? `selector:${truncateText(group.selectors.slice(0, 3).join(' / '), 120)}` : ''
       ].filter(Boolean).join('; ') || '-';
       return `<tr><td>${escapeHtml(group.id)}</td><td>${escapeHtml(group.priority)}</td><td>${issueBadge(group.severity)}</td><td>${escapeHtml(group.status)}</td><td>${escapeHtml(group.owner)}</td><td>${escapeHtml(group.title)}</td><td>${group.issueCount}</td><td>${escapeHtml(truncateText(evidence, 180))}</td><td>${escapeHtml(truncateText(group.suggestedFix, 220))}</td></tr>`;

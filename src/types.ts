@@ -1309,6 +1309,7 @@ export interface RootCauseGroup {
   consoleIds: string[];
   pageErrorIds: string[];
   resourceUrls: string[];
+  sourceLocations: SourceLocation[];
   summary: string;
   suggestedFix: string;
   verificationCommand: string;

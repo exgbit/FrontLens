@@ -58,7 +58,7 @@ test('professional brief stays concise and buckets unproven product/API guesses'
   assert.doesNotMatch(brief, /\| P[0-3] \| .*接口返回疑似有列表数据/);
   assert.equal(result.professionalSummary.mustFix.length, 0);
   assert.equal(result.professionalSummary.shouldFix.length, 0);
-  assert.ok(brief.length < 5000, `brief should stay compact, got ${brief.length}`);
+  assert.ok(brief.length < 3000, `brief should stay compact, got ${brief.length}`);
 });
 
 test('professional brief highlights source-bound proof-ready root causes', () => {

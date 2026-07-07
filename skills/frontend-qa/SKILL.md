@@ -7,7 +7,7 @@ description: Run FrontLens Playwright QA for live webpage testing/auditing with 
 
 Use FrontLens to analyze a target webpage end-to-end and return primary artifacts:
 
-- `brief.md`: one-page professional QA brief; default shape for final user/LLM answer.
+- `brief.md`: compact professional QA brief; maximum default shape for final user/LLM answer.
 - `report.md`: primary human QA report; default `executive` profile is the shortest decision brief, and `report.profile` / `--report-profile` controls executive, professional, or full depth.
 - `professional-audit.md`: report-contract self-audit; flags coverage-boundary violations, overclaims, non-proof-ready fix queue entries, weak-evidence actionable findings, speculative API/UI mismatches, product/style items promoted without scope, weak source evidence, scope gaps, and artifact integrity issues before another Agent trusts the report.
 - `report-content-audit.md`: generated-report content self-audit; catches forbidden overclaim wording, raw-evidence leakage or excessive detail in concise profiles, missing raw-score caveats, hidden coverage gaps, and missing artifact warnings before echoing a report conclusion.

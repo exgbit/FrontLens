@@ -1,6 +1,7 @@
 import type { ProfessionalSummaryItem, QaResult, RootCauseGroup } from '../types.js';
 import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 import { runProfessionalAudit } from '../audit/professionalAudit.js';
+import path from 'node:path';
 
 function markdownEscape(value: unknown): string {
   return String(value ?? '')
@@ -34,16 +35,22 @@ function evidenceFor(group: RootCauseGroup): string {
 
 function artifactPath(result: QaResult, key: keyof QaResult['artifacts']): string {
   const value = result.artifacts[key];
-  return typeof value === 'string' && value ? value : '-';
+  if (typeof value !== 'string' || !value) return '-';
+  const outputDir = result.artifacts.outputDir;
+  if (typeof outputDir === 'string' && outputDir && path.isAbsolute(value)) {
+    const relative = path.relative(outputDir, value);
+    if (relative && !relative.startsWith('..') && !path.isAbsolute(relative)) return relative.replace(/\\/g, '/');
+  }
+  return value.replace(/\\/g, '/');
 }
 
 export function formatProfessionalBrief(result: QaResult): string {
   const proofReadyGroups = proofReadyRootCauseGroups(result.rootCauseGroups, result.defectProof);
   const professionalAudit = runProfessionalAudit(result);
-  const mustFix = result.professionalSummary.mustFix.slice(0, 5);
-  const shouldFix = result.professionalSummary.shouldFix.slice(0, Math.max(0, 5 - mustFix.length));
+  const mustFix = result.professionalSummary.mustFix.slice(0, 3);
+  const shouldFix = result.professionalSummary.shouldFix.slice(0, Math.max(0, 3 - mustFix.length));
   const fixItems = [...mustFix, ...shouldFix];
-  const rootRows = proofReadyGroups.slice(0, 5).map((group) =>
+  const rootRows = proofReadyGroups.slice(0, 3).map((group) =>
     `| ${group.priority} | ${group.owner} | ${markdownEscape(truncate(group.title, 90))} | ${group.issueIds.length} | ${markdownEscape(truncate(evidenceFor(group), 120))} | ${markdownEscape(truncate(group.suggestedFix, 120))} |`
   );
   const summaryFixRows = fixItems.map((item) =>
@@ -57,16 +64,38 @@ export function formatProfessionalBrief(result: QaResult): string {
     ['参考观察', result.issueDisposition.summary.referenceCount, '仅作背景。']
   ].filter(([, count]) => Number(count) > 0);
   const nonDefectTable = nonDefectRows.map(([bucket, count, note]) => `| ${bucket} | ${count} | ${markdownEscape(String(note))} |`);
-  const topQuestions = result.qaIntake.topQuestions.slice(0, 5).map((item) => `- ${item.priority} / ${item.category}: ${markdownEscape(truncate(item.question, 150))}`);
+  const topQuestions = result.qaIntake.topQuestions.slice(0, 3).map((item) => `- ${item.priority} / ${item.category}: ${markdownEscape(truncate(item.question, 150))}`);
   const proofGaps = result.defectProof.items
     .filter((item) => item.status === 'needs-evidence')
-    .slice(0, 5)
+    .slice(0, 2)
     .map((item) => `- ${item.rootCauseGroupId}: ${markdownEscape(truncate(item.missingEvidence.slice(0, 2).join('；') || item.title, 160))}`);
   const auditGaps = professionalAudit.findings
     .filter((item) => item.severity === 'blocker' || item.severity === 'warning')
-    .slice(0, 5)
+    .sort((left, right) => (left.severity === right.severity ? left.id.localeCompare(right.id) : left.severity === 'blocker' ? -1 : 1))
+    .slice(0, 2)
     .map((item) => `- audit/${item.severity}/${item.category}: ${markdownEscape(truncate(item.title, 150))}`);
-  const forbidden = result.claimGuard.forbiddenClaims.slice(0, 5).map((item) => `- ${markdownEscape(item)}`);
+  const forbidden = result.claimGuard.forbiddenClaims.slice(0, 3).map((item) => `- ${markdownEscape(item)}`);
+  const riskSummary = `risk ${result.riskRegister.status} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}; acceptance ${result.riskAcceptance.status} / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}`;
+  const coverageSummary = `qaCoverage ${result.qaCoverage.status}/${result.qaCoverage.confidence}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}; testCases ${result.testCases.status}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}`;
+  const artifactLine = [
+    `result.json: \`${markdownEscape(artifactPath(result, 'jsonReport'))}\``,
+    `report.md: \`${markdownEscape(artifactPath(result, 'markdownReport'))}\``,
+    `qa-review.md: \`${markdownEscape(artifactPath(result, 'qaReview'))}\``,
+    `evidence-report.md: \`${markdownEscape(artifactPath(result, 'evidenceReport'))}\``
+  ].join('；');
+  const supportingArtifacts = [
+    `professional-audit.md: \`${markdownEscape(artifactPath(result, 'professionalAudit'))}\``,
+    `report-content-audit.md: \`${markdownEscape(artifactPath(result, 'reportContentAudit'))}\``,
+    `journey-assertion-audit.md: \`${markdownEscape(artifactPath(result, 'journeyAssertionAudit'))}\``,
+    `assertion-suggestions.md: \`${markdownEscape(artifactPath(result, 'assertionSuggestions'))}\``,
+    `product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\``,
+    `product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\``,
+    `qa-plan.md: \`${markdownEscape(artifactPath(result, 'qaPlan'))}\``,
+    `qa-coverage.md: \`${markdownEscape(artifactPath(result, 'qaCoverage'))}\``,
+    `test-cases.md: \`${markdownEscape(artifactPath(result, 'testCases'))}\``,
+    `risk-register.md: \`${markdownEscape(artifactPath(result, 'riskRegister'))}\``,
+    `risk-acceptance.md: \`${markdownEscape(artifactPath(result, 'riskAcceptance'))}\``
+  ].join('；');
 
   const suggestedFixQueue = summaryFixRows.length && rootRows.length === 0
     ? `\n## Suggested fix queue\n\n${['| Priority | Owner | Item | Issues | Action |', '| --- | --- | --- | --- | --- |', ...summaryFixRows].join('\n')}\n`
@@ -76,22 +105,14 @@ export function formatProfessionalBrief(result: QaResult): string {
 
 ## Sign-off
 
-- QA sign-off: **${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
-- Adjusted score: **${result.summary.adjustedScore}/100**（${result.summary.scoreBasis}, ${result.summary.adjustedIssueCount} actionable/proof finding）
-- Raw score: **${result.summary.score}/100**（scanner trend only; raw issues ${result.summary.issueCount}）
-- Proof-ready root causes: **${result.professionalSummary.counts.proofReadyRootCauseCount}** / actionable ${result.professionalSummary.counts.actionableRootCauseCount}
-- Must-fix / should-fix: **${result.professionalSummary.mustFix.length} / ${result.professionalSummary.shouldFix.length}**
-- Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）
-- Report content audit: **${result.reportContentAudit.status}**（blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}）
-- Journey assertion audit: **${result.journeyAssertionAudit.status}**（runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}）
-- Assertion suggestions: **${result.assertionSuggestions.status}**（suggestions ${result.assertionSuggestions.summary.totalCount}, weak journeys ${result.assertionSuggestions.summary.weakJourneyCount}）
-- Claim guard: **${result.claimGuard.status}**；QA intake: **${result.qaIntake.status}**；Defect proof: **${result.defectProof.status}**
-- QA execution plan: **${result.qaPlan.status}** / confidence **${result.qaPlan.confidence}**
-- QA coverage matrix: **${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}**（covered ${result.qaCoverage.summary.coveredCount}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}）
-- Test case matrix: **${result.testCases.status}** / confidence **${result.testCases.confidence}**（total ${result.testCases.summary.totalCount}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}）
-- Risk register: **${result.riskRegister.status}**（total ${result.riskRegister.summary.totalCount}, release-blocking ${result.riskRegister.summary.releaseBlockingCount}）
-- Risk acceptance: **${result.riskAcceptance.status}**（must-mitigate ${result.riskAcceptance.summary.mustMitigateCount}, needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}）
-- Artifact integrity: **${result.artifactIntegrity.status}**（missing ${result.artifactIntegrity.missingCount}）
+- Verdict: ${markdownEscape(result.professionalSummary.headline)}
+- QA sign-off: **${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**；claimGuard **${result.claimGuard.status}**；QA intake **${result.qaIntake.status}**
+- Scores: adjusted **${result.summary.adjustedScore}/100**（${result.summary.scoreBasis}, ${result.summary.adjustedIssueCount} proof/actionable finding）; raw **${result.summary.score}/100**（scanner trend only, raw issues ${result.summary.issueCount}）
+- Fix queue: Proof-ready root causes: **${result.professionalSummary.counts.proofReadyRootCauseCount}** / actionable ${result.professionalSummary.counts.actionableRootCauseCount}; must/should **${result.professionalSummary.mustFix.length}/${result.professionalSummary.shouldFix.length}**; defectProof **${result.defectProof.status}**
+- Coverage: ${coverageSummary}
+- Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）；Report content audit: **${result.reportContentAudit.status}**（blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}）
+- Journey assertion audit: **${result.journeyAssertionAudit.status}**（runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}）；Assertion suggestions: **${result.assertionSuggestions.status}**（suggestions ${result.assertionSuggestions.summary.totalCount}）
+- Release risk: ${riskSummary}; artifacts **${result.artifactIntegrity.status}**（missing ${result.artifactIntegrity.missingCount}）
 
 ## Core fixes
 
@@ -112,21 +133,8 @@ ${forbidden.length ? ['以下结论当前不能正向使用：', ...forbidden].j
 
 ## Artifacts
 
-- result.json: \`${markdownEscape(artifactPath(result, 'jsonReport'))}\`
-- report.md: \`${markdownEscape(artifactPath(result, 'markdownReport'))}\`
-- professional-audit.md: \`${markdownEscape(artifactPath(result, 'professionalAudit'))}\`
-- report-content-audit.md: \`${markdownEscape(artifactPath(result, 'reportContentAudit'))}\`
-- journey-assertion-audit.md: \`${markdownEscape(artifactPath(result, 'journeyAssertionAudit'))}\`
-- assertion-suggestions.md: \`${markdownEscape(artifactPath(result, 'assertionSuggestions'))}\`
-- product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\`
-- product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\`
-- qa-plan.md: \`${markdownEscape(artifactPath(result, 'qaPlan'))}\`
-- qa-coverage.md: \`${markdownEscape(artifactPath(result, 'qaCoverage'))}\`
-- test-cases.md: \`${markdownEscape(artifactPath(result, 'testCases'))}\`
-- risk-register.md: \`${markdownEscape(artifactPath(result, 'riskRegister'))}\`
-- risk-acceptance.md: \`${markdownEscape(artifactPath(result, 'riskAcceptance'))}\`
-- qa-review.md: \`${markdownEscape(artifactPath(result, 'qaReview'))}\`
-- evidence-report.md: \`${markdownEscape(artifactPath(result, 'evidenceReport'))}\`
-- artifact integrity: **${result.artifactIntegrity.status}**（missing ${result.artifactIntegrity.missingCount}）
+- Primary: ${artifactLine}
+- Supporting: ${supportingArtifacts}
+- Artifact integrity: **${result.artifactIntegrity.status}**（missing ${result.artifactIntegrity.missingCount}）
 `;
 }

@@ -103,7 +103,7 @@ function auditProfileDepth(profile: ReportProfile, markdown: string, findings: R
   const headings = countHeading2(markdown);
   const tableRows = countTableRows(markdown);
   const contentLines = countContentLines(markdown);
-  if (profile === 'executive' && (markdown.length > 9000 || headings > 8 || tableRows > 45 || contentLines > 120)) {
+  if (profile === 'executive' && (markdown.length > 6000 || headings > 6 || tableRows > 30 || contentLines > 90)) {
     add(findings, {
       severity: 'warning',
       category: 'profile-depth',
@@ -112,7 +112,7 @@ function auditProfileDepth(profile: ReportProfile, markdown: string, findings: R
       recommendation: 'Prefer a one-page sign-off/fix queue summary; keep raw evidence and large matrices in sidecar artifacts.'
     });
   }
-  if (profile === 'professional' && (markdown.length > 24000 || headings > 16 || tableRows > 140 || contentLines > 260)) {
+  if (profile === 'professional' && (markdown.length > 20000 || headings > 14 || tableRows > 110 || contentLines > 220)) {
     add(findings, {
       severity: 'warning',
       category: 'profile-depth',

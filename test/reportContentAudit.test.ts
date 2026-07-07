@@ -51,7 +51,6 @@ test('report content audit warns when raw score lacks caveat', () => {
   assert.equal(audit.findings.some((item) => item.category === 'raw-score-caveat' && item.severity === 'warning'), true);
 });
 
-
 test('report content audit warns when professional report is too detailed for default review', () => {
   const result = baseResult();
   result.metadata.config.report.profile = 'professional';
@@ -61,4 +60,24 @@ test('report content audit warns when professional report is too detailed for de
   const audit = runReportContentAudit(result, markdown);
 
   assert.equal(audit.findings.some((item) => item.category === 'profile-depth' && /too detailed/.test(item.title)), true);
+});
+
+test('report content audit warns when executive report exceeds compact brief budget', () => {
+  const result = baseResult();
+  result.metadata.config.report.profile = 'executive';
+  const longExecutive = [
+    '# FrontLens Executive QA Report',
+    '## Sign-off',
+    '- QA sign-off: scoped.',
+    '- Adjusted score: 100.',
+    '## Core fixes',
+    '| A | B |',
+    '| --- | --- |',
+    ...Array.from({ length: 40 }, (_, index) => `| row-${index} | detail that should live in sidecar evidence |`)
+  ].join('\n');
+
+  const audit = runReportContentAudit(result, longExecutive);
+
+  assert.equal(audit.status, 'warning');
+  assert.equal(audit.findings.some((finding) => finding.category === 'profile-depth' && /too detailed/.test(finding.title)), true);
 });

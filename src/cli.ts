@@ -14,9 +14,10 @@ import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 import { evaluateMatrixItemCiGate, evaluateQaCiGate, type CiGateMode } from './gates/ciGate.js';
 import { formatProfessionalBrief } from './reporters/briefReporter.js';
+import { formatProfessionalAudit, runProfessionalAudit } from './audit/professionalAudit.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -32,6 +33,7 @@ Usage:
   frontlens env-compare --dev-url <vite-dev-url> --preview-url <build-preview-url>
   frontlens mcp
   frontlens brief --report <result.json>
+  frontlens audit --report <result.json>
   frontlens inspect --report <result.json>
   frontlens issues --report <result.json> [--severity high]
   frontlens root-causes --report <result.json>
@@ -118,6 +120,7 @@ Examples:
   frontlens env-compare --dev-url http://127.0.0.1:5173/users --preview-url http://127.0.0.1:4173/users --output reports/env-users
   frontlens mcp
   frontlens brief --report reports/frontlens/users/result.json
+  frontlens audit --report reports/frontlens/users/result.json
   frontlens issues --report reports/frontlens/users/result.json --severity high
   frontlens root-causes --report reports/frontlens/users/result.json
   frontlens disposition --report reports/frontlens/users/result.json
@@ -225,6 +228,7 @@ Exposed tools:
   frontlens_coverage
   frontlens_security
   frontlens_fix_tasks
+  frontlens_audit
   frontlens_diff
   frontlens_suggestions
 `);
@@ -238,7 +242,7 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'brief' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'brief' | 'audit' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
@@ -282,6 +286,15 @@ async function handleResultCommand(command: 'brief' | 'inspect' | 'issues' | 'ro
       );
     } else {
       console.log(formatProfessionalBrief(result));
+    }
+    return;
+  }
+  if (command === 'audit') {
+    const audit = runProfessionalAudit(result);
+    if (parsed.values.json) {
+      console.log(JSON.stringify(audit, null, 2));
+    } else {
+      console.log(formatProfessionalAudit(audit));
     }
     return;
   }
@@ -461,7 +474,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (argv[0] === 'brief' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
+  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
     await handleResultCommand(argv[0], argv.slice(1));
     return;
   }

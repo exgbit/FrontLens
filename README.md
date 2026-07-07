@@ -467,6 +467,7 @@ node dist/cli.js root-causes --report "reports/frontlens/example/result.json"
 
 ```bash
 node dist/cli.js brief --report "reports/frontlens/example/result.json"
+node dist/cli.js audit --report "reports/frontlens/example/result.json"
 node dist/cli.js inspect --report "reports/frontlens/example/result.json"
 node dist/cli.js issues --report "reports/frontlens/example/result.json" --severity high
 node dist/cli.js security --report "reports/frontlens/example/result.json"
@@ -475,6 +476,8 @@ node dist/cli.js fix-tasks --report "reports/frontlens/example/result.json"
 ```
 
 `brief` 会输出一页式专业 QA 摘要：签核状态、adjusted/raw score、proof-ready 根因、非缺陷分桶、待补证据和关键报告路径。它适合作为 LLM / skill 最终答复的默认骨架，避免把完整 raw report 当成用户结论。
+
+`audit` 会对 `result.json` 做专业报告契约自检：是否过度承诺业务通过、是否把非 proof-ready / non-actionable 问题排进 must-fix/fixTasks、源码绑定和 artifactIntegrity 是否足够、claimGuard / qaIntake / qaSignoff 是否一致。它适合作为 CI 或后续 Agent 使用报告前的最后护栏。
 
 ### 对比两次结果
 
@@ -538,6 +541,7 @@ node dist/cli.js mcp
 - `frontlens_coverage`
 - `frontlens_security`
 - `frontlens_fix_tasks`
+- `frontlens_audit`
 - `frontlens_diff`
 - `frontlens_env_compare`
 - `frontlens_suggestions`

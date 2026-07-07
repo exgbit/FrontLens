@@ -21,4 +21,5 @@ export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifact
 export { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 export { buildIssueDisposition } from './disposition/issueDisposition.js';
 export { formatProfessionalBrief } from './reporters/briefReporter.js';
+export { runProfessionalAudit, formatProfessionalAudit } from './audit/professionalAudit.js';
 export type * from './types.js';

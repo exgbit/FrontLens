@@ -8,6 +8,7 @@ import { runRoleMatrix } from './roles/roleMatrix.js';
 import type { BrowserName, Issue, QaResult, QaRunInput, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
+import { runProfessionalAudit } from './audit/professionalAudit.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -170,6 +171,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_fix_tasks',
         description: 'Read result.json and return machine-executable fix tasks for downstream frontend/backend/security skills.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_audit',
+        description: 'Read result.json and run the professional report-contract audit: overclaiming, proof-ready fix queue, source evidence, artifact integrity, and scope alignment.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -604,6 +610,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(result.fixTasks);
+    }
+    case 'frontlens_audit': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(runProfessionalAudit(result));
     }
     case 'frontlens_diff': {
       const args = validateArgs(params.arguments ?? {}, ['before', 'after', 'outputDir'], ['before', 'after']);

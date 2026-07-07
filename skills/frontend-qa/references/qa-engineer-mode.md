@@ -8,7 +8,7 @@ FrontLens is the evidence engine; the skill is the QA engineer. Do not present r
 
 A professional-test-engineer answer must include:
 
-1. **Scope and assumptions**: target URL, route/page, sourceRoot, environment, auth role, selected modules, allowed/destructive actions, known missing inputs.
+1. **Scope and assumptions**: target URL, route/page, sourceRoot, environment, pageProfile/product scope, auth role, selected modules, allowed/destructive actions, known missing inputs.
 2. **Requirement coverage matrix**: business requirement / evidence / confidence / result / gaps. If no PRD or acceptance criteria was provided, infer only obvious page capabilities and mark them `inferred`, not `confirmed requirement`.
 3. **Execution evidence**: report-relative screenshot/DOM/network/console/download/source file references that exist; treat `artifactIntegrity.status === failed` as a report-quality defect.
 4. **Defect triage**: core defects by root cause, raw-finding disposition, severity, owner, reproduction, fix surface, and merged raw issue IDs. Do not list every raw issue as a separate bug.
@@ -16,7 +16,7 @@ A professional-test-engineer answer must include:
 6. **Regression pack**: exact FrontLens rerun command, any journey config needed, and focused verification steps after fixes.
 7. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
-Use `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `qualityGate`, `requirementCoverage`, `environment`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, or relevant journeys are missing.
+Use `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, or relevant journeys are missing.
 
 ## Inputs a human QA would ask for
 
@@ -24,7 +24,7 @@ If missing, continue with best effort but mark coverage gaps:
 
 - PRD / user stories / acceptance criteria. If available, encode them as `--requirements requirements.json` so FrontLens can produce machine-readable `requirementCoverage`.
 - For each acceptance criterion, prefer explicit runtime assertions: `selectors`, `expectedTexts`, and safe `journeySteps`. These generate `journeyTests[].source = requirement-generated` and allow high-confidence coverage. Criteria that are only free text remain coverage gaps unless other runtime evidence proves them.
-- Product scope/ADR context. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
+- Product scope/ADR context. Inspect `pageProfile`; if it is inferred, use its questions to ask for scope confirmation. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
 - Login state and role matrix, including admin/normal/readonly/unauthorized when relevant.
 - Test data requirements and whether create/edit/delete/download/upload are allowed.
 - API contract/OpenAPI or backend envelope conventions.
@@ -43,6 +43,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Forms**: validation, required fields, boundary values, duplicate submit, success/failure feedback.
 - **Permissions**: visible/disabled dangerous actions, unauthorized API status, role-specific visibility.
 - **Accessibility**: accessible names, labels, keyboard/focus, contrast. Treat hard a11y evidence as real defects; treat touch-size tradeoffs as product/device scope unless mobile is in scope.
+- **Page profile**: inspect `pageProfile.status/pageType`; use it to frame product questions, not as confirmed PRD.
 - **Environment**: inspect `environment.kind` and `environment.trust`; use dev server only for function/source correlation, local/private preview for pre-production checks, and production-like HTTPS for release security/performance sign-off.
 - **Performance**: use production build/preview for bundle/security conclusions; use dev server only for function/source correlation.
 - **Security passive checks**: separate frontend code issues from deployment headers/TLS/gateway work.

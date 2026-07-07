@@ -202,6 +202,11 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     ...result.environment.recommendations.map((item) => `<tr><td>recommendation</td><td>${escapeHtml(item)}</td></tr>`),
     ...result.environment.evidence.map((item) => `<tr><td>evidence</td><td>${escapeHtml(item)}</td></tr>`)
   ].join('\n');
+  const pageProfileRows = [
+    ...result.pageProfile.caveats.map((item) => `<tr><td>caveat</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.pageProfile.questions.map((item) => `<tr><td>question</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.pageProfile.signals.map((item) => `<tr><td>signal</td><td>${escapeHtml(item)}</td></tr>`)
+  ].join('\n');
   const rootCauseRows = result.rootCauseGroups
     .slice(0, 80)
     .map((group) => {
@@ -313,6 +318,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
           <div class="metric"><span>QA Sign-off</span><strong>${escapeHtml(result.qaSignoff.status)}</strong></div>
           <div class="metric"><span>Environment</span><strong>${escapeHtml(result.environment.kind)}</strong></div>
+          <div class="metric"><span>Page Profile</span><strong>${escapeHtml(result.pageProfile.pageType)}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
@@ -351,6 +357,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Interactions</span><strong>${result.qaSignoff.scope.passedInteractionCount}/${result.qaSignoff.scope.interactionCount}</strong></div>
           <div class="metric"><span>Auth</span><strong>${String(result.qaSignoff.scope.authStateProvided)}</strong></div>
           <div class="metric"><span>Environment</span><strong>${escapeHtml(result.qaSignoff.scope.environmentKind)}</strong></div>
+          <div class="metric"><span>Page profile</span><strong>${escapeHtml(result.qaSignoff.scope.pageProfileStatus)} / ${escapeHtml(result.qaSignoff.scope.pageProfileType)}</strong></div>
           <div class="metric"><span>Source health</span><strong>${escapeHtml(result.qaSignoff.scope.sourceHealthStatus)}</strong></div>
         </div>
         <table>
@@ -374,6 +381,24 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>Type</th><th>Note</th></tr></thead>
           <tbody>${environmentRows || '<tr><td colspan="2">No environment caveats</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Page Profile / 产品范围画像</h2>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.pageProfile.status)}</strong></div>
+          <div class="metric"><span>Source</span><strong>${escapeHtml(result.pageProfile.source)}</strong></div>
+          <div class="metric"><span>Type</span><strong>${escapeHtml(result.pageProfile.pageType)}</strong></div>
+          <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.pageProfile.confidence)}</strong></div>
+          <div class="metric"><span>Device</span><strong>${escapeHtml(result.pageProfile.suggestedProductContext.deviceScope ?? '-')}</strong></div>
+          <div class="metric"><span>A11y</span><strong>${escapeHtml(result.pageProfile.suggestedProductContext.accessibilityTarget ?? '-')}</strong></div>
+          <div class="metric"><span>Required</span><strong>${result.pageProfile.suggestedProductContext.requiredFeatures.length}</strong></div>
+          <div class="metric"><span>Optional</span><strong>${result.pageProfile.suggestedProductContext.optionalFeatures.length}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>Type</th><th>Note</th></tr></thead>
+          <tbody>${pageProfileRows || '<tr><td colspan="2">No page-profile prompts</td></tr>'}</tbody>
         </table>
       </section>
 

@@ -1,4 +1,4 @@
-import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyTestResult, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult } from '../types.js';
+import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult } from '../types.js';
 
 function passedCount(items: Array<{ status: string }>): number {
   return items.filter((item) => item.status === 'passed').length;
@@ -58,6 +58,7 @@ export function buildQaSignoff(input: {
   sourceHealth: SourceHealthResult;
   artifactIntegrity: ArtifactIntegrityResult;
   environment?: EnvironmentAssessment;
+  pageProfile?: PageProfileAssessment;
   journeyTests: JourneyTestResult[];
   interactionTests: InteractionTestResult[];
   exceptionSimulations: Array<{ status: string }>;
@@ -108,6 +109,13 @@ export function buildQaSignoff(input: {
     } else if (input.environment.trust.performance !== 'high' || input.environment.trust.security !== 'high') {
       risks.push(`当前环境为 ${input.environment.kind}；性能/安全发布结论置信度 ${input.environment.trust.performance}/${input.environment.trust.security}。`);
       followups.push('在生产等价 HTTPS 域名或正式 staging 上复测部署安全、TLS、CDN、Cookie 和性能预算。');
+    }
+  }
+  if (input.pageProfile) {
+    evidence.push(`pageProfile ${input.pageProfile.status}/${input.pageProfile.pageType} (${input.pageProfile.confidence})`);
+    if (input.pageProfile.status !== 'configured') {
+      gaps.push(`产品范围未显式确认；当前页面画像为 ${input.pageProfile.status}/${input.pageProfile.pageType}，样式、分页、导出、刷新、触控等判断需 PRD/ADR/productContext 复核。`);
+      followups.push('确认 pageProfile.questions 中的产品范围问题，并把结论写入 productContext 后复测。');
     }
   }
   if (providedRequirementCount === 0) {
@@ -186,6 +194,8 @@ export function buildQaSignoff(input: {
       destructiveActionsAllowed,
       environmentKind: input.environment?.kind ?? 'unknown',
       environmentConfidence: input.environment?.confidence ?? 'low',
+      pageProfileStatus: input.pageProfile?.status ?? 'unknown',
+      pageProfileType: input.pageProfile?.pageType ?? 'unknown',
       sourceHealthStatus: input.sourceHealth.status,
       artifactIntegrityStatus: input.artifactIntegrity.status
     },

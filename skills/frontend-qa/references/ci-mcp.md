@@ -88,7 +88,7 @@ Tools exposed:
 - `frontlens_diff`: compare two `result.json` files by stable fingerprints.
 - `frontlens_suggestions`: return frontend/backend/product/test suggestions.
 
-`frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `environment` trust, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups`; use `qaSignoff` plus `environment.trust` as the first machine-readable release/sign-off gate before applying source/requirement triage.
+`frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups`; use `qaSignoff` plus `environment.trust` and `pageProfile.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
 
 `auth save` is intentionally CLI-first because it usually launches a headed browser for manual login.
 

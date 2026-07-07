@@ -23,6 +23,7 @@ import { isNativeResourceLoadConsole } from '../src/utils/console.ts';
 import { formatProfessionalReview, reportArtifactPath } from '../src/reporters/markdownReporter.ts';
 import { normalizeResult } from '../src/resultNormalizer.ts';
 import { buildEnvironmentAssessment } from '../src/environment/environmentAssessment.ts';
+import { buildPageProfileAssessment } from '../src/product/pageProfile.ts';
 import type { AnalyzerContext, Issue, NetworkRecord, PageModel } from '../src/types.ts';
 
 function networkRecord(input: Partial<NetworkRecord> & { id: string; url: string }): NetworkRecord {
@@ -186,6 +187,37 @@ test('environment assessment identifies Vite dev server and lowers production tr
   assert.equal(env.trust.performance, 'low');
   assert.equal(env.trust.security, 'low');
   assert.equal(env.warnings.some((item) => /dev-source/.test(item)), true);
+});
+
+test('page profile infers scope prompts without confirming product decisions', () => {
+  const config = createDefaultConfig('http://example.test/credentials');
+  const pageModel: PageModel = {
+    url: 'http://example.test/credentials',
+    title: '凭证管理',
+    meta: { h1: ['凭证管理'], openGraph: {} },
+    breadcrumbs: ['系统设置', '凭证管理'],
+    headings: [{ level: 1, text: '凭证管理' }],
+    structureTree: '',
+    components: [
+      { id: 'CMP-1', type: 'card', text: 'API Token 授权状态', visible: true, attributes: {}, confidence: 0.9 },
+      { id: 'CMP-2', type: 'button', text: '复制密钥', visible: true, attributes: {}, confidence: 0.9 }
+    ],
+    forms: [],
+    tables: [],
+    buttons: [],
+    inputs: [],
+    images: [],
+    links: [],
+    stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: '凭证 Token Secret 授权 API Key' }
+  };
+
+  const profile = buildPageProfileAssessment({ config, pageModel });
+
+  assert.equal(profile.status, 'inferred');
+  assert.equal(profile.pageType, 'credential-security');
+  assert.equal(profile.source, 'heuristic');
+  assert.equal(profile.suggestedProductContext.requiredFeatures.includes('secret-masking'), true);
+  assert.equal(profile.caveats.some((item) => /not use it as confirmed PRD/.test(item)), true);
 });
 
 test('exception feedback heuristic rejects empty states and KPI labels as error feedback', () => {

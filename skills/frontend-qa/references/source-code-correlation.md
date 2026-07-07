@@ -46,7 +46,7 @@ When the user provides `sourceRoot`, a professional QA pass should include sourc
 - whether the tested URL appears to match the inspected source branch/build
 - `result.json.sourceAnalysis.status`, route/import findings, API call index, and loading/error/empty/retry state signals
 - `result.json.sourceRuntimeCorrelation.status`, `links[]`, link confidence, source matches, component ids, and list-response hints
-- `result.json.environment.kind` and `environment.trust` before making performance/security/release claims
+- `result.json.environment.kind` / `environment.trust` before performance/security/release claims, and `result.json.pageProfile.status` / `pageProfile.questions` before product/design-scope claims
 - `result.json.sourceHealth.status`, package scripts, scriptChecks, syntax findings, and source-health issue IDs
 
 Do not mark business functionality as passed just because source-health commands pass. Treat them as one layer of evidence.

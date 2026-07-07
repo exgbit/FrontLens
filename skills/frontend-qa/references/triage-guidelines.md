@@ -14,7 +14,7 @@ Create a concise triage table with these buckets:
 
 Report raw score separately from adjusted risk. If many findings are skipped, synthetic, or deployment-only, say the score is low-confidence and prioritize the triaged fix list instead of repeating every issue.
 
-Use `qaSignoff` and `environment` before final sign-off wording. If `qaSignoff.businessValidationConfidence` is not `runtime-verified`, or `environment.trust.performance/security` is not high for release claims, do not describe business validation or production readiness as fully passed even when `qualityGate.status=pass`.
+Use `qaSignoff`, `environment`, and `pageProfile` before final sign-off wording. If `qaSignoff.businessValidationConfidence` is not `runtime-verified`, or `environment.trust.performance/security` is not high for release claims, do not describe business validation or production readiness as fully passed even when `qualityGate.status=pass`.
 
 Apply an **actionability gate** before presenting final findings:
 
@@ -39,7 +39,7 @@ Add an **evidence confidence** label to any business-function conclusion:
 
 For product/design/style findings, default to **Product decision / optional** unless there is evidence that the style blocks a core task, violates an explicit ADR/accessibility requirement, or causes measurable usability failure. Avoid turning subjective visual density or color hierarchy into mandatory defects.
 
-If the project supplies `metadata.config.productContext`, use it as the source of truth before classifying product-scope findings:
+If the project supplies `metadata.config.productContext`, use it as the source of truth before classifying product-scope findings. If not, use `pageProfile.questions` to report missing scope instead of inventing a requirement:
 
 - `requiredFeatures`: keep matching findings as real fix candidates or source-confirmation gaps.
 - `optionalFeatures`: keep matching findings as product decisions, not mandatory defects.

@@ -60,6 +60,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     sourceHealth: result.sourceHealth,
     artifactIntegrity: result.artifactIntegrity,
     environment: result.environment,
+    pageProfile: result.pageProfile,
     journeyTests: result.journeyTests,
     interactionTests: result.interactionTests,
     exceptionSimulations: result.exceptionSimulations,

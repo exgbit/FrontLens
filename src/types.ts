@@ -872,6 +872,39 @@ export interface EnvironmentAssessment {
   recommendations: string[];
 }
 
+export type PageProfileType =
+  | 'credential-security'
+  | 'admin-data-list'
+  | 'admin-dashboard'
+  | 'form-flow'
+  | 'detail-master'
+  | 'auth-login'
+  | 'public-content'
+  | 'unknown';
+
+export interface PageProfileSuggestion {
+  pageType?: PageProfileType;
+  deviceScope?: ProductDeviceScope;
+  accessibilityTarget?: ProductAccessibilityTarget;
+  requiredFeatures: string[];
+  optionalFeatures: string[];
+  outOfScopeFeatures: string[];
+  decisions: ProductDecisionConfig[];
+}
+
+export interface PageProfileAssessment {
+  checkedAt: string;
+  status: 'configured' | 'inferred' | 'unknown';
+  pageType: PageProfileType;
+  configuredPageType?: string;
+  confidence: 'high' | 'medium' | 'low';
+  source: 'productContext' | 'heuristic' | 'none';
+  signals: string[];
+  suggestedProductContext: PageProfileSuggestion;
+  caveats: string[];
+  questions: string[];
+}
+
 export interface SourceHealthScript {
   name: string;
   command: string;
@@ -1247,6 +1280,8 @@ export interface QaSignoffResult {
     destructiveActionsAllowed: boolean;
     environmentKind: EnvironmentAssessment['kind'];
     environmentConfidence: EnvironmentAssessment['confidence'];
+    pageProfileStatus: PageProfileAssessment['status'];
+    pageProfileType: PageProfileAssessment['pageType'];
     sourceHealthStatus: SourceHealthResult['status'];
     artifactIntegrityStatus: ArtifactIntegrityResult['status'];
   };
@@ -1440,6 +1475,7 @@ export interface QaResult {
   sourceRuntimeCorrelation: SourceRuntimeCorrelationResult;
   sourceHealth: SourceHealthResult;
   environment: EnvironmentAssessment;
+  pageProfile: PageProfileAssessment;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];

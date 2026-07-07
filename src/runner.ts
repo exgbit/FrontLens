@@ -29,6 +29,7 @@ import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { buildEnvironmentAssessment } from './environment/environmentAssessment.js';
+import { buildPageProfileAssessment } from './product/pageProfile.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
@@ -38,7 +39,7 @@ import { analyzeSource, createEmptySourceAnalysis } from './source/sourceAnalyze
 import { buildSourceRuntimeCorrelation, createEmptySourceRuntimeCorrelation } from './source/sourceRuntimeCorrelation.js';
 import { analyzeSourceHealth, createEmptySourceHealth } from './source/sourceHealth.js';
 import { sessionStorageSidecarPath } from './auth.js';
-import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, EnvironmentAssessment, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult } from './types.js';
+import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, EnvironmentAssessment, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, PageProfileAssessment, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
 import { RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 import { redactText, redactUrl } from './utils/redact.js';
@@ -688,6 +689,10 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     pageModel,
     networkRecords: networkCollector.list()
   });
+  const pageProfile: PageProfileAssessment = buildPageProfileAssessment({
+    config,
+    pageModel
+  });
   const rootCauseGroups = buildRootCauseGroups(issues, resultConfig);
   const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
   const initialArtifactIntegrity = createEmptyArtifactIntegrity();
@@ -711,6 +716,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     sourceHealth,
     artifactIntegrity: initialArtifactIntegrity,
     environment,
+    pageProfile,
     journeyTests,
     interactionTests,
     exceptionSimulations,
@@ -764,6 +770,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     sourceRuntimeCorrelation,
     sourceHealth,
     environment,
+    pageProfile,
     p2,
     artifactIntegrity: initialArtifactIntegrity,
     rootCauseGroups,

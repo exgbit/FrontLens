@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDefaultConfig } from '../src/defaultConfig.ts';
 import { buildQaSignoff } from '../src/signoff/qaSignoff.ts';
-import type { ArtifactIntegrityResult, EnvironmentAssessment, JourneyTestResult, QaQualityGate, RequirementCoverageResult, SourceHealthResult } from '../src/types.ts';
+import type { ArtifactIntegrityResult, EnvironmentAssessment, JourneyTestResult, PageProfileAssessment, QaQualityGate, RequirementCoverageResult, SourceHealthResult } from '../src/types.ts';
 
 function qualityGate(overrides: Partial<QaQualityGate> = {}): QaQualityGate {
   return {
@@ -93,6 +93,29 @@ function environment(overrides: Partial<EnvironmentAssessment> = {}): Environmen
     evidence: ['hmr:true'],
     warnings: ['dev'],
     recommendations: ['preview'],
+    ...overrides
+  };
+}
+
+function pageProfile(overrides: Partial<PageProfileAssessment> = {}): PageProfileAssessment {
+  return {
+    checkedAt: '',
+    status: 'inferred',
+    pageType: 'admin-data-list',
+    confidence: 'medium',
+    source: 'heuristic',
+    signals: ['table component detected'],
+    suggestedProductContext: {
+      pageType: 'admin-data-list',
+      deviceScope: 'desktop-first',
+      accessibilityTarget: 'basic',
+      requiredFeatures: ['error-state'],
+      optionalFeatures: ['pagination'],
+      outOfScopeFeatures: [],
+      decisions: []
+    },
+    caveats: ['heuristic'],
+    questions: ['分页是否必需？'],
     ...overrides
   };
 }
@@ -241,4 +264,24 @@ test('qa signoff records environment trust risks for dev server runs', () => {
   assert.equal(result.scope.environmentKind, 'local-dev');
   assert.equal(result.risks.some((item) => item.includes('dev server')), true);
   assert.equal(result.requiredFollowups.some((item) => item.includes('build + preview')), true);
+});
+
+test('qa signoff records unconfirmed page profile as product-scope coverage gap', () => {
+  const result = buildQaSignoff({
+    config: createDefaultConfig('https://example.com/admin'),
+    qualityGate: qualityGate(),
+    requirementCoverage: requirements(),
+    sourceHealth: sourceHealth({ packageScripts: [] }),
+    artifactIntegrity: artifacts(),
+    pageProfile: pageProfile(),
+    journeyTests: [journey('passed')],
+    interactionTests: [],
+    exceptionSimulations: [],
+    pageDomNodes: 100
+  });
+
+  assert.equal(result.scope.pageProfileStatus, 'inferred');
+  assert.equal(result.scope.pageProfileType, 'admin-data-list');
+  assert.equal(result.coverageGaps.some((item) => item.includes('产品范围未显式确认')), true);
+  assert.equal(result.requiredFollowups.some((item) => item.includes('productContext')), true);
 });

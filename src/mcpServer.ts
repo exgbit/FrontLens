@@ -283,6 +283,13 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           isViteDevServer: result.environment.isViteDevServer,
           isLocalOrPrivate: result.environment.isLocalOrPrivate
         },
+        pageProfile: {
+          status: result.pageProfile.status,
+          pageType: result.pageProfile.pageType,
+          confidence: result.pageProfile.confidence,
+          source: result.pageProfile.source,
+          questions: result.pageProfile.questions
+        },
         sourceHealth: {
           status: result.sourceHealth.status,
           syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
@@ -326,6 +333,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           summary: result.security.summary
         },
         environment: result.environment,
+        pageProfile: result.pageProfile,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,
         artifactIntegrity: result.artifactIntegrity,

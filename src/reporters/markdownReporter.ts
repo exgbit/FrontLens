@@ -234,6 +234,7 @@ function formatQaSignoff(result: QaResult): string {
 - Auth state provided：${signoff.scope.authStateProvided}
 - Destructive actions allowed：${signoff.scope.destructiveActionsAllowed}
 - Environment：${signoff.scope.environmentKind} / ${signoff.scope.environmentConfidence}
+- Page profile：${signoff.scope.pageProfileStatus} / ${signoff.scope.pageProfileType}
 - Source health / artifacts：${signoff.scope.sourceHealthStatus} / ${signoff.scope.artifactIntegrityStatus}
 
 ${rows.length ? ['| 类型 | 说明 |', '| --- | --- |', ...rows, ''].join('\n') : '未发现额外签核说明。'}
@@ -255,6 +256,29 @@ function formatEnvironmentAssessment(result: QaResult): string {
 - Evidence：${env.evidence.length ? markdownEscape(env.evidence.join('；')) : '-'}
 
 ${warningRows.length || recommendationRows.length ? ['| Type | Note |', '| --- | --- |', ...warningRows, ...recommendationRows, ''].join('\n') : '环境未发现额外降置信提示。'}
+`;
+}
+
+function formatPageProfileAssessment(result: QaResult): string {
+  const profile = result.pageProfile;
+  const suggestion = profile.suggestedProductContext;
+  const rows = [
+    ...profile.caveats.map((item) => `| caveat | ${markdownEscape(item)} |`),
+    ...profile.questions.map((item) => `| question | ${markdownEscape(item)} |`),
+    ...profile.signals.map((item) => `| signal | ${markdownEscape(item)} |`)
+  ];
+  return `## Page Profile / 产品范围画像
+
+- Status / Source：${profile.status} / ${profile.source}
+- Type / Confidence：${profile.pageType} / ${profile.confidence}
+- Configured pageType：${markdownEscape(profile.configuredPageType ?? '-')}
+- Suggested device / a11y：${markdownEscape(suggestion.deviceScope ?? '-')} / ${markdownEscape(suggestion.accessibilityTarget ?? '-')}
+- Suggested required：${suggestion.requiredFeatures.length ? markdownEscape(suggestion.requiredFeatures.join(', ')) : '-'}
+- Suggested optional：${suggestion.optionalFeatures.length ? markdownEscape(suggestion.optionalFeatures.join(', ')) : '-'}
+- Suggested out-of-scope：${suggestion.outOfScopeFeatures.length ? markdownEscape(suggestion.outOfScopeFeatures.join(', ')) : '-'}
+- Suggested decisions：${suggestion.decisions.length ? markdownEscape(suggestion.decisions.map((item) => item.title).join('；')) : '-'}
+
+${rows.length ? ['| Type | Note |', '| --- | --- |', ...rows, ''].join('\n') : '暂无页面画像提示。'}
 `;
 }
 
@@ -844,6 +868,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
 - Requirement coverage：${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed；provided / inferred：${result.requirementCoverage.summary.providedCount}/${result.requirementCoverage.summary.inferredCount}
 - Environment：${result.environment.kind} / trust performance ${result.environment.trust.performance} / security ${result.environment.trust.security}
+- Page profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Source health：${result.sourceHealth.status}；syntax errors ${result.sourceHealth.syntaxErrorCount}；script checks ${result.sourceHealth.scriptChecks.length}（passed ${sourceScriptPassed} / failed-or-timeout ${sourceScriptFailed}）
 - Artifact integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 
@@ -914,6 +939,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Raw Finding Disposition：${result.issueDisposition.summary.actionableCount} actionable / ${result.issueDisposition.summary.conditionalCount} conditional / ${result.issueDisposition.summary.nonActionableCount} non-actionable
 - Fix Tasks：${result.fixTasks.length}
 - QA Sign-off：${result.qaSignoff.status} / ${result.qaSignoff.confidence} / ${result.qaSignoff.businessValidationConfidence}
+- Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
@@ -926,6 +952,8 @@ ${formatQualityGate(result)}
 ${formatQaSignoff(result)}
 
 ${formatEnvironmentAssessment(result)}
+
+${formatPageProfileAssessment(result)}
 
 ${formatRootCauseGroups(result)}
 

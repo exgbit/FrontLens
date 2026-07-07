@@ -10,6 +10,8 @@ import type {
   Issue,
   NetworkSection,
   PageModel,
+  PageProfileAssessment,
+  PageProfileType,
   QaResult,
   QaSummary,
   ResourceSection,
@@ -31,8 +33,9 @@ import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { createEmptyEnvironmentAssessment } from './environment/environmentAssessment.js';
+import { buildPageProfileAssessment, createEmptyPageProfileAssessment } from './product/pageProfile.js';
 
-export const RESULT_SCHEMA_VERSION = '1.15.0';
+export const RESULT_SCHEMA_VERSION = '1.16.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -572,6 +575,23 @@ function environmentKind(value: unknown): EnvironmentAssessment['kind'] {
   return value === 'production-like' || value === 'local-dev' || value === 'local-preview' || value === 'staging-or-private' || value === 'file' || value === 'unknown' ? value : 'unknown';
 }
 
+function pageProfileType(value: unknown): PageProfileType {
+  return value === 'credential-security' ||
+    value === 'admin-data-list' ||
+    value === 'admin-dashboard' ||
+    value === 'form-flow' ||
+    value === 'detail-master' ||
+    value === 'auth-login' ||
+    value === 'public-content' ||
+    value === 'unknown'
+    ? value
+    : 'unknown';
+}
+
+function pageProfileStatus(value: unknown): PageProfileAssessment['status'] {
+  return value === 'configured' || value === 'inferred' || value === 'unknown' ? value : 'unknown';
+}
+
 function normalizeEnvironment(raw: unknown, fallbackUrl = ''): EnvironmentAssessment {
   const empty = createEmptyEnvironmentAssessment(fallbackUrl);
   if (!isRecord(raw)) return empty;
@@ -599,6 +619,40 @@ function normalizeEnvironment(raw: unknown, fallbackUrl = ''): EnvironmentAssess
     evidence: asArray<string>(raw.evidence).filter((item) => typeof item === 'string'),
     warnings: asArray<string>(raw.warnings).filter((item) => typeof item === 'string'),
     recommendations: asArray<string>(raw.recommendations).filter((item) => typeof item === 'string')
+  };
+}
+
+function normalizePageProfile(raw: unknown, fallback?: PageProfileAssessment): PageProfileAssessment {
+  const empty = fallback ?? createEmptyPageProfileAssessment();
+  if (!isRecord(raw)) return empty;
+  const suggestion = isRecord(raw.suggestedProductContext) ? raw.suggestedProductContext : {};
+  return {
+    checkedAt: asString(raw.checkedAt, empty.checkedAt),
+    status: pageProfileStatus(raw.status),
+    pageType: pageProfileType(raw.pageType),
+    configuredPageType: optionalString(raw.configuredPageType),
+    confidence: trustValue(raw.confidence),
+    source: raw.source === 'productContext' || raw.source === 'heuristic' || raw.source === 'none' ? raw.source : 'none',
+    signals: asArray<string>(raw.signals).filter((item) => typeof item === 'string'),
+    suggestedProductContext: {
+      pageType: suggestion.pageType === undefined ? undefined : pageProfileType(suggestion.pageType),
+      deviceScope: suggestion.deviceScope === 'unknown' || suggestion.deviceScope === 'desktop-only' || suggestion.deviceScope === 'desktop-first' || suggestion.deviceScope === 'responsive' || suggestion.deviceScope === 'mobile-first' ? suggestion.deviceScope : undefined,
+      accessibilityTarget: suggestion.accessibilityTarget === 'unknown' || suggestion.accessibilityTarget === 'basic' || suggestion.accessibilityTarget === 'wcag-aa' || suggestion.accessibilityTarget === 'wcag-aaa' ? suggestion.accessibilityTarget : undefined,
+      requiredFeatures: asArray<string>(suggestion.requiredFeatures).filter((item) => typeof item === 'string'),
+      optionalFeatures: asArray<string>(suggestion.optionalFeatures).filter((item) => typeof item === 'string'),
+      outOfScopeFeatures: asArray<string>(suggestion.outOfScopeFeatures).filter((item) => typeof item === 'string'),
+      decisions: asArray<Record<string, unknown>>(suggestion.decisions)
+        .filter(isRecord)
+        .map((decision) => ({
+          id: optionalString(decision.id),
+          title: asString(decision.title, ''),
+          appliesTo: asArray<string>(decision.appliesTo).filter((item) => typeof item === 'string'),
+          rationale: optionalString(decision.rationale)
+        }))
+        .filter((decision) => decision.title)
+    },
+    caveats: asArray<string>(raw.caveats).filter((item) => typeof item === 'string'),
+    questions: asArray<string>(raw.questions).filter((item) => typeof item === 'string')
   };
 }
 
@@ -643,6 +697,7 @@ function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaRe
     ? scope.artifactIntegrityStatus
     : fallback.scope.artifactIntegrityStatus;
   const environmentKindValue = environmentKind(scope.environmentKind);
+  const pageProfileTypeValue = pageProfileType(scope.pageProfileType);
   return {
     status,
     confidence,
@@ -667,6 +722,8 @@ function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaRe
       destructiveActionsAllowed: typeof scope.destructiveActionsAllowed === 'boolean' ? scope.destructiveActionsAllowed : fallback.scope.destructiveActionsAllowed,
       environmentKind: environmentKindValue === 'unknown' ? fallback.scope.environmentKind : environmentKindValue,
       environmentConfidence: trustValue(scope.environmentConfidence, fallback.scope.environmentConfidence),
+      pageProfileStatus: pageProfileStatus(scope.pageProfileStatus) === 'unknown' ? fallback.scope.pageProfileStatus : pageProfileStatus(scope.pageProfileStatus),
+      pageProfileType: pageProfileTypeValue === 'unknown' ? fallback.scope.pageProfileType : pageProfileTypeValue,
       sourceHealthStatus,
       artifactIntegrityStatus
     },
@@ -950,6 +1007,7 @@ export function normalizeResult(raw: unknown): QaResult {
   const sourceRuntimeCorrelation = normalizeSourceRuntimeCorrelation(raw.sourceRuntimeCorrelation);
   const sourceHealth = normalizeSourceHealth(raw.sourceHealth);
   const environment = normalizeEnvironment(raw.environment, metadataConfig.target.url);
+  const pageProfile = normalizePageProfile(raw.pageProfile, buildPageProfileAssessment({ config: metadataConfig, pageModel }));
   const rootCauseGroups = buildRootCauseGroups(issues, metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
   const qualityGateFallback = buildQualityGate({
@@ -973,6 +1031,7 @@ export function normalizeResult(raw: unknown): QaResult {
     sourceHealth,
     artifactIntegrity,
     environment,
+    pageProfile,
     journeyTests,
     interactionTests,
     exceptionSimulations,
@@ -1003,6 +1062,7 @@ export function normalizeResult(raw: unknown): QaResult {
     sourceRuntimeCorrelation,
     sourceHealth,
     environment,
+    pageProfile,
     p2: normalizeP2(raw.p2),
     artifactIntegrity,
     rootCauseGroups,

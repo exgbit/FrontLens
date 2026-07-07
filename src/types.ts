@@ -1804,6 +1804,8 @@ export interface ArtifactIndex {
   markdownReport?: string;
   /** Full raw evidence appendix for drill-down; not the default work queue. */
   evidenceReport?: string;
+  /** One-page professional QA brief intended as the default LLM/user answer shape. */
+  professionalBrief?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;

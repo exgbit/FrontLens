@@ -5,6 +5,7 @@ import type { ArtifactIntegrityEntry, ArtifactIntegrityResult, QaResult } from '
 const FILE_ARTIFACT_KEYS = [
   'markdownReport',
   'evidenceReport',
+  'professionalBrief',
   'qaReview',
   'jsonReport',
   'htmlReport',

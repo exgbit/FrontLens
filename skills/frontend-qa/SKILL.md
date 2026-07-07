@@ -5,8 +5,9 @@ description: Run FrontLens Playwright QA for live webpage testing/auditing and e
 
 # Frontend QA
 
-Use FrontLens to analyze a target webpage end-to-end and return eight primary artifacts:
+Use FrontLens to analyze a target webpage end-to-end and return primary artifacts:
 
+- `brief.md`: one-page professional QA brief; default shape for final user/LLM answer.
 - `report.md`: default decision-oriented professional QA report for humans.
 - `qa-review.md`: concise professional-QA review focused on sign-off, root causes, non-defect buckets, and next actions.
 - `evidence-report.md`: full raw evidence appendix with issue details, screenshots/DOM/network references, and module sections for drill-down.
@@ -70,7 +71,7 @@ If the user selects "all/default", run the full default QA command. If the user 
    Add `--source-root`, `--source-run-scripts --source-scripts "typecheck,lint"`, reviewed `--requirements`, storage state, or config files only when the task scope requires them. Read `references/commands.md` for exact command variants and JSON snippets for `requirements`, `productContext`, and `testData`.
 5. If browser binaries are missing, run `npx playwright install chromium`; if the sandbox blocks Chromium on macOS, rerun the same QA command with escalated execution.
 6. If source-aware analysis is enabled, verify the target page is reachable from the intended deployment URL first. If not, follow `references/source-code-correlation.md` to build/start the local app, then rerun the reachability check before QA.
-7. Read outputs in this order: `frontlens brief --report <result.json>` (or `qa-review.md` / `professionalSummary`), then `claimGuard`, `qaIntake`, `defectProof`, `issueDisposition`, `scopeReview`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `environment`, `artifactIntegrity`, and only then raw `evidence-report.md` details.
+7. Read outputs in this order: `brief.md` or `frontlens brief --report <result.json>` (fallback: `qa-review.md` / `professionalSummary`), then `claimGuard`, `qaIntake`, `defectProof`, `issueDisposition`, `scopeReview`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `environment`, `artifactIntegrity`, and only then raw `evidence-report.md` details.
 8. Apply the professional QA actionability gate from `references/triage-guidelines.md`: retain only proof-ready, user-impacting, reproducible defects with owner/fix surface; move style/product choices, deployment security config, dev-server artifacts, skipped checks, and single-signal guesses to non-defect or needs-evidence buckets.
 9. For source-aware triage, use `rootCauseGroups[].sourceLocations`, medium/high `sourceRuntimeCorrelation.links[]`, and source findings (`ui-accessibility`, `error-state-gap`, route/static-import performance) before manual grep. Do not schedule frontend fixes whose `defectProof` remains `needs-evidence`.
 10. For API/UI data mismatch, require exact network request, visible DOM/screenshot state, source API/state/render file:line or medium/high link, and a product requirement that the UI should render that data. Otherwise keep it conditional/insufficient-evidence.

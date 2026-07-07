@@ -4,6 +4,7 @@ import { markdownEscape, truncateMiddle } from '../utils/text.js';
 import { writeText } from '../utils/fs.js';
 import { isActionableIssue } from '../qualityGate.js';
 import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
+import { formatProfessionalBrief } from './briefReporter.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1140,6 +1141,7 @@ node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --output "report
 export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const outputPath = path.join(result.artifacts.outputDir, 'report.md');
   const evidencePath = path.join(result.artifacts.outputDir, 'evidence-report.md');
+  const briefPath = path.join(result.artifacts.outputDir, 'brief.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
@@ -1147,6 +1149,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const defectProofPath = path.join(result.artifacts.outputDir, 'defect-proof.md');
   result.artifacts.markdownReport = outputPath;
   result.artifacts.evidenceReport = evidencePath;
+  result.artifacts.professionalBrief = briefPath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
@@ -1322,6 +1325,7 @@ ${formatArtifacts(result)}
 
   const reviewMarkdown = formatProfessionalReview(result);
   const reportMarkdown = reviewMarkdown.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
+  await writeText(briefPath, formatProfessionalBrief(result));
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);

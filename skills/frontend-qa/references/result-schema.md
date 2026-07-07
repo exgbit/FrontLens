@@ -206,6 +206,7 @@ interface ArtifactIndex {
   outputDir: string;
   markdownReport?: string; // default decision-oriented professional Markdown report
   evidenceReport?: string; // full raw evidence appendix for drill-down
+  professionalBrief?: string; // one-page professional QA brief for default LLM/user answer shape
   qaReview?: string;      // concise professional-QA review for humans
   jsonReport?: string;
   htmlReport?: string;

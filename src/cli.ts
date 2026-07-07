@@ -734,6 +734,7 @@ async function main(): Promise<void> {
     console.log(`QA Sign-off: ${result.qaSignoff.status}, confidence ${result.qaSignoff.confidence}, business ${result.qaSignoff.businessValidationConfidence}`);
     console.log(`Issues: ${result.summary.issueCount} (critical ${result.summary.criticalCount}, high ${result.summary.highCount}, medium ${result.summary.mediumCount}, low ${result.summary.lowCount})`);
     console.log(`Markdown: ${result.artifacts.markdownReport ?? '(disabled)'}`);
+    console.log(`QA Review: ${result.artifacts.qaReview ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

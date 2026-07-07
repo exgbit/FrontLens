@@ -1273,6 +1273,7 @@ export interface ArtifactIndex {
   [key: string]: unknown;
   outputDir: string;
   markdownReport?: string;
+  qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
   screenshot?: string;

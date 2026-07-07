@@ -141,6 +141,7 @@ interface ArtifactIndex {
   [key: string]: unknown; // plugins may add custom artifact paths or metadata
   outputDir: string;
   markdownReport?: string;
+  qaReview?: string;      // concise professional-QA review for humans
   jsonReport?: string;
   htmlReport?: string;
   screenshot?: string;

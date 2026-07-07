@@ -772,9 +772,98 @@ ${entries.map(([key, value]) => `- ${key}: \`${reportPath(result, value as strin
 `;
 }
 
+export function formatProfessionalReview(result: QaResult): string {
+  const actionableGroups = result.rootCauseGroups.filter((group) => group.status === 'actionable');
+  const blockerGroups = actionableGroups.filter((group) => group.priority === 'P0' || group.priority === 'P1');
+  const sourceScriptPassed = result.sourceHealth.scriptChecks.filter((check) => check.status === 'passed').length;
+  const sourceScriptFailed = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
+  const disposition = result.issueDisposition.summary;
+  const artifactPath = (value: string | undefined): string => value ? `\`${markdownEscape(reportPath(result, value) ?? value)}\`` : '-';
+  const rootRows = actionableGroups.slice(0, 12).map((group) => {
+    const evidence = [
+      group.issueIds.length ? `issues:${group.issueIds.join(',')}` : '',
+      group.networkRequestIds.length ? `network:${group.networkRequestIds.slice(0, 5).join(',')}` : '',
+      group.consoleIds.length ? `console:${group.consoleIds.slice(0, 5).join(',')}` : '',
+      group.pageErrorIds.length ? `pageError:${group.pageErrorIds.slice(0, 5).join(',')}` : '',
+      group.selectors.length ? `selector:${group.selectors.slice(0, 2).join(' / ')}` : ''
+    ].filter(Boolean).join('；') || '-';
+    return `| ${group.priority} | ${severityLabel[group.severity]} | ${group.owner} | ${markdownEscape(truncateMiddle(group.title, 90))} | ${group.issueCount} | ${markdownEscape(truncateMiddle(evidence, 140))} | ${markdownEscape(truncateMiddle(group.suggestedFix, 180))} |`;
+  });
+  const nonDefectRows = [
+    ['部署/安全配置', disposition.deploymentOnlyCount, '交给网关/CDN/nginx/后端部署；不要当作前端代码 bug。'],
+    ['产品/ADR 决策', disposition.productDecisionCount, '只有违反明确需求或阻塞核心任务时才转为缺陷。'],
+    ['工具/环境局限', disposition.toolLimitationCount, '记录测试方法限制，必要时换环境或补专项测试。'],
+    ['证据不足', disposition.insufficientEvidenceCount + disposition.needsSourceConfirmationCount, '需要源码/运行时双证据后再转缺陷。'],
+    ['参考观察', disposition.referenceCount, '不计入修复工作量。']
+  ].map(([type, count, decision]) => `| ${type} | ${count} | ${markdownEscape(String(decision))} |`);
+  const gapRows = [
+    ...result.qaSignoff.blockers.map((item) => `| blocker | ${markdownEscape(item)} |`),
+    ...result.qaSignoff.risks.map((item) => `| risk | ${markdownEscape(item)} |`),
+    ...result.qaSignoff.coverageGaps.map((item) => `| gap | ${markdownEscape(item)} |`),
+    ...result.qaSignoff.requiredFollowups.map((item) => `| follow-up | ${markdownEscape(item)} |`)
+  ].slice(0, 16);
+  const requirementRows = result.requirementCoverage.items.slice(0, 12).map((item) => {
+    const evidence = [
+      item.evidence.journeyIds.length ? `journey:${item.evidence.journeyIds.join(',')}` : '',
+      item.evidence.selectors.length ? `selector:${item.evidence.selectors.slice(0, 2).join(',')}` : '',
+      item.evidence.networkRequestIds.length ? `network:${item.evidence.networkRequestIds.slice(0, 3).join(',')}` : ''
+    ].filter(Boolean).join(' / ') || '-';
+    return `| ${markdownEscape(item.id)} | ${markdownEscape(item.priority)} | ${markdownEscape(item.source)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(truncateMiddle(item.title, 90))} | ${markdownEscape(truncateMiddle(evidence, 120))} |`;
+  });
+
+  return `# FrontLens Professional QA Review
+
+这是一份面向决策和修复排期的精简复盘；完整原始证据见 ${artifactPath(result.artifacts.markdownReport)}，机器可读数据见 ${artifactPath(result.artifacts.jsonReport)}。
+
+## 结论
+
+- Target：${markdownEscape(result.summary.url)}
+- Raw score：**${result.summary.score}/100**（只作排序参考，不等同业务通过率）
+- QA sign-off：**${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
+- Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
+- Actionable root causes：${actionableGroups.length}（P0/P1 ${blockerGroups.length}）
+- Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
+- Requirement coverage：${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed；provided / inferred：${result.requirementCoverage.summary.providedCount}/${result.requirementCoverage.summary.inferredCount}
+- Source health：${result.sourceHealth.status}；syntax errors ${result.sourceHealth.syntaxErrorCount}；script checks ${result.sourceHealth.scriptChecks.length}（passed ${sourceScriptPassed} / failed-or-timeout ${sourceScriptFailed}）
+- Artifact integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
+
+## 核心缺陷 / 修复根因
+
+${rootRows.length ? ['| Priority | Severity | Owner | Root cause | Raw issues | Evidence | Fix |', '| --- | --- | --- | --- | --- | --- | --- |', ...rootRows, ''].join('\n') : '当前证据未归并出可执行根因。'}
+
+## 非缺陷与降噪
+
+| Bucket | Count | Decision |
+| --- | --- | --- |
+${nonDefectRows.join('\n')}
+
+## 签核阻断、风险与待补证据
+
+${gapRows.length ? ['| Type | Item |', '| --- | --- |', ...gapRows, ''].join('\n') : '未发现额外阻断、风险或待补证据。'}
+
+## 需求/能力覆盖
+
+${requirementRows.length ? ['| ID | Priority | Source | Status | Confidence | Requirement / capability | Evidence |', '| --- | --- | --- | --- | --- | --- | --- |', ...requirementRows, ''].join('\n') : '未配置或未推断出需求项；不能给出完整业务验收结论。'}
+
+## 复测命令
+
+\`\`\`bash
+node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --output "reports/frontlens/verify" --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${JSON.stringify(result.sourceAnalysis.root)}` : ''}
+\`\`\`
+
+## 阅读顺序
+
+1. 先处理上方“核心缺陷 / 修复根因”，不要按 raw issue 数量排期。
+2. 对“证据不足/需源码确认”的项，补 source/runtime 绑定后再转 bug。
+3. 对部署安全、产品取舍、dev server 伪影，按对应 owner 或 ADR 处理，不进入前端修复队列。
+`;
+}
+
 export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const outputPath = path.join(result.artifacts.outputDir, 'report.md');
+  const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   result.artifacts.markdownReport = outputPath;
+  result.artifacts.qaReview = reviewPath;
 
   const dispositionByIssue = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
   const isReportActionable = (issue: Issue): boolean => dispositionByIssue.get(issue.id)?.actionability === 'actionable' || (!dispositionByIssue.has(issue.id) && isActionableIssue(issue));
@@ -917,4 +1006,5 @@ ${formatArtifacts(result)}
 `;
 
   await writeText(outputPath, markdown);
+  await writeText(reviewPath, formatProfessionalReview(result));
 }

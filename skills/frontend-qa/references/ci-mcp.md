@@ -105,6 +105,7 @@ node dist/cli.js qa --url "$URL" --output "$OUTPUT_DIR" --no-trace --json
 Return these paths to the caller:
 
 - `$OUTPUT_DIR/result.json`
+- `$OUTPUT_DIR/qa-review.md`
 - `$OUTPUT_DIR/report.md`
 - `$OUTPUT_DIR/page-model.json`
 - `$OUTPUT_DIR/network.json`

@@ -20,7 +20,8 @@ import { hasSensitivePayloadSignal, hasSensitiveUrlSignal, runSecurityScanner } 
 import { shouldBlockMutatingRequest } from '../src/runner.ts';
 import { redactText, redactUrl } from '../src/utils/redact.ts';
 import { isNativeResourceLoadConsole } from '../src/utils/console.ts';
-import { reportArtifactPath } from '../src/reporters/markdownReporter.ts';
+import { formatProfessionalReview, reportArtifactPath } from '../src/reporters/markdownReporter.ts';
+import { normalizeResult } from '../src/resultNormalizer.ts';
 import type { AnalyzerContext, Issue, NetworkRecord, PageModel } from '../src/types.ts';
 
 function networkRecord(input: Partial<NetworkRecord> & { id: string; url: string }): NetworkRecord {
@@ -191,6 +192,62 @@ test('markdown report artifact paths are portable and relative to output directo
     'screenshots/responsive/mobile-390x844.png'
   );
   assert.equal(reportArtifactPath('/tmp/frontlens/order-profit', '/tmp/frontlens/order-profit'), '.');
+});
+
+test('professional QA review summarizes actionable work without dumping raw evidence details', () => {
+  const result = normalizeResult({
+    summary: {
+      url: 'https://example.com/credentials',
+      title: 'Credentials',
+      score: 78,
+      testedAt: '2026-07-07T00:00:00.000Z',
+      browser: 'chromium',
+      viewport: { width: 1440, height: 900 }
+    },
+    pageModel: {
+      url: 'https://example.com/credentials',
+      title: 'Credentials',
+      stats: { domNodes: 10, visibleTextLength: 100, bodyTextSample: 'Credentials' }
+    },
+    artifacts: {
+      outputDir: '/tmp/frontlens/credentials',
+      markdownReport: '/tmp/frontlens/credentials/report.md',
+      jsonReport: '/tmp/frontlens/credentials/result.json'
+    },
+    issues: [
+      {
+        title: '接口失败时没有错误态',
+        category: 'integration-no-feedback',
+        severity: 'high',
+        confidence: 0.9,
+        description: 'api-500 renders empty state',
+        evidence: { networkRequestId: 'REQ-1', details: { exceptionSimulationId: 'EX-002' } },
+        reproduceSteps: ['Open page', 'Simulate 500'],
+        reason: 'View does not render error ref',
+        suggestion: { frontend: '渲染错误态和重试按钮', priority: 'P1' }
+      }
+    ],
+    sourceHealth: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '2026-07-07T00:00:00.000Z',
+      packageManager: 'npm',
+      packageScripts: [],
+      scriptChecks: [{ id: 'SRC-SCRIPT-001', scriptName: 'typecheck', command: 'npm run typecheck', category: 'typecheck', status: 'passed', durationMs: 100 }],
+      scannedFiles: 1,
+      parsedFiles: 1,
+      skippedFiles: 0,
+      syntaxErrorCount: 0,
+      findings: []
+    }
+  });
+
+  const review = formatProfessionalReview(result);
+  assert.match(review, /FrontLens Professional QA Review/);
+  assert.match(review, /Actionable root causes/);
+  assert.match(review, /Raw score/);
+  assert.match(review, /script checks 1/);
+  assert.doesNotMatch(review, /<details><summary>Evidence details/);
 });
 
 test('phase-owned journey requests are ignored by duplicate-request heuristic', () => {

@@ -5,9 +5,10 @@ description: Run FrontLens Playwright QA for live webpage testing/auditing and e
 
 # Frontend QA
 
-Use FrontLens to analyze a target webpage end-to-end and return two artifacts:
+Use FrontLens to analyze a target webpage end-to-end and return three primary artifacts:
 
 - `report.md`: human-readable QA report with issues, evidence, reproduction steps, and fix suggestions.
+- `qa-review.md`: concise professional-QA review focused on sign-off, root causes, non-defect buckets, and next actions.
 - `result.json`: machine-readable contract for other skills to consume and act on.
 
 ## Mandatory module selection and subagent isolation
@@ -15,7 +16,7 @@ Use FrontLens to analyze a target webpage end-to-end and return two artifacts:
 For every target-page QA run:
 
 1. Ask the user to choose analysis modules before running FrontLens, unless the user already provided a module set or explicitly said "全选 / all / default".
-2. Do not run target-page QA in the main session. Spawn a fresh worker subagent with `fork_context=false` and let it run the CLI, read `report.md`/`result.json`, and return a concise Markdown summary plus artifact paths. The main session should only coordinate module selection and return the subagent summary to avoid context pollution.
+2. Do not run target-page QA in the main session. Spawn a fresh worker subagent with `fork_context=false` and let it run the CLI, read `qa-review.md` first, then `result.json` and `report.md` as needed, and return a concise Markdown summary plus artifact paths. The main session should only coordinate module selection and return the subagent summary to avoid context pollution.
 3. Keep the "core safe scan" mandatory: page load, screenshot/DOM snapshot, page model, Console, Network collection, non-destructive interaction discovery, JSON/Markdown report, issueDisposition, rootCauseGroups, fixTasks, and safety blocking. Destructive actions remain disabled unless explicitly authorized.
 4. Read `references/module-options.md` when preparing the module checklist or translating selected modules into CLI flags/config.
 5. After the run, read `references/triage-guidelines.md` and calibrate raw findings before reporting. Do not treat raw score or raw issue count as the final truth when findings are synthetic, skipped, deployment-only, or page-type mismatches.
@@ -117,7 +118,7 @@ If the user selects "all/default", run the full default QA command. If the user 
 
 6. If the sandbox blocks Chromium launch on macOS, rerun the same QA command with escalated execution.
 7. If source-aware analysis is enabled, the worker first verifies the target page is reachable from the intended deployment URL. If not, it follows `references/source-code-correlation.md` to build/start the local app, then reruns the reachability check before QA.
-8. The worker reads `result.json` for structured findings, `report.md` for narrative evidence, `references/triage-guidelines.md` for post-run calibration, and `references/source-code-correlation.md` when a source root is available. If `sourceAnalysis.status=passed`, use its route/import/API/state-signal indexes as the first source map before manually grepping files; if `sourceRuntimeCorrelation.status=passed`, use its `links[]` as the guard for API/UI binding claims; if `sourceHealth.status=failed`, treat syntax errors and failed/timed-out source script checks as source-confirmed blockers before interpreting runtime symptoms.
+8. The worker reads `qa-review.md` for the calibrated professional summary, `result.json` for structured findings, `report.md` for detailed narrative evidence, `references/triage-guidelines.md` for post-run calibration, and `references/source-code-correlation.md` when a source root is available. If `sourceAnalysis.status=passed`, use its route/import/API/state-signal indexes as the first source map before manually grepping files; if `sourceRuntimeCorrelation.status=passed`, use its `links[]` as the guard for API/UI binding claims; if `sourceHealth.status=failed`, treat syntax errors and failed/timed-out source script checks as source-confirmed blockers before interpreting runtime symptoms.
 9. The worker must bucket findings into real frontend fixes, backend/API fixes, deployment/security config, product decisions, and false positives/tool limitations. For real frontend fixes, include source file paths and line numbers that confirm the defect and the likely fix surface. Source-aware triage must also retain source-discovered defects even when the raw browser finding was downgraded as dev-mode/synthetic noise; for example, a dev-server request-count finding may be false as a production metric but still reveal a real eager route import/code-splitting problem.
 10. Before returning fixes, read `issueDisposition` to separate actionable, conditional, and non-actionable raw findings, then group actionable/conditional raw issues by implementation root cause. Do not treat raw issue count, heuristic AI issue count, or `fixTasks[]` length as workload. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
 11. Apply the professional QA actionability gate: a bug needs user impact, evidence, reproducibility, and an owner/fix surface. Move style/product choices and single-signal guesses to non-defect observations.

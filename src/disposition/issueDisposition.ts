@@ -344,11 +344,12 @@ function classifyProductOrSpec(issue: Issue, config: FrontLensConfig, rootCauseG
   if (/触控目标|tap target|smalltap|按钮层级|视觉密度|style|seo|导出|下载|刷新|分页控件|未发现分页参数|empty state|空状态/.test(text)) {
     const isHardOverflow = /横向滚动|元素溢出|clipped|overflow/.test(text) && !/触控目标|tap target/.test(text);
     if (!isHardOverflow) {
+      const needsEvidence = /疑似|未发现|空状态|分页参数/.test(text);
       return makeItem(issue, {
-        status: /疑似|未发现|空状态|分页参数/.test(text) ? 'insufficient-evidence' : 'product-decision',
-        bucket: /疑似|未发现|空状态|分页参数/.test(text) ? 'coverage-gap' : 'product-decision',
+        status: needsEvidence ? 'insufficient-evidence' : 'product-decision',
+        bucket: needsEvidence ? 'coverage-gap' : 'product-decision',
         actionability: 'conditional',
-        owner: /seo|触控|视觉|按钮层级|导出|下载|刷新/.test(text) ? 'product' : ownerFor(issue),
+        owner: needsEvidence ? 'test' : 'product',
         evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
         reason: '该类结论依赖产品需求、页面类型、设备范围或更强绑定证据，默认不能作为必须修复项。',
         nextStep: '只有在 PRD/ADR/a11y 标准或核心任务阻塞明确要求时才升级为缺陷；否则放入产品决策/参考观察。',

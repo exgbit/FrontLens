@@ -379,6 +379,39 @@ test('product context decides whether product-scope findings are defects or non-
   assert.match(credentialDisposition.items[0].reason, /不在当前页面\/版本范围/);
 });
 
+test('scope-sensitive empty state and pagination observations are QA evidence gaps, not frontend-owned fixes', () => {
+  const config = createDefaultConfig('https://example.com/admin');
+  const disposition = buildIssueDisposition(
+    [
+      issue({
+        id: 'ISSUE-EMPTY-STATE',
+        title: '表格缺少明确空状态：TBL-001',
+        category: 'frontend-table',
+        severity: 'low',
+        evidence: { selector: 'table.orders', details: { rowCount: 0 } },
+        suggestion: { frontend: 'Add an empty state.', priority: 'P3' }
+      }),
+      issue({
+        id: 'ISSUE-PAGE-PARAMS',
+        title: '页面存在分页控件，但未发现分页参数请求',
+        category: 'integration-pagination-mismatch',
+        severity: 'low',
+        evidence: { details: { paginationComponents: ['CMP-PAGER'] } },
+        suggestion: { frontend: 'Check pagination parameters.', priority: 'P3' }
+      })
+    ],
+    config,
+    []
+  );
+
+  for (const item of disposition.items) {
+    assert.equal(item.status, 'insufficient-evidence');
+    assert.equal(item.bucket, 'coverage-gap');
+    assert.equal(item.actionability, 'conditional');
+    assert.equal(item.owner, 'test');
+  }
+});
+
 test('color contrast findings require explicit WCAG or accessibility scope before becoming frontend fixes', () => {
   const basicConfig = createDefaultConfig('https://example.com/admin');
   const contrastIssue = issue({

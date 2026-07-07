@@ -101,3 +101,36 @@ test('professional summary and fix tasks exclude actionable but unproven root ca
   assert.equal(result.summary.adjustedIssueCount, 0);
   assert.ok(result.regressionPlan.items.some((item) => item.type === 'defect-proof' && item.status === 'needs-input'));
 });
+
+test('professional summary uses intake-first wording when PRD and product scope are missing', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/admin', title: 'Admin' },
+    pageModel: {
+      url: 'https://example.com/admin',
+      title: 'Admin',
+      stats: { domNodes: 50, visibleTextLength: 200, bodyTextSample: 'Admin dashboard' }
+    },
+    issues: [
+      {
+        id: 'ISSUE-VISUAL',
+        title: '视觉回归差异超过阈值',
+        category: 'frontend-visual',
+        severity: 'medium',
+        confidence: 0.72,
+        description: 'Screenshot differs from baseline.',
+        evidence: { screenshot: 'visual/diff.png', details: { diffRatio: 0.03 } },
+        reproduceSteps: ['Run visual diff'],
+        reason: 'May be intended redesign or style drift.',
+        suggestion: { frontend: 'Review style diff.', product: 'Confirm visual baseline.', priority: 'P2' }
+      }
+    ]
+  });
+
+  assert.match(result.professionalSummary.headline, /QA intake needed/);
+  assert.match(result.professionalSummary.headline, /missing PRD/);
+  assert.equal(result.professionalSummary.mustFix.length, 0);
+  assert.equal(result.fixTasks.length, 0);
+  assert.equal(result.rootCauseGroups.length, 0);
+  assert.equal(result.issueDisposition.items[0].status, 'product-decision');
+  assert.equal(result.professionalSummary.coverageGaps.some((item) => item.priority === 'P1' && /PRD|需求|验收/.test(item.title)), true);
+});

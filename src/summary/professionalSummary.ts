@@ -26,6 +26,16 @@ function makeHeadline(input: ProfessionalSummaryInput, p0p1: number, p0p1ProofGa
   if (input.qaSignoff.status === 'blocked') return `QA blocked: ${input.qaSignoff.blockers[0] ?? 'evidence collection or release sign-off is blocked.'}`;
   if (input.qaSignoff.status === 'fail' && p0p1 > 0) return `QA failed: ${p0p1} P0/P1 proof-ready root-cause item(s) require fixes before release.`;
   if (input.qaSignoff.status === 'fail') return 'QA failed: release/sign-off gates contain failing requirements, journeys, source-health, test-data, or other non-root-cause blockers.';
+  const missingRequirements = input.requirementCoverage.summary.providedCount === 0;
+  const productScopeNeedsInput = input.qaSignoff.coverageGaps.some((gap) => /产品范围未显式确认|productContext|pageProfile|页面画像|PRD|验收标准/.test(gap));
+  if (missingRequirements || productScopeNeedsInput) {
+    const reasons = unique([
+      missingRequirements ? 'missing PRD/acceptance criteria' : '',
+      productScopeNeedsInput ? 'unconfirmed product/page scope' : '',
+      p0p1ProofGaps > 0 ? `${p0p1ProofGaps} P0/P1 candidate root-cause evidence gap(s)` : ''
+    ]);
+    return `QA intake needed: ${reasons.join('; ')}. Treat current findings as scoped observations until requirements/productContext evidence is supplied.`;
+  }
   if (p0p1ProofGaps > 0) return `QA needs evidence: ${p0p1ProofGaps} P0/P1 candidate root-cause item(s) lack professional defect proof and must not be scheduled as must-fix until confirmed.`;
   if (input.qaSignoff.status === 'pass-with-risks') return `QA pass with risks: ${input.qaSignoff.coverageGaps.length + input.qaSignoff.risks.length} risk/gap item(s) need explicit acceptance or follow-up.`;
   return 'QA passed for the collected evidence scope; keep regression rerun as the release verification gate.';
@@ -129,10 +139,11 @@ function coverageGapItems(input: ProfessionalSummaryInput): ProfessionalSummaryI
     });
   }
   for (const gap of input.qaSignoff.coverageGaps.slice(0, Math.max(0, 10 - items.length))) {
+    const priority: ProfessionalSummaryItem['priority'] = /PRD|需求|验收|产品范围|productContext|pageProfile|页面画像/.test(gap) ? 'P1' : 'P2';
     items.push({
       id: `PS-GAP-SIGNOFF-${items.length + 1}`,
       kind: 'coverage-gap',
-      priority: 'P2',
+      priority,
       owner: 'test',
       title: gap,
       rationale: 'QA sign-off reported this as a coverage gap.',

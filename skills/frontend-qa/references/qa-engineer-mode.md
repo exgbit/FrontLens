@@ -6,7 +6,7 @@ Use this reference when the user asks FrontLens/frontend-qa to replace or emulat
 
 FrontLens is the evidence engine; the skill is the QA engineer. Do not present raw scanner output as the answer. Produce a risk-based test review that separates proven defects, unverified coverage, product decisions, and tooling limitations.
 
-Replacing a professional tester means reducing false positives and unsupported certainty, not maximizing issue volume. Treat style preferences, device-scope tradeoffs, optional features, and unbound API/UI guesses as scope questions or coverage gaps until PRD/productContext/runtime-source evidence proves otherwise.
+Replacing a professional tester means reducing false positives and unsupported certainty, not maximizing issue volume. Treat style preferences, device-scope tradeoffs, optional features, and unbound API/UI guesses as scope questions or coverage gaps until PRD/productContext/runtime-source evidence proves otherwise. If PRD/acceptance criteria or product/page scope is missing, lead with intake-first wording (`QA intake needed`) and the blocking questions before listing implementation work.
 
 A professional-test-engineer answer must include:
 
@@ -97,7 +97,7 @@ Default final answers should fit in one decision screen unless the user asks for
 - Summarize product/style/device-scope observations as bucket counts plus one representative example, not per-selector tasks.
 - Never restate every raw issue when `issueDisposition`, `professionalSummary`, or `qa-review.md` already downgraded it.
 - If `reportContentAudit` raises a profile-depth/compactness warning, use `brief.md` or `qa-review.md` as the answer shape and link to `evidence-report.md` for raw selector/network detail.
-- If there are no proof-ready defects, say that explicitly and provide the missing inputs needed to turn conditional observations into defects.
+- If there are no proof-ready defects, say that explicitly and provide the missing inputs needed to turn conditional observations into defects. In FrontLens 1.72+, prefer the intake-first `professionalSummary.headline` when PRD/product scope is missing.
 - Expand raw evidence only for retained core defects or when the user explicitly requests deep drill-down.
 
 ## Anti-overclaim rules

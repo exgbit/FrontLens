@@ -534,7 +534,9 @@ function formatInteractionTests(result: QaResult): string {
   const rows = result.interactionTests.map((test) => {
     const network = test.observations.networkRequestIds?.join(', ') || '-';
     const consoleIds = test.observations.consoleIds?.join(', ') || '-';
-    const download = test.observations.downloadPath ? `\`${reportPath(result, test.observations.downloadPath)}\` (${test.observations.downloadSizeBytes ?? 0} bytes)` : '-';
+    const content = test.observations.downloadContent;
+    const contentSummary = content ? `, ${content.kind}/${content.parseStatus}${content.rowCount !== undefined ? `, rows ${content.rowCount}` : ''}${content.columnCount !== undefined ? `, cols ${content.columnCount}` : ''}` : '';
+    const download = test.observations.downloadPath ? `\`${reportPath(result, test.observations.downloadPath)}\` (${test.observations.downloadSizeBytes ?? 0} bytes${contentSummary})` : '-';
     return `| ${test.id} | ${test.kind} | ${test.status} | ${markdownEscape(test.target)} | ${markdownEscape(test.issue ?? '-')} | ${markdownEscape(network)} | ${markdownEscape(consoleIds)} | ${markdownEscape(download)} |`;
   });
 

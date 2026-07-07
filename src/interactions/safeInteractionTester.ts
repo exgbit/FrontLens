@@ -1097,7 +1097,8 @@ export class SafeInteractionTester {
         this.options.artifacts.downloadedFiles = [...(this.options.artifacts.downloadedFiles ?? []), savedDownload.path];
       }
       const downloadSaveFailure = savedDownload && 'failure' in savedDownload ? savedDownload.failure : undefined;
-      const hasDownload = Boolean(download && !failure && savedDownload && 'path' in savedDownload && savedDownload.sizeBytes > 0);
+      const contentFailure = savedDownload && 'path' in savedDownload && savedDownload.content.parseStatus === 'failed' ? savedDownload.content.issue ?? '下载文件内容解析失败。' : undefined;
+      const hasDownload = Boolean(download && !failure && savedDownload && 'path' in savedDownload && savedDownload.sizeBytes > 0 && !contentFailure);
       const hasNetwork = networkIds.length > 0;
       const emptyDownload = Boolean(savedDownload && 'path' in savedDownload && savedDownload.sizeBytes === 0);
       const issue =
@@ -1109,12 +1110,14 @@ export class SafeInteractionTester {
               ? `下载文件保存失败：${downloadSaveFailure}`
               : emptyDownload
                 ? '下载文件为空。'
+                : contentFailure
+                  ? contentFailure
                 : hasDownload
                   ? undefined
                   : hasNetwork
                     ? '点击下载/导出后仅观察到网络请求，未保存到可校验的下载文件。'
                     : '点击下载/导出后未观察到 download 事件或新的网络请求。';
-      const status: InteractionTestResult['status'] = consoleIds.length > 0 || pageErrorIds.length > 0 || failure || downloadSaveFailure || emptyDownload ? 'failed' : hasDownload ? 'passed' : 'warning';
+      const status: InteractionTestResult['status'] = consoleIds.length > 0 || pageErrorIds.length > 0 || failure || downloadSaveFailure || emptyDownload || contentFailure ? 'failed' : hasDownload ? 'passed' : 'warning';
 
       return [
         this.createResult({
@@ -1142,6 +1145,7 @@ export class SafeInteractionTester {
             downloadPath: savedDownload && 'path' in savedDownload ? savedDownload.path : undefined,
             downloadSizeBytes: savedDownload && 'path' in savedDownload ? savedDownload.sizeBytes : undefined,
             downloadSha256: savedDownload && 'path' in savedDownload ? savedDownload.sha256 : undefined,
+            downloadContent: savedDownload && 'path' in savedDownload ? savedDownload.content : undefined,
             downloadFailure: failure
           }
         })

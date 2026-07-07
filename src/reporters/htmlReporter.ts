@@ -65,7 +65,9 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
   const interactionRows = result.interactionTests
     .map(
       (test) => {
-        const download = test.observations.downloadPath ? `<a href="${escapeHtml(path.relative(result.artifacts.outputDir, test.observations.downloadPath))}">${escapeHtml(test.observations.downloadSuggestedFilename ?? 'download')}</a> (${test.observations.downloadSizeBytes ?? 0} bytes)` : '-';
+        const content = test.observations.downloadContent;
+        const contentSummary = content ? `, ${content.kind}/${content.parseStatus}${content.rowCount !== undefined ? `, rows ${content.rowCount}` : ''}${content.columnCount !== undefined ? `, cols ${content.columnCount}` : ''}` : '';
+        const download = test.observations.downloadPath ? `<a href="${escapeHtml(path.relative(result.artifacts.outputDir, test.observations.downloadPath))}">${escapeHtml(test.observations.downloadSuggestedFilename ?? 'download')}</a> (${test.observations.downloadSizeBytes ?? 0} bytes${escapeHtml(contentSummary)})` : '-';
         return `<tr>
         <td>${escapeHtml(test.id)}</td>
         <td>${escapeHtml(test.kind)}</td>

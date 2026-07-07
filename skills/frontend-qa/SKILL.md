@@ -1,6 +1,6 @@
 ---
 name: frontend-qa
-description: Run FrontLens Playwright QA for live webpage testing/auditing and evidence-backed Markdown/JSON reports covering UI/interaction, user journeys, Console, Network/API, contract drift, realtime GraphQL/WebSocket/SSE, data mismatch, performance/P2, accessibility, permissions, passive security, root-cause grouping, raw-finding disposition/actionability, fix tasks, diff/baseline, artifact integrity, source-code correlation when a repo path is provided, optional local build/serve, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/issueDisposition/rootCauseGroups/fixTasks to drive fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
+description: Run FrontLens Playwright QA for live webpage testing/auditing and evidence-backed Markdown/JSON reports covering UI/interaction, user journeys, Console, Network/API, contract drift, realtime GraphQL/WebSocket/SSE, data mismatch, performance/P2, accessibility, permissions, passive security, root-cause grouping, raw-finding disposition/actionability, fix tasks, diff/baseline, download/export artifact content validation, artifact integrity, source-code correlation when a repo path is provided, optional local build/serve, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/issueDisposition/rootCauseGroups/fixTasks to drive fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
 ---
 
 # Frontend QA
@@ -164,7 +164,7 @@ If the user selects "all/default", run the full default QA command. If the user 
 
 - Keep default non-destructive behavior.
 - Do not enable create/edit/delete/upload/submit actions unless the user explicitly requests destructive testing.
-- Do not click download/export unless the user explicitly allows it or sets `safety.allowDownload=true`. When allowed, require a saved `downloadPath`, non-zero size, hash, and passing `artifactIntegrity` before calling export/download runtime-verified.
+- Do not click download/export unless the user explicitly allows it or sets `safety.allowDownload=true`. When allowed, require a saved `downloadPath`, non-zero size, hash, content summary (`downloadContent`), and passing `artifactIntegrity` before calling export/download runtime-verified.
 - Keep `safety.blockMutatingRequests=true` for production or unknown URLs. If a report shows safety-blocked writes, treat them as evidence of potential side effects, not backend failures.
 - Treat successful `POST`, `PUT`, `PATCH`, or `DELETE` requests during page load as suspicious unless known to be analytics/heartbeat.
 - Keep `security.mode=passive` by default. Enable `security.mode=active` and `security.activeProbing=true` only for explicitly authorized security regression tests.

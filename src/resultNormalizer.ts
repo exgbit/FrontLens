@@ -37,7 +37,7 @@ import { createEmptyEnvironmentAssessment } from './environment/environmentAsses
 import { buildPageProfileAssessment, createEmptyPageProfileAssessment } from './product/pageProfile.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 
-export const RESULT_SCHEMA_VERSION = '1.18.0';
+export const RESULT_SCHEMA_VERSION = '1.19.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));

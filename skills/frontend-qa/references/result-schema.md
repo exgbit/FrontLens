@@ -65,7 +65,7 @@ Use `testData.status` and `qaSignoff` before claiming business validation for cr
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`; reports before `1.15.0` may miss `environment`; reports before `1.16.0` may miss `pageProfile`; reports before `1.17.0` may miss `testData`; reports before `1.18.0` may miss `downloadPath` / `downloadSizeBytes` / `downloadSha256` and `artifacts.downloadedFiles[]`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health / environment / pageProfile / testData when older reports do not contain them.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`; reports before `1.12.0` may miss `sourceHealth`; reports before `1.13.0` may miss `qaSignoff`; reports before `1.14.0` may miss `sourceHealth.scriptChecks[]`; reports before `1.15.0` may miss `environment`; reports before `1.16.0` may miss `pageProfile`; reports before `1.17.0` may miss `testData`; reports before `1.18.0` may miss `downloadPath` / `downloadSizeBytes` / `downloadSha256` and `artifacts.downloadedFiles[]`; reports before `1.19.0` may miss `downloadContent` parse summaries. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `qaSignoff`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation / source health / environment / pageProfile / testData when older reports do not contain them.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -335,6 +335,7 @@ interface InteractionTestResult {
     downloadPath?: string;
     downloadSizeBytes?: number;
     downloadSha256?: string;
+    downloadContent?: { kind: 'empty' | 'text' | 'csv' | 'json' | 'binary' | 'unknown'; parseStatus: 'passed' | 'warning' | 'failed' | 'skipped'; textPreview?: string; lineCount?: number; rowCount?: number; columnCount?: number; headers?: string[]; jsonTopLevelType?: string; issue?: string };
     downloadFailure?: string | null;
     valueChanged?: boolean;
     urlChanged?: boolean;
@@ -438,7 +439,7 @@ interface RealtimeResult {
 
 // Download/export clicks are blocked unless safety.allowDownload=true.
 // A runtime-verified export/download requires a saved non-empty file,
-// downloadPath/downloadSizeBytes/downloadSha256, and passing artifactIntegrity.
+// downloadPath/downloadSizeBytes/downloadSha256/downloadContent, and passing artifactIntegrity.
 
 interface JourneyTestResult {
   id: string;
@@ -451,7 +452,7 @@ interface JourneyTestResult {
   durationMs: number;
   startUrl: string;
   finalUrl?: string;
-  steps: Array<{ index: number; action: string; target?: string; value?: string; status: 'passed' | 'warning' | 'failed' | 'skipped'; startedAt: string; endedAt: string; durationMs: number; networkRequestIds?: string[]; consoleIds?: string[]; pageErrorIds?: string[]; downloadSuggestedFilename?: string; downloadPath?: string; downloadSizeBytes?: number; downloadSha256?: string; downloadFailure?: string | null; error?: string }>;
+  steps: Array<{ index: number; action: string; target?: string; value?: string; status: 'passed' | 'warning' | 'failed' | 'skipped'; startedAt: string; endedAt: string; durationMs: number; networkRequestIds?: string[]; consoleIds?: string[]; pageErrorIds?: string[]; downloadSuggestedFilename?: string; downloadPath?: string; downloadSizeBytes?: number; downloadSha256?: string; downloadContent?: { kind: string; parseStatus: string; textPreview?: string; lineCount?: number; rowCount?: number; columnCount?: number; headers?: string[]; jsonTopLevelType?: string; issue?: string }; downloadFailure?: string | null; error?: string }>;
   issue?: string;
   suggestion?: Issue['suggestion'];
 }

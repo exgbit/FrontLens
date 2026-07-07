@@ -41,7 +41,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Navigation and route health**: direct URL load, refresh, login redirects, empty/error/loading states.
 - **Source health**: package scripts, syntax parse errors, optional controlled `typecheck/lint` script checks, build/typecheck/lint availability. Syntax errors and failed/timed-out typecheck/build/test checks are source-confirmed blockers; passing source health is not business validation.
 - **Core business flows**: search/filter/sort/pagination/detail/modal/export/import/create/edit/delete only when present and safe/authorized.
-- **Export/download evidence**: when export/download is in scope, require `safety.allowDownload=true`, `interactionTests[].observations.downloadPath` or `journeyTests[].steps[].downloadPath`, non-zero `downloadSizeBytes`, `downloadSha256`, and `artifactIntegrity` coverage before marking it runtime-verified.
+- **Export/download evidence**: when export/download is in scope, require `safety.allowDownload=true`, `interactionTests[].observations.downloadPath` or `journeyTests[].steps[].downloadPath`, non-zero `downloadSizeBytes`, `downloadSha256`, `downloadContent` parse summary, and `artifactIntegrity` coverage before marking it runtime-verified.
 - **Test data lifecycle**: for create/edit/delete/upload/import/submit flows, verify `testData.records`, setup, cleanup, and environment authorization before claiming runtime-verified business validation.
 - **Data correctness**: bind one exact API response to one exact UI region; verify totals, rows/cards, field formatting, permissions, and stale refresh behavior. Prefer `sourceRuntimeCorrelation.links[]` as the API↔source↔UI binding evidence when available.
 - **Negative/resilience**: 401/403/404/500/timeout/offline, but classify synthetic probes separately from real backend behavior.
@@ -88,7 +88,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No production performance/security conclusion from Vite dev server artifacts.
 - No backend contract failure from FrontLens exception mocks.
 - No missing export/refresh/pagination defect unless the requirement or page type demands it.
-- No export/download pass unless the saved file artifact exists and is non-empty; a network request alone is runtime-partial.
+- No export/download pass unless the saved file artifact exists, is non-empty, and has a usable content summary; a network request alone is runtime-partial.
 - No permission defect from role differences alone; require role requirements, expected allowed/forbidden contracts, or source/runtime confirmation.
 - No destructive-flow business pass without isolated test data and cleanup/rollback evidence; production writes without explicit authorization are release blockers.
 - No release sign-off solely from `summary.score`; use `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.

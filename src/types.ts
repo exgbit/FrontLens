@@ -670,6 +670,20 @@ export type InteractionTestKind =
   | 'form-validation';
 export type InteractionTestStatus = 'passed' | 'warning' | 'failed' | 'skipped';
 
+export interface DownloadContentSummary {
+  kind: 'empty' | 'text' | 'csv' | 'json' | 'binary' | 'unknown';
+  extension?: string;
+  mimeGuess?: string;
+  parseStatus: 'passed' | 'warning' | 'failed' | 'skipped';
+  textPreview?: string;
+  lineCount?: number;
+  rowCount?: number;
+  columnCount?: number;
+  headers?: string[];
+  jsonTopLevelType?: string;
+  issue?: string;
+}
+
 export interface InteractionTestResult {
   id: string;
   kind: InteractionTestKind;
@@ -693,6 +707,7 @@ export interface InteractionTestResult {
     downloadPath?: string;
     downloadSizeBytes?: number;
     downloadSha256?: string;
+    downloadContent?: DownloadContentSummary;
     downloadFailure?: string | null;
     valueChanged?: boolean;
     urlChanged?: boolean;
@@ -727,6 +742,7 @@ export interface JourneyStepResult {
   downloadPath?: string;
   downloadSizeBytes?: number;
   downloadSha256?: string;
+  downloadContent?: DownloadContentSummary;
   downloadFailure?: string | null;
 }
 

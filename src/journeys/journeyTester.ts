@@ -154,11 +154,12 @@ export class JourneyTester {
             }
             const downloadSaveFailure = savedDownload && 'failure' in savedDownload ? savedDownload.failure : undefined;
             const emptyDownload = Boolean(savedDownload && 'path' in savedDownload && savedDownload.sizeBytes === 0);
+            const contentFailure = savedDownload && 'path' in savedDownload && savedDownload.content.parseStatus === 'failed' ? savedDownload.content.issue ?? '用户旅程下载文件内容解析失败。' : undefined;
             const downloadMissing = expectDownload && !savedDownload;
-            const stepStatus: JourneyStepResult['status'] = pageErrorIds.length > 0 || downloadFailure || downloadSaveFailure || emptyDownload ? 'failed' : consoleIds.length > 0 || downloadMissing ? 'warning' : 'passed';
+            const stepStatus: JourneyStepResult['status'] = pageErrorIds.length > 0 || downloadFailure || downloadSaveFailure || emptyDownload || contentFailure ? 'failed' : consoleIds.length > 0 || downloadMissing ? 'warning' : 'passed';
             if (stepStatus === 'failed') {
               status = 'failed';
-              issue = downloadFailure ? `用户旅程下载失败：${downloadFailure}` : downloadSaveFailure ? `用户旅程下载文件保存失败：${downloadSaveFailure}` : emptyDownload ? '用户旅程下载文件为空。' : '用户旅程步骤触发页面运行时错误。';
+              issue = downloadFailure ? `用户旅程下载失败：${downloadFailure}` : downloadSaveFailure ? `用户旅程下载文件保存失败：${downloadSaveFailure}` : emptyDownload ? '用户旅程下载文件为空。' : contentFailure ?? '用户旅程步骤触发页面运行时错误。';
             } else if (stepStatus === 'warning' && status === 'passed') {
               status = 'warning';
               issue = downloadMissing ? '用户旅程预期下载/导出，但未保存到可校验的下载文件。' : '用户旅程步骤触发可处理的 Console Error。';
@@ -179,6 +180,7 @@ export class JourneyTester {
               downloadPath: savedDownload && 'path' in savedDownload ? savedDownload.path : undefined,
               downloadSizeBytes: savedDownload && 'path' in savedDownload ? savedDownload.sizeBytes : undefined,
               downloadSha256: savedDownload && 'path' in savedDownload ? savedDownload.sha256 : undefined,
+              downloadContent: savedDownload && 'path' in savedDownload ? savedDownload.content : undefined,
               downloadFailure
             });
           } catch (error) {

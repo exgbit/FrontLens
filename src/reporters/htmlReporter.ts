@@ -180,6 +180,10 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     .join('\n');
 
   const aiSuggestions = result.aiAnalysis.suggestions.map((item) => `<li>${escapeHtml(item)}</li>`).join('\n');
+  const qualityGateRows = [
+    ...result.qualityGate.reasons.map((item) => `<tr><td>reason</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.qualityGate.coverageGaps.map((item) => `<tr><td>coverage-gap</td><td>${escapeHtml(item)}</td></tr>`)
+  ].join('\n');
   const phaseErrorRows = result.metadata.phaseErrors
     .map((item) => `<tr><td>${escapeHtml(item.phase)}</td><td>${escapeHtml(item.message)}</td><td>${escapeHtml(item.timestamp)}</td></tr>`)
     .join('\n');
@@ -226,8 +230,27 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Low</span><strong>${result.summary.lowCount}</strong></div>
           <div class="metric"><span>Security</span><strong>${result.security.score}/100</strong></div>
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
+          <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
+          <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Phase errors</span><strong>${result.metadata.phaseErrors.length}</strong></div>
         </div>
+      </section>
+
+      <section>
+        <h2>QA Gate / 专业验收结论</h2>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
+          <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
+          <div class="metric"><span>Actionable</span><strong>${result.qualityGate.actionableIssueCount}</strong></div>
+          <div class="metric"><span>Reference</span><strong>${result.qualityGate.referenceIssueCount}</strong></div>
+          <div class="metric"><span>Blockers</span><strong>${result.qualityGate.blockingIssueCount}</strong></div>
+          <div class="metric"><span>Coverage gaps</span><strong>${result.qualityGate.coverageGapCount}</strong></div>
+        </div>
+        <p>${escapeHtml(result.qualityGate.summary)}</p>
+        <table>
+          <thead><tr><th>Type</th><th>Reason / Gap</th></tr></thead>
+          <tbody>${qualityGateRows || '<tr><td colspan="2">No quality gate notes</td></tr>'}</tbody>
+        </table>
       </section>
 
       <section>

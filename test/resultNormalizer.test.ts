@@ -47,6 +47,8 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.equal(result.fixTasks[0].owner, 'backend');
   assert.match(result.fixTasks[0].verificationCommand, /node dist\/cli\.js qa --url/);
   assert.ok(result.issues[0].fingerprint);
+  assert.equal(result.qualityGate.status, 'fail');
+  assert.equal(result.qualityGate.blockingIssueCount, 1);
 });
 
 test('normalizeResult recalculates missing score and normalizes P2 child records', () => {
@@ -85,6 +87,7 @@ test('normalizeResult recalculates missing score and normalizes P2 child records
   assert.equal(result.p2.budgets[0].status, 'skipped');
   assert.equal(result.p2.networkProfiles[0].profile, 'slow-3g');
   assert.equal(result.p2.networkProfiles[0].status, 'skipped');
+  assert.equal(result.qualityGate.status, 'fail');
 });
 
 test('normalizeResult treats missing or skipped security as non-penalizing', () => {
@@ -100,4 +103,44 @@ test('normalizeResult tolerates malformed nested performance objects', () => {
   });
   assert.equal(result.performance.longTasks.count, 0);
   assert.equal(result.performance.resources.slowest.length, 0);
+});
+
+test('normalizeResult backfills quality gate pass-with-risks from coverage gaps', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com', title: 'Example' },
+    pageModel: {
+      url: 'https://example.com',
+      title: 'Example',
+      stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: 'ok' }
+    },
+    issues: [],
+    interactionTests: [{ id: 'IT-001', kind: 'search', target: 'search', status: 'skipped', startedAt: '', endedAt: '', durationMs: 0, actions: [], observations: {} }],
+    journeyTests: [{ id: 'JOURNEY-001', name: 'smoke', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, startUrl: 'https://example.com', steps: [] }],
+    exceptionSimulations: [{ id: 'EX-001', kind: 'page-refresh', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, observations: {} }]
+  });
+  assert.equal(result.qualityGate.status, 'pass-with-risks');
+  assert.equal(result.qualityGate.confidence, 'medium');
+  assert.equal(result.qualityGate.coverageGapCount >= 1, true);
+});
+
+test('normalizeResult marks navigation blocker as blocked quality gate', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com' },
+    pageModel: { url: 'https://example.com', structureTree: '页面加载失败', stats: { domNodes: 0, visibleTextLength: 0, bodyTextSample: '' } },
+    issues: [
+      {
+        title: '页面打开失败或导航超时',
+        category: 'frontend-routing',
+        severity: 'critical',
+        confidence: 0.96,
+        description: 'timeout',
+        evidence: {},
+        reproduceSteps: [],
+        reason: 'navigation failed',
+        suggestion: { frontend: 'fix route', priority: 'P0' }
+      }
+    ]
+  });
+  assert.equal(result.qualityGate.status, 'blocked');
+  assert.equal(result.qualityGate.confidence, 'low');
 });

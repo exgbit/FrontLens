@@ -204,7 +204,8 @@ async function handleResultCommand(command: 'inspect' | 'issues' | 'network' | '
             status: result.security.status,
             score: result.security.score,
             summary: result.security.summary
-          }
+          },
+          qualityGate: result.qualityGate
         },
         null,
         2
@@ -631,6 +632,7 @@ async function main(): Promise<void> {
           apiContract: result.apiContract.summary,
           realtime: result.realtime.summary,
           fixTaskCount: result.fixTasks.length,
+          qualityGate: result.qualityGate,
           exitStatus,
           failOn,
           minScore
@@ -646,6 +648,7 @@ async function main(): Promise<void> {
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);
     console.log(`Fix tasks: ${result.fixTasks.length}`);
+    console.log(`QA Gate: ${result.qualityGate.status}, confidence ${result.qualityGate.confidence}`);
     console.log(`Issues: ${result.summary.issueCount} (critical ${result.summary.criticalCount}, high ${result.summary.highCount}, medium ${result.summary.mediumCount}, low ${result.summary.lowCount})`);
     console.log(`Markdown: ${result.artifacts.markdownReport ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);

@@ -6,6 +6,7 @@ import { runReporterPlugins } from './plugins/pluginManager.js';
 import { buildSummary } from './summary.js';
 import { normalizeIssueLike } from './resultNormalizer.js';
 import { generateFixTasks } from './fix/fixTasks.js';
+import { buildQualityGate } from './qualityGate.js';
 
 function normalizeAndRebuildSummary(result: QaResult): void {
   result.issues = result.issues.map((issue, index) =>
@@ -21,6 +22,16 @@ function normalizeAndRebuildSummary(result: QaResult): void {
     testedAt: result.summary.testedAt,
     browser: result.summary.browser,
     viewport: result.summary.viewport
+  });
+  result.qualityGate = buildQualityGate({
+    issues: result.issues,
+    pageModel: result.pageModel,
+    phaseErrors: result.metadata.phaseErrors,
+    interactionTests: result.interactionTests,
+    journeyTests: result.journeyTests,
+    exceptionSimulations: result.exceptionSimulations,
+    coverage: result.coverage,
+    security: result.security
   });
 }
 

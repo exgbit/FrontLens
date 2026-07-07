@@ -258,6 +258,7 @@ Minimum stable fields:
 - `coverage`
 - `p2`
 - `fixTasks[]`
+- `qualityGate`
 - `aiAnalysis`
 - custom plugin outputs under `artifacts`
 

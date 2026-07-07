@@ -11,14 +11,19 @@ import type {
   QaResult,
   QaSummary,
   ResourceSection,
-  Severity
+  Severity,
+  InteractionTestResult,
+  JourneyTestResult,
+  ExceptionSimulationResult,
+  PhaseError
 } from './types.js';
 import { createDefaultConfig } from './defaultConfig.js';
 import { createStableFingerprint } from './utils/id.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { calculateScore } from './summary.js';
+import { buildQualityGate } from './qualityGate.js';
 
-export const RESULT_SCHEMA_VERSION = '1.2.0';
+export const RESULT_SCHEMA_VERSION = '1.3.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -513,6 +518,25 @@ function normalizeFixTasks(raw: unknown): QaResult['fixTasks'] {
   });
 }
 
+function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): QaResult['qualityGate'] {
+  if (!isRecord(raw)) return fallback;
+  const status = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
+  const confidence = raw.confidence === 'high' || raw.confidence === 'medium' || raw.confidence === 'low' ? raw.confidence : fallback.confidence;
+  return {
+    status,
+    confidence,
+    checkedAt: asString(raw.checkedAt, fallback.checkedAt),
+    actionableIssueCount: asNumber(raw.actionableIssueCount, fallback.actionableIssueCount),
+    referenceIssueCount: asNumber(raw.referenceIssueCount, fallback.referenceIssueCount),
+    blockingIssueCount: asNumber(raw.blockingIssueCount, fallback.blockingIssueCount),
+    mediumRiskCount: asNumber(raw.mediumRiskCount, fallback.mediumRiskCount),
+    coverageGapCount: asNumber(raw.coverageGapCount, fallback.coverageGapCount),
+    coverageGaps: asArray<string>(raw.coverageGaps).filter((item) => typeof item === 'string'),
+    reasons: asArray<string>(raw.reasons).filter((item) => typeof item === 'string'),
+    summary: asString(raw.summary, fallback.summary)
+  };
+}
+
 export function normalizeResult(raw: unknown): QaResult {
   if (!isRecord(raw)) {
     throw new Error('Invalid FrontLens result: expected a JSON object.');
@@ -597,27 +621,48 @@ export function normalizeResult(raw: unknown): QaResult {
       ? (metadataRaw.config as unknown as FrontLensConfig)
       : createDefaultConfig(url);
   const fixTasks = asArray(raw.fixTasks).length > 0 ? normalizeFixTasks(raw.fixTasks) : generateFixTasks(issues, metadataConfig);
+  const pageModel = normalizePageModel(raw.pageModel, url);
+  const coverage = normalizeCoverage(raw.coverage, browser);
+  const security = normalizeSecurity(raw.security);
+  const phaseErrors = asArray<PhaseError>(metadataRaw.phaseErrors);
+  const interactionTests = asArray<InteractionTestResult>(raw.interactionTests);
+  const journeyTests = asArray<JourneyTestResult>(raw.journeyTests);
+  const exceptionSimulations = asArray<ExceptionSimulationResult>(raw.exceptionSimulations);
+  const qualityGate = normalizeQualityGate(
+    raw.qualityGate,
+    buildQualityGate({
+      issues,
+      pageModel,
+      phaseErrors,
+      interactionTests,
+      journeyTests,
+      exceptionSimulations,
+      coverage,
+      security
+    })
+  );
 
   return {
     summary,
-    pageModel: normalizePageModel(raw.pageModel, url),
+    pageModel,
     issues,
     network,
     console: consoleSection,
     resources,
     performance: normalizePerformance(raw.performance),
-    coverage: normalizeCoverage(raw.coverage, browser),
+    coverage,
     apiContract: normalizeApiContract(raw.apiContract),
     realtime: normalizeRealtime(raw.realtime),
-    interactionTests: asArray(raw.interactionTests),
-    journeyTests: asArray(raw.journeyTests),
+    interactionTests,
+    journeyTests,
     accessibilityChecks: asArray(raw.accessibilityChecks),
     permissionChecks: asArray(raw.permissionChecks),
     responsiveChecks: asArray(raw.responsiveChecks),
-    exceptionSimulations: asArray(raw.exceptionSimulations),
-    security: normalizeSecurity(raw.security),
+    exceptionSimulations,
+    security,
     p2: normalizeP2(raw.p2),
     fixTasks,
+    qualityGate,
     aiAnalysis,
     artifacts: {
       ...artifactsRaw,
@@ -628,7 +673,7 @@ export function normalizeResult(raw: unknown): QaResult {
       durationMs: asNumber(metadataRaw.durationMs, 0),
       version: asString(metadataRaw.version, 'unknown'),
       schemaVersion: asString(metadataRaw.schemaVersion, 'pre-1.1.0'),
-      phaseErrors: asArray(metadataRaw.phaseErrors)
+      phaseErrors
     }
   };
 }

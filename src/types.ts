@@ -839,6 +839,20 @@ export interface FixTask {
   verificationCommand: string;
 }
 
+export interface QaQualityGate {
+  status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
+  confidence: 'high' | 'medium' | 'low';
+  checkedAt: string;
+  actionableIssueCount: number;
+  referenceIssueCount: number;
+  blockingIssueCount: number;
+  mediumRiskCount: number;
+  coverageGapCount: number;
+  coverageGaps: string[];
+  reasons: string[];
+  summary: string;
+}
+
 export interface ResultDiff {
   before: { url: string; score: number; issueCount: number; testedAt: string };
   after: { url: string; score: number; issueCount: number; testedAt: string };
@@ -992,6 +1006,7 @@ export interface QaResult {
   security: SecurityScanResult;
   p2: P2TestResult;
   fixTasks: FixTask[];
+  qualityGate: QaQualityGate;
   aiAnalysis: AiAnalysisResult;
   artifacts: ArtifactIndex;
   metadata: {

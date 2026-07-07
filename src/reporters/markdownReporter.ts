@@ -2,6 +2,7 @@ import path from 'node:path';
 import type { Issue, QaResult, Severity } from '../types.js';
 import { markdownEscape, truncateMiddle } from '../utils/text.js';
 import { writeText } from '../utils/fs.js';
+import { isActionableIssue } from '../qualityGate.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -102,10 +103,6 @@ function formatIssueTable(issues: Issue[]): string {
   return ['| ID | 等级 | 类型 | 问题 | 置信度 |', '| --- | --- | --- | --- | --- |', ...rows, ''].join('\n');
 }
 
-function isActionableIssue(issue: Issue): boolean {
-  return issue.severity !== 'info';
-}
-
 function formatIssueDetails(result: QaResult, issues: Issue[]): string {
   if (issues.length === 0) {
     return '';
@@ -169,6 +166,23 @@ ${suggestions || '- 暂无。'}
 `;
     })
     .join('\n');
+}
+
+function formatQualityGate(result: QaResult): string {
+  const gate = result.qualityGate;
+  const gapRows = gate.coverageGaps.map((gap) => `| coverage-gap | ${markdownEscape(gap)} |`);
+  const reasonRows = gate.reasons.map((reason) => `| reason | ${markdownEscape(reason)} |`);
+  const rows = [...reasonRows, ...gapRows];
+  return `## QA Gate / 专业验收结论
+
+- Status：**${gate.status}**
+- Confidence：**${gate.confidence}**
+- Summary：${markdownEscape(gate.summary)}
+- 可执行问题 / 参考观察：${gate.actionableIssueCount} / ${gate.referenceIssueCount}
+- 阻断问题 / Medium 风险 / 覆盖缺口：${gate.blockingIssueCount} / ${gate.mediumRiskCount} / ${gate.coverageGapCount}
+
+${rows.length ? ['| 类型 | 说明 |', '| --- | --- |', ...rows, ''].join('\n') : '未发现额外覆盖缺口。'}
+`;
 }
 
 function formatNetworkSummary(result: QaResult): string {
@@ -600,6 +614,8 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - 严重 / 高 / 中 / 低 / 信息：${result.summary.criticalCount} / ${result.summary.highCount} / ${result.summary.mediumCount} / ${result.summary.lowCount} / ${result.summary.infoCount}
 
 ${formatPhaseErrors(result)}
+
+${formatQualityGate(result)}
 
 ## 核心可执行问题列表
 

@@ -160,6 +160,14 @@ Skill 会按规则：
 - 证据路径
 - 复测命令
 
+从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`：
+
+- `status`: `pass` / `pass-with-risks` / `fail` / `blocked`
+- `confidence`: `high` / `medium` / `low`
+- `reasons` / `coverageGaps`: 为什么可以验收、为什么有风险、或为什么阻断
+
+它用于替代单纯看分数的做法：CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate`，再结合需求、源码和运行证据做最终验收判断。
+
 ## 误报降噪原则
 
 `frontend-qa` skill 内置了针对前端 QA 的二次校准规则，例如：

@@ -8,13 +8,13 @@ Use this reference when consuming QA results from another skill.
 - Summary, page model, artifacts
 - Network, console, resources
 - Interactions, journeys, responsive, accessibility, permission, exceptions
-- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Fix Tasks, AI
+- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Fix Tasks, QA Gate, AI
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss newer fields; CLI/MCP helper commands normalize common missing sections to safe defaults and synthesize `fixTasks[]` from normalized issues when older reports do not contain it.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`. CLI/MCP helper commands normalize common missing sections to safe defaults and synthesize `fixTasks[]` / `qualityGate` from normalized issues when older reports do not contain them.
 
 Default QA runs enable the safe smoke journey, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -39,6 +39,7 @@ interface QaResult {
   security: SecurityScanResult; // always present; skipped when disabled
   p2: P2TestResult;
   fixTasks: FixTask[];
+  qualityGate: QaQualityGate;
   aiAnalysis: AiAnalysisResult; // always present; skipped when disabled
   artifacts: ArtifactIndex;
   metadata: {
@@ -343,7 +344,7 @@ interface ExceptionSimulationResult {
 
 ## API Contract, Realtime, P2, Fix Tasks, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` also includes `qualityGate`.
 
 ```ts
 interface ApiContractResult {
@@ -397,7 +398,30 @@ interface FixTask {
   evidence: Issue['evidence'];
   verificationCommand: string;
 }
+
+interface QaQualityGate {
+  status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
+  confidence: 'high' | 'medium' | 'low';
+  checkedAt: string;
+  actionableIssueCount: number;
+  referenceIssueCount: number;
+  blockingIssueCount: number;
+  mediumRiskCount: number;
+  coverageGapCount: number;
+  coverageGaps: string[];
+  reasons: string[];
+  summary: string;
+}
 ```
+
+`qualityGate` is the machine-readable professional QA gate. Use it for release/sign-off conversations, but still inspect `issues[]` and evidence before deciding whether to ship:
+
+- `blocked`: target page was not reliably reached or evidence collection is too incomplete for QA.
+- `fail`: Critical/High actionable issues or failed core journeys remain.
+- `pass-with-risks`: no blockers, but Medium risks, failed exception scenarios, or coverage gaps remain.
+- `pass`: no blocking/actionable risks in collected evidence.
+
+`confidence` reflects collection quality, not product/business certainty. Missing PRD, roles, test data, or destructive-action authorization still lowers business-validation confidence at the skill triage layer.
 
 For batched GraphQL POSTs, `network.requests[]` keeps one request record while `realtime.graphql[]` expands the batch into one entry per operation. Those entries share the same `networkRequestId` and carry per-operation `operationName`, `operationType`, `variablesPreview`, and `hasErrors` where response batches can be parsed.
 
@@ -619,7 +643,8 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Filter by skill responsibility:
+3. Read `qualityGate` for machine-readable QA status, but do not use it as a substitute for requirement/source triage.
+4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.
    - accessibility skill: `frontend-accessibility` and `accessibilityChecks[]`.
@@ -627,9 +652,9 @@ interface Issue {
    - security/backend hardening skill: `category === 'security'`, `security.checks[]`, plus backend suggestions on `headers`, `cookies`, `api-leak`, `csrf`.
    - API/realtime skill: `apiContract.endpoints[]`, `realtime.graphql[]`, `realtime.webSockets[]`, `realtime.sse[]`, and `backend-api-contract` / `backend-realtime` issues.
    - downstream fixing skill: prefer `fixTasks[]` because it maps issues to owner/type/expectedChange/verificationCommand.
-4. Use `evidence.selector`, `evidence.dom`, `networkRequestId`, `consoleId`, `pageErrorId`, or `evidence.details` to locate root cause.
-5. Apply code/API changes.
-6. Rerun FrontLens. Prefer `issues[].fingerprint`; otherwise compare `category + title + evidence`; treat `issues[].id` as run-local display ID.
+5. Use `evidence.selector`, `evidence.dom`, `networkRequestId`, `consoleId`, `pageErrorId`, or `evidence.details` to locate root cause.
+6. Apply code/API changes.
+7. Rerun FrontLens. Prefer `issues[].fingerprint`; otherwise compare `category + title + evidence`; treat `issues[].id` as run-local display ID.
 
 ## Drift check
 

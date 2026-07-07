@@ -26,6 +26,7 @@ import { P2Tester, createEmptyP2Result } from './p2/p2Tester.js';
 import { applySuggestionTemplates } from './fix/suggestionTemplates.js';
 import { dedupeIssues } from './fix/issueDedupe.js';
 import { generateFixTasks } from './fix/fixTasks.js';
+import { buildQualityGate } from './qualityGate.js';
 import { sessionStorageSidecarPath } from './auth.js';
 import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
@@ -680,6 +681,16 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     security,
     p2,
     fixTasks,
+    qualityGate: buildQualityGate({
+      issues,
+      pageModel,
+      phaseErrors,
+      interactionTests,
+      journeyTests,
+      exceptionSimulations,
+      coverage,
+      security
+    }),
     aiAnalysis,
     artifacts,
     metadata: {

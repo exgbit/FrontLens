@@ -4,4 +4,5 @@ export { saveAuthState } from './auth.js';
 export { loadConfig } from './config.js';
 export { createDefaultConfig } from './defaultConfig.js';
 export { normalizeResult, normalizeIssueLike, fingerprintIssue, RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
+export { buildQualityGate, isActionableIssue } from './qualityGate.js';
 export type * from './types.js';

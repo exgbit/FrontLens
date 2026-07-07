@@ -65,107 +65,17 @@ If the user selects "all/default", run the full default QA command. If the user 
 
    ```bash
    node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>-<timestamp>" --no-trace --json
-
-   # When PRD/acceptance criteria are natural-language Markdown/text, draft a requirements file first:
-   node dist/cli.js requirements synthesize --input "docs/prd.md" --output "reports/frontlens/<name>-<timestamp>/requirements.json"
-
-   # Then pass reviewed requirements JSON:
-   # --requirements "path/to/requirements.json"
-
-   # When frontend source is available, add:
-   # --source-root "/path/to/frontend"
-
-   # For professional QA/sign-off with sourceRoot, also add when safe:
-   # --source-run-scripts --source-scripts "typecheck,lint"
    ```
 
-   Requirements JSON supports executable assertions:
-
-   ```json
-   [
-     {
-       "id": "REQ-LIST-VISIBLE",
-       "title": "列表页展示主体内容",
-       "priority": "P1",
-       "selectors": ["body"],
-       "expectedTexts": ["列表"],
-       "apiPatterns": ["/api/list"],
-       "journeySteps": [{ "action": "waitForLoad" }]
-     }
-   ]
-   ```
-
-   Use `selectors`/`expectedTexts` for read-only UI assertions, `apiPatterns` for `expectRequest` API assertions, and `journeySteps` for explicit safe flows. Do not translate vague product wishes into clicks or defects unless the requirement says so.
-
-   Product/ADR context can be added in the same config to avoid reporting deliberate design choices as bugs:
-
-   ```json
-   {
-     "productContext": {
-       "enabled": true,
-       "pageType": "credential",
-       "deviceScope": "desktop-first",
-       "accessibilityTarget": "basic",
-       "requiredFeatures": ["error-state"],
-       "optionalFeatures": ["mobile-touch-target"],
-       "outOfScopeFeatures": ["export"],
-       "decisions": [
-         {
-           "id": "ADR-0001",
-           "title": "PC 为主，移动端自适应降级；凭证页不提供导出",
-           "appliesTo": ["mobile-touch-target", "export"]
-         }
-       ],
-       "adrRefs": ["docs/adr/0001-pc-first.md"]
-     }
-   }
-   ```
-
-   Test data lifecycle can be added when write/data-changing flows are in scope:
-
-   ```json
-   {
-     "testData": {
-       "enabled": true,
-       "environment": "staging",
-       "allowProductionWrites": false,
-       "records": [
-         {
-           "id": "user-seed-001",
-           "title": "可删除的测试用户",
-           "state": "seeded",
-           "requiredFor": ["REQ-DELETE-USER"],
-           "cleanupOperationId": "cleanup-user"
-         }
-       ],
-       "setupSteps": [
-         { "id": "seed-user", "title": "创建测试用户", "type": "api", "method": "POST", "endpoint": "/api/users", "destructive": true, "rollbackOperationId": "cleanup-user" }
-       ],
-       "cleanupSteps": [
-         { "id": "cleanup-user", "title": "删除测试用户", "type": "api", "method": "DELETE", "endpoint": "/api/users/{id}" }
-       ],
-       "notes": ["仅在 staging 运行写操作"]
-     }
-   }
-   ```
-
-   Default config blocks mutating `POST` / `PUT` / `PATCH` / `DELETE` requests unless the matching `allow*` safety switch is enabled. Read-only GraphQL `query` / `subscription` POSTs are allowed so contract/realtime capture remains useful; GraphQL `mutation` is still blocked by default. Use `--allow-mutating-requests` only for authorized integration tests.
-   Passive security scanning, API contract inference, GraphQL/WebSocket/SSE capture, stable fingerprints, fix task generation, default safe smoke journey, P2 visual capture/pixel baseline diff/budget/network checks, exception simulation, and heuristic AI analysis are enabled by default. Use `--no-security`, `--no-contract`, `--no-realtime`, `--no-p2`, `--no-journeys`, `--no-exceptions`, or `--no-ai` only when explicitly speed-testing.
-
-5. If browser binaries are missing, run:
-
-   ```bash
-   npx playwright install chromium
-   ```
-
-6. If the sandbox blocks Chromium launch on macOS, rerun the same QA command with escalated execution.
-7. If source-aware analysis is enabled, the worker first verifies the target page is reachable from the intended deployment URL. If not, it follows `references/source-code-correlation.md` to build/start the local app, then reruns the reachability check before QA.
-8. The worker reads `qa-review.md` / `report.md` for the calibrated professional summary, `result.json` for structured findings, and `evidence-report.md` only when raw evidence drill-down is needed; then reads `references/triage-guidelines.md` for post-run calibration, `scope-review.md` for pending product/PRD questions, `claim-guard.md` for allowed/forbidden conclusion wording, `qa-intake.md` for professional follow-up questions, `defect-proof.md` for root-cause proof strength, and `references/source-code-correlation.md` when a source root is available. Inspect `result.json.environment` before performance/security/realtime/release claims, `result.json.pageProfile` before product/design/scope claims, and `result.json.scopeReview` / `scope-review.md` / `result.json.qaIntake` before turning style, pagination, export, refresh, responsive, visual-density, or API/UI mismatch observations into defects. In FrontLens 1.43+, missing-effect refresh/download/pagination warnings without explicit requirements intentionally remain in `interactionTests[]` instead of raw issues. In FrontLens 1.44+, small tap-target observations remain in `responsiveChecks[]` unless mobile/touch/WCAG scope is explicit. In FrontLens 1.45+, human report conclusions lead with adjusted score/proof-ready root causes; raw score is trend context only. In FrontLens 1.46+, optional SEO gaps and color-contrast style findings require explicit public-content/SEO/WCAG/a11y scope before becoming fixes. In FrontLens 1.47+, generated fix suggestions strip mismatched API/table/pagination template noise from a11y/SEO/visual issues; still flag any older report suggestion that does not match the issue evidence as template noise. In FrontLens 1.48+, Vite dev performance/resource noise remains non-defect, but sourceAnalysis-confirmed eager route imports or heavy static imports with file:line evidence remain proof-ready should-fix candidates that need build+preview verification. In FrontLens 1.49+, Markdown artifact references are annotated inline as `(missing artifact)` or `(unchecked artifact)` when artifactIntegrity cannot prove them; do not cite those paths as evidence. In FrontLens 1.50+, `qa-review.md` includes representative downgraded/non-fix/needs-evidence raw findings with reasons and next steps; use that table before reopening raw issues. If the target is local-dev and the user asked for production-readiness, build/start preview and run `env-compare` whenever practical. Dev-source mode is valid for functional/source correlation but not production bundle/security conclusions; heuristic pageProfile is a prompt for scope questions, not confirmed PRD. If `sourceAnalysis.status=passed`, use its route/import/API/state-signal/ui-accessibility/error-state-gap indexes as the first source map before manually grepping files; if `sourceRuntimeCorrelation.status=passed`, use its `links[]` as the guard for API/UI binding claims and prefer medium/high linked source matches that are rolled into `rootCauseGroups[].sourceLocations` in FrontLens 1.36+; in FrontLens 1.42+ a source-aware list-empty mismatch without passed medium/high binding should be treated as intentionally suppressed, not as a missed defect; if `sourceHealth.status=failed`, treat syntax errors and failed/timed-out source script checks as source-confirmed blockers before interpreting runtime symptoms.
-9. The worker must bucket findings into real frontend fixes, backend/API fixes, deployment/security config, product decisions, and false positives/tool limitations. For real frontend fixes, include source file paths and line numbers that confirm the defect and the likely fix surface; in FrontLens 1.34+ prefer `rootCauseGroups[].sourceLocations` as the normalized source fix surface before drilling into raw issue details, in FrontLens 1.36+ treat frontend root causes with enabled sourceRoot but weak/missing source binding as `defectProof=needs-evidence` rather than must-fix, in FrontLens 1.37+ use `sourceAnalysis.findings[kind=ui-accessibility]` to bind runtime a11y findings such as icon buttons without names back to component file:line, in FrontLens 1.38+ use `sourceAnalysis.findings[kind=error-state-gap]` to bind exception no-feedback findings back to views that track errors but only render empty states, in FrontLens 1.39+ this error-state binding covers Vue/Svelte/JSX render blocks, in FrontLens 1.40+ the a11y binding covers multi-line Vue/Svelte/JSX button-like tags, and in FrontLens 1.41+ heuristic AI suggestions stay in `aiAnalysis` metadata instead of raw issues, and in FrontLens 1.42+ source-aware API/UI list-empty mismatch findings require passed medium/high sourceRuntimeCorrelation binding instead of global Network guessing, and in FrontLens 1.43+ refresh/download/pagination warnings stay as `interactionTests[]` coverage observations unless an explicit requirement or `productContext.requiredFeatures` makes that interaction mandatory, and in FrontLens 1.44+ small tap-target observations stay as `responsiveChecks[]` coverage unless mobile/touch/WCAG scope is explicit, in FrontLens 1.45+ professional reports prioritize adjusted score/proof-ready root causes over raw score, and in FrontLens 1.46+ optional SEO gaps/color-contrast findings stay product-scope observations unless public-content/SEO/WCAG/a11y scope is explicit, and in FrontLens 1.47+ mismatched API/table/pagination repair suggestions on a11y/SEO/visual findings are sanitized instead of being repeated as fix tasks, and in FrontLens 1.48+ sourceAnalysis-confirmed eager route imports/heavy static imports stay as source-level should-fix candidates while raw Vite dev resources stay tool-limitation noise, and in FrontLens 1.49+ missing/unchecked artifact paths are visibly marked in Markdown and must not be used as proof, and in FrontLens 1.50+ `qa-review.md` gives explicit non-fix samples so product/tool/deployment/no-evidence items are not silently re-promoted. Source-aware triage must also retain source-discovered defects even when the raw browser finding was downgraded as dev-mode/synthetic noise; for example, a dev-server request-count finding may be false as a production metric but still reveal a real eager route import/code-splitting problem.
-10. Before returning fixes, read `professionalSummary` first for the human-facing answer, read `claimGuard` second to remove overclaims and use allowed wording, read `qaIntake` third to surface missing-input questions instead of guessing, read `defectProof` fourth to verify that implementation work is proof-ready, then read `issueDisposition` to separate actionable, conditional, and non-actionable raw findings, then read `scopeReview` to keep PRD/product gaps conditional, then group actionable/conditional raw issues by implementation root cause. `fixTasks[]` is already proof-aware in FrontLens 1.32+, but still do not treat raw issue count, command-AI issue count, heuristic AI suggestions, or `fixTasks[]` length as workload; use proof-ready root causes and defectProof gaps separately. In FrontLens 1.41+, the built-in heuristic AI never creates raw defects; treat it as summary metadata only. In FrontLens 1.33+, exception no-feedback issues from 500/401/403/404/timeout simulations are retained as frontend error-state/retry root-cause candidates when runtime evidence is reproducible, while the synthetic status codes remain excluded from backend contract findings; with sourceRoot in FrontLens 1.36+, keep them out of proof-ready scheduling until the root cause has file:line or medium/high source-runtime binding. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
-11. Apply the professional QA actionability gate: a bug needs user impact, evidence, reproducibility, and an owner/fix surface. Move style/product choices and single-signal guesses to non-defect observations.
-12. Prefer `result.json.qaSignoff` for release/sign-off wording and `result.json.regressionPlan` for post-fix verification; it may downgrade a raw `qualityGate.pass` to `pass-with-risks` when PRD, auth/role state, or runtime journeys are missing.
-13. Return the report path, JSON path, professionalSummary headline/status, adjusted score, raw score, raw issue count, raw-finding disposition counts, proof-ready root-cause fix count from `professionalSummary.counts.proofReadyRootCauseCount` plus raw actionable count and source-location count from `rootCauseGroups`, adjusted triage counts, selected modules, source-code correlation status, pageProfile status/questions, scopeReview status/question count/path, claimGuard status/forbidden count/path, qaIntake status/top-question count/path, defectProof status/needs-evidence count/path, deployment/serve action taken, skipped-coverage caveats, requirement/business-validation confidence, QA sign-off status when applicable, regressionPlan status/item count, and the highest-priority fixes.
+   Add `--source-root`, `--source-run-scripts --source-scripts "typecheck,lint"`, reviewed `--requirements`, storage state, or config files only when the task scope requires them. Read `references/commands.md` for exact command variants and JSON snippets for `requirements`, `productContext`, and `testData`.
+5. If browser binaries are missing, run `npx playwright install chromium`; if the sandbox blocks Chromium on macOS, rerun the same QA command with escalated execution.
+6. If source-aware analysis is enabled, verify the target page is reachable from the intended deployment URL first. If not, follow `references/source-code-correlation.md` to build/start the local app, then rerun the reachability check before QA.
+7. Read outputs in this order: `qa-review.md` / `professionalSummary`, then `claimGuard`, `qaIntake`, `defectProof`, `issueDisposition`, `scopeReview`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `environment`, `artifactIntegrity`, and only then raw `evidence-report.md` details.
+8. Apply the professional QA actionability gate from `references/triage-guidelines.md`: retain only proof-ready, user-impacting, reproducible defects with owner/fix surface; move style/product choices, deployment security config, dev-server artifacts, skipped checks, and single-signal guesses to non-defect or needs-evidence buckets.
+9. For source-aware triage, use `rootCauseGroups[].sourceLocations`, medium/high `sourceRuntimeCorrelation.links[]`, and source findings (`ui-accessibility`, `error-state-gap`, route/static-import performance) before manual grep. Do not schedule frontend fixes whose `defectProof` remains `needs-evidence`.
+10. For API/UI data mismatch, require exact network request, visible DOM/screenshot state, source API/state/render file:line or medium/high link, and a product requirement that the UI should render that data. Otherwise keep it conditional/insufficient-evidence.
+11. For production-readiness claims on local/dev targets, run build/preview or `env-compare`; dev-source mode is valid for functional/source correlation but not production bundle/security conclusions.
+12. Return a concise summary with report paths, selected modules, QA sign-off, adjusted vs raw score, proof-ready root-cause count, non-defect buckets, skipped coverage caveats, source-correlation status, top fixes, and required follow-ups. Read `references/reporting.md` for the full reporting checklist.
 
 ## Safety Rules
 
@@ -183,88 +93,8 @@ Use the default QA command from the workflow for normal runs. Read `references/c
 
 ## Output Contract for Other Skills
 
-Read `references/result-schema.md` when another skill needs to consume `result.json`, filter issues, or perform code/backend fixes from QA findings.
-
-Minimum stable fields:
-
-- `summary.score`
-- `summary.issueCount`
-- `issues[]`
-- `issues[].category`
-- `issues[].severity`
-- `issues[].evidence`
-- `issues[].suggestion.frontend`
-- `issues[].suggestion.backend`
-- `network.requests[]`
-- `apiContract`
-- `realtime`
-- `console.errors[]`
-- `pageModel.components[]`
-- `interactionTests[]`
-- `journeyTests[]`
-- `accessibilityChecks[]`
-- `permissionChecks[]`
-- `security`
-- `responsiveChecks[]`
-- `exceptionSimulations[]`
-- `performance`
-- `coverage`
-- `p2`
-- `requirementCoverage`
-- `environment`
-- `pageProfile`
-- `scopeReview`
-- `claimGuard`
-- `qaIntake`
-- `defectProof`
-- `testData`
-- `sourceAnalysis`
-- `sourceRuntimeCorrelation`
-- `sourceHealth`
-- `artifactIntegrity`
-- `issueDisposition`
-- `rootCauseGroups[]`
-- `fixTasks[]`
-- `professionalSummary`
-- `qualityGate`
-- `qaSignoff`
-- `regressionPlan`
-- `aiAnalysis`
-- `artifacts.markdownReport` / `artifacts.qaReview` / `artifacts.evidenceReport` / `artifacts.scopeReview` / `artifacts.scopeReviewLog` / `artifacts.claimGuard` / `artifacts.claimGuardLog` / `artifacts.qaIntake` / `artifacts.qaIntakeLog` / `artifacts.defectProof` / `artifacts.defectProofLog`
-- custom plugin outputs under `artifacts`
-
-Read `references/ci-mcp.md` when the user asks for GitHub Action, CI, or MCP integration.
-
-Read `references/commands.md` for stable result-consumption commands (`inspect`, `issues`, `network`, `coverage`, `security`, `disposition`, `root-causes`, `fix-tasks`, `diff`, `env-compare`, `requirements synthesize`, `role-matrix`, `journey record`, and `suggestions`).
+Read `references/result-schema.md` before consuming `result.json`, filtering issues, or driving code/backend fixes. Prioritize `professionalSummary`, `claimGuard`, `qaIntake`, `defectProof`, `qaSignoff`, `issueDisposition`, `rootCauseGroups`, `regressionPlan`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `environment`, and `artifactIntegrity` over raw issue count. Read `references/ci-mcp.md` for GitHub Action, CI, or MCP integration and `references/commands.md` for stable result-consumption commands.
 
 ## Reporting Back
 
-Summarize:
-
-- professionalSummary headline/status and must-fix/non-defect counts;
-- adjusted score, raw score, and issue counts;
-- in FrontLens 1.45+, lead with adjusted score/proof-ready root causes and mention raw score only as scanner trend context;
-- critical/high issues first;
-- security score and any failed security checks;
-- top frontend fixes;
-- top backend/API fixes;
-- API contract / GraphQL / WebSocket / SSE findings;
-- machine-executable fix task count and important task IDs; regressionPlan status, blocked/needs-input counts, and top rerun commands;
-- generated artifact paths and artifact integrity status; in FrontLens 1.35+ expect report.md/report.html to reflect the final artifactIntegrity snapshot, not an early pre-human-report snapshot; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used; test-data lifecycle status when write/data-changing flows are in scope;
-- triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation; include pageProfile/scopeReview questions when product scope is inferred rather than configured;
-- claimGuard status, forbidden claims, and required inputs; avoid forbidden wording in the final answer;
-- qaIntake status, top questions, and missing inputs; ask these before turning product/design assumptions into defects;
-- defectProof status and needs-evidence root causes; confirm they are excluded from must-fix/fixTasks and list evidence-collection next steps;
-- adjustedScore plus raw score and confidence/adjusted-risk note when raw score is distorted by skipped/synthetic/deployment-only findings;
-- raw issue count separated from implementation root-cause count;
-- requirement coverage / business-validation confidence when the user asks for acceptance or professional QA;
-- QA sign-off status (`pass`, `pass-with-risks`, `blocked`, or `fail`) when using professional QA mode;
-- scopeReview status/questions and `scope-review.md` path; if `needs-input`, state which findings remain product/PRD-dependent instead of must-fix;
-- claimGuard status and `claim-guard.md` path; if `limited` or `blocked`, state which broad conclusions are forbidden;
-- qaIntake status and `qa-intake.md` path; if `needs-input` or `blocked`, list topQuestions and keep linked conclusions conditional;
-- defectProof status and `defect-proof.md` path; if root causes are `needs-evidence`, list missing evidence and next steps and do not count them as implementation fixes;
-- regression plan status/items from `result.json.regressionPlan` for repair verification;
-- skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;
-- for each retained critical/high issue: issue id, severity, category, evidence reference, reproduction step summary, and suggested owner/fix.
-
-Do not paste the whole Markdown report unless the user asks; provide the path, key findings, and explicit false-positive/downgrade decisions.
+Return the path, key findings, explicit false-positive/downgrade decisions, and next verification steps; do not paste the whole Markdown report unless the user asks. Use `references/reporting.md` for the complete summary checklist.

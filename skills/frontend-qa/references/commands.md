@@ -5,6 +5,7 @@ Use this reference when exact CLI syntax is needed after `frontend-qa` has selec
 ## Contents
 
 - [Common Commands](#common-commands)
+- [Config Snippets](#config-snippets)
 - [Stable Result-Consumption Commands](#stable-result-consumption-commands)
 
 ## Common Commands
@@ -231,6 +232,77 @@ Start MCP server for other tools/skills:
 
 ```bash
 node dist/cli.js mcp
+```
+
+
+## Config Snippets
+
+Requirements JSON supports executable assertions:
+
+```json
+[
+  {
+    "id": "REQ-LIST-VISIBLE",
+    "title": "列表页展示主体内容",
+    "priority": "P1",
+    "selectors": ["body"],
+    "expectedTexts": ["列表"],
+    "apiPatterns": ["/api/list"],
+    "journeySteps": [{ "action": "waitForLoad" }]
+  }
+]
+```
+
+Product/ADR context can be added in the same config to avoid reporting deliberate design choices as bugs:
+
+```json
+{
+  "productContext": {
+    "enabled": true,
+    "pageType": "credential",
+    "deviceScope": "desktop-first",
+    "accessibilityTarget": "basic",
+    "requiredFeatures": ["error-state"],
+    "optionalFeatures": ["mobile-touch-target"],
+    "outOfScopeFeatures": ["export"],
+    "decisions": [
+      {
+        "id": "ADR-0001",
+        "title": "PC 为主，移动端自适应降级；凭证页不提供导出",
+        "appliesTo": ["mobile-touch-target", "export"]
+      }
+    ],
+    "adrRefs": ["docs/adr/0001-pc-first.md"]
+  }
+}
+```
+
+Test data lifecycle can be added when write/data-changing flows are in scope:
+
+```json
+{
+  "testData": {
+    "enabled": true,
+    "environment": "staging",
+    "allowProductionWrites": false,
+    "records": [
+      {
+        "id": "user-seed-001",
+        "title": "可删除的测试用户",
+        "state": "seeded",
+        "requiredFor": ["REQ-DELETE-USER"],
+        "cleanupOperationId": "cleanup-user"
+      }
+    ],
+    "setupSteps": [
+      { "id": "seed-user", "title": "创建测试用户", "type": "api", "method": "POST", "endpoint": "/api/users", "destructive": true, "rollbackOperationId": "cleanup-user" }
+    ],
+    "cleanupSteps": [
+      { "id": "cleanup-user", "title": "删除测试用户", "type": "api", "method": "DELETE", "endpoint": "/api/users/{id}" }
+    ],
+    "notes": ["仅在 staging 运行写操作"]
+  }
+}
 ```
 
 ## Stable Result-Consumption Commands

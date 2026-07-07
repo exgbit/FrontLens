@@ -12,6 +12,7 @@ import type {
   PageModel,
   PageProfileAssessment,
   PageProfileType,
+  PermissionCheckResult,
   QaResult,
   QaSummary,
   ResourceSection,
@@ -47,7 +48,7 @@ import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 
-export const RESULT_SCHEMA_VERSION = '1.61.0';
+export const RESULT_SCHEMA_VERSION = '1.62.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1175,6 +1176,7 @@ export function normalizeResult(raw: unknown): QaResult {
   const interactionTests = asArray<InteractionTestResult>(raw.interactionTests);
   const journeyTests = asArray<JourneyTestResult>(raw.journeyTests);
   const accessibilityChecks = asArray<AccessibilityCheckResult>(raw.accessibilityChecks);
+  const permissionChecks = asArray<PermissionCheckResult>(raw.permissionChecks);
   const exceptionSimulations = asArray<ExceptionSimulationResult>(raw.exceptionSimulations);
   const requirementCoverage = buildRequirementCoverage({
     config: metadataConfig,
@@ -1261,6 +1263,8 @@ export function normalizeResult(raw: unknown): QaResult {
     artifactIntegrity,
     environment,
     pageProfile,
+    pageModel,
+    permissionChecks,
     testData,
     qualityGate,
     qaSignoff,
@@ -1334,6 +1338,8 @@ export function normalizeResult(raw: unknown): QaResult {
     qaSignoff,
     environment,
     pageProfile,
+    pageModel,
+    permissionChecks,
     scopeReview,
     sourceAnalysis,
     sourceHealth,
@@ -1385,7 +1391,7 @@ export function normalizeResult(raw: unknown): QaResult {
     interactionTests,
     journeyTests,
     accessibilityChecks,
-    permissionChecks: asArray(raw.permissionChecks),
+    permissionChecks,
     responsiveChecks: asArray(raw.responsiveChecks),
     exceptionSimulations,
     security,

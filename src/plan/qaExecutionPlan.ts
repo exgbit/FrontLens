@@ -1,4 +1,5 @@
 import type { QaExecutionPlanItem, QaExecutionPlanResult, QaResult, RegressionPlanItem } from '../types.js';
+import { buildRoleMatrixNeed } from '../permissions/roleMatrixNeed.js';
 
 export type QaExecutionPlanInput = Pick<
   QaResult,
@@ -15,6 +16,8 @@ export type QaExecutionPlanInput = Pick<
   | 'qaSignoff'
   | 'environment'
   | 'pageProfile'
+  | 'pageModel'
+  | 'permissionChecks'
   | 'scopeReview'
   | 'sourceAnalysis'
   | 'sourceHealth'
@@ -76,6 +79,12 @@ function evidenceList(value: string[], max = 6): string[] {
 export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionPlanResult {
   const items: QaExecutionPlanItem[] = [];
   const fullRerun = baseQaCommand(result);
+  const roleNeed = buildRoleMatrixNeed({
+    pageModel: result.pageModel,
+    permissionChecks: result.permissionChecks,
+    pageProfile: result.pageProfile,
+    requirementCoverage: result.requirementCoverage
+  });
   const productContextConfig = typeof result.artifacts.productContextConfig === 'string' ? result.artifacts.productContextConfig : undefined;
   const productContextRerun = productContextConfig
     ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(productContextConfig)} --output ${quote('reports/frontlens/qa-plan-product-context')} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
@@ -83,7 +92,7 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
   const envCompare = result.environment.trust.performance === 'high' && result.environment.trust.security === 'high'
     ? undefined
     : `node dist/cli.js env-compare --dev-url ${quote(result.summary.url)} --preview-url "<preview-or-production-like-url>" --output ${quote('reports/frontlens/qa-plan-env')}${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`;
-  const roleMatrix = result.qaSignoff.scope.authStateProvided
+  const roleMatrix = roleNeed.needed || result.qaSignoff.scope.authStateProvided
     ? `node dist/cli.js role-matrix --url ${quote(result.summary.url)} --roles "<roles.json>" --output ${quote('reports/frontlens/qa-plan-roles')}`
     : undefined;
 
@@ -145,6 +154,22 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
       expected: ['pageProfile.status 为 configured。', '产品取舍类 findings 稳定进入 product-decision / non-actionable 桶。'],
       evidenceRefs: ['product-context.md', 'product-context.config.json', 'scopeReview', 'pageProfile'],
       notes: result.scopeReview?.questions?.slice(0, 5).map((item) => item.question) ?? result.pageProfile.questions.slice(0, 5)
+    });
+  }
+
+  if (roleNeed.needed) {
+    addItem(items, {
+      type: 'role-matrix',
+      priority: roleNeed.priority,
+      owner: 'test',
+      status: 'needs-input',
+      title: '补齐角色/权限矩阵，避免单角色误判',
+      why: '页面存在凭证/权限敏感画像、危险/授权类操作、权限检查告警或权限需求；专业 QA 需要验证不同角色的可见能力和禁止能力。',
+      commands: roleMatrix ? [roleMatrix] : [],
+      steps: ['准备 admin / normal / readonly / unauthorized 等角色 storageState。', '在 roles.json 写入 expectedAllowedTexts 和 expectedForbiddenTexts。', '运行 role-matrix，并把差异绑定到权限需求后再签核。'],
+      expected: ['低权限角色不可见或不可执行禁止能力。', '高权限角色具备应允许能力。', '权限差异均能对应到显式需求或产品决策。'],
+      evidenceRefs: evidenceList(['permissionChecks', 'pageProfile', 'pageModel.buttons', 'requirementCoverage', ...roleNeed.permissionCheckIds]),
+      notes: roleNeed.signals
     });
   }
 

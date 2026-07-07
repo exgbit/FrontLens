@@ -59,7 +59,7 @@ Use browser matrix only when the user selected module 9 or explicitly asked comp
 node dist/cli.js matrix --url "<URL>" --browsers chromium,firefox,webkit --output "<OUTPUT_DIR>-matrix" --no-trace --json
 ```
 
-Use role matrix only when the user selected module 10 or provided multiple role storage states:
+Run role matrix when the user selected module 10, provided multiple role storage states, or `qa-plan.md` / `regressionPlan.items[]` contains a `role-matrix` follow-up for permission-sensitive pages or dangerous actions:
 
 ```bash
 node dist/cli.js role-matrix --url "<URL>" --roles "roles.json" --output "<OUTPUT_DIR>-roles" --no-trace --json
@@ -92,7 +92,7 @@ Start from the default config and disable only unselected modules.
 | Realtime | `realtime.enabled=true` | `--no-realtime` or config `realtime.enabled=false` |
 | AI comprehensive analysis | `analysis.ai=true` | `--no-ai` or config `analysis.ai=false` |
 | Browser matrix | separate `matrix` command | omit matrix command |
-| Role matrix | separate `role-matrix` command with `--role` or `--roles` | omit role-matrix command unless storage states are available |
+| Role matrix | separate `role-matrix` command with `--role` or `--roles`; `qaPlan` / `regressionPlan` may request it automatically for permission-sensitive pages | omit the actual role-matrix run until storage states are available, but keep the follow-up item |
 | Test data lifecycle | `testData.enabled=true` with records/setup/cleanup in config | keep enabled; set `testData.enabled=false` only for explicitly read-only exploratory scans |
 
 ## Per-run config template

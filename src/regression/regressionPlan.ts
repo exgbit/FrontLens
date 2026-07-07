@@ -1,5 +1,6 @@
-import type { ArtifactIntegrityResult, DefectProofResult, EnvironmentAssessment, FixTask, InteractionTestResult, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RegressionPlanItem, RegressionPlanResult, RequirementCoverageResult, RootCauseGroup, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
+import type { ArtifactIntegrityResult, DefectProofResult, EnvironmentAssessment, FixTask, InteractionTestResult, JourneyTestResult, PageModel, PageProfileAssessment, PermissionCheckResult, QaQualityGate, QaSignoffResult, RegressionPlanItem, RegressionPlanResult, RequirementCoverageResult, RootCauseGroup, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
 import { proofNeedsEvidenceItems, proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
+import { buildRoleMatrixNeed } from '../permissions/roleMatrixNeed.js';
 
 export interface RegressionPlanInput {
   targetUrl: string;
@@ -13,6 +14,8 @@ export interface RegressionPlanInput {
   artifactIntegrity: ArtifactIntegrityResult;
   environment: EnvironmentAssessment;
   pageProfile: PageProfileAssessment;
+  pageModel: PageModel;
+  permissionChecks: PermissionCheckResult[];
   testData: TestDataAssessmentResult;
   qualityGate: QaQualityGate;
   qaSignoff: QaSignoffResult;
@@ -33,6 +36,10 @@ function unique(items: string[]): string[] {
 
 function baseQaCommand(input: RegressionPlanInput, output = 'reports/frontlens/regression'): string {
   return `node dist/cli.js qa --url ${quote(input.targetUrl)} --output ${quote(output)} --no-trace --json${input.sourceRoot ? ` --source-root ${quote(input.sourceRoot)}` : ''}`;
+}
+
+function roleMatrixCommand(input: RegressionPlanInput): string {
+  return `node dist/cli.js role-matrix --url ${quote(input.targetUrl)} --roles "<roles.json>" --output ${quote('reports/frontlens/regression-roles')}`;
 }
 
 function addItem(items: RegressionPlanItem[], item: Omit<RegressionPlanItem, 'id'>): void {
@@ -231,6 +238,27 @@ export function buildRegressionPlan(input: RegressionPlanInput): RegressionPlanR
       expected: ['environment.trust.performance/security 至少为 medium，发布签核目标为 high。', 'dev-only findings 不进入生产修复队列。'],
       evidenceRefs: ['environment'],
       notes: input.environment.recommendations
+    });
+  }
+
+  const roleNeed = buildRoleMatrixNeed({
+    pageModel: input.pageModel,
+    permissionChecks: input.permissionChecks,
+    pageProfile: input.pageProfile,
+    requirementCoverage: input.requirementCoverage
+  });
+  if (roleNeed.needed) {
+    addItem(items, {
+      type: 'role-matrix',
+      priority: roleNeed.priority,
+      title: '补充多角色权限矩阵后再做权限/发布签核',
+      owner: 'test',
+      status: 'needs-input',
+      commands: [roleMatrixCommand(input)],
+      steps: ['准备 admin / normal / readonly / unauthorized 等角色的 storageState 或 sessionStorageState。', '在 roles.json 中声明 expectedAllowedTexts / expectedForbiddenTexts。', '运行 role-matrix 并把差异映射到显式权限需求，而不是只看单角色页面。'],
+      expected: ['低权限角色看不到 forbidden 操作和敏感信息。', '高权限角色能看到并完成 expectedAllowedTexts 对应能力。', '角色差异只在符合权限需求时通过。'],
+      evidenceRefs: ['permissionChecks', 'pageProfile', 'pageModel.buttons', 'requirementCoverage', ...roleNeed.permissionCheckIds],
+      notes: roleNeed.signals
     });
   }
 

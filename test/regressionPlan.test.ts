@@ -83,3 +83,40 @@ test('normalizeResult synthesizes regression plan from root causes, source block
   assert.equal(sourceItem?.status, 'blocked');
   assert.ok(result.regressionPlan.commands.some((command) => command.includes('node dist/cli.js qa --url')));
 });
+
+test('normalizeResult adds role-matrix regression item for dangerous permission-sensitive actions', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/admin/users', title: 'Users' },
+    pageModel: {
+      url: 'https://example.com/admin/users',
+      title: 'Users',
+      meta: { h1: ['Users'] },
+      stats: { domNodes: 80, visibleTextLength: 300, bodyTextSample: 'Users Delete Disable' },
+      components: [],
+      buttons: [
+        { id: 'BTN-DELETE', type: 'button', visible: true, text: '删除用户', attributes: {}, confidence: 0.92 }
+      ],
+      inputs: []
+    },
+    permissionChecks: [
+      {
+        id: 'PERM-003',
+        rule: 'visible-danger',
+        status: 'warning',
+        severity: 'medium',
+        title: '危险按钮权限标记',
+        description: '危险按钮缺少权限标记。',
+        count: 1,
+        evidence: [{ componentId: 'BTN-DELETE', text: '删除用户' }],
+        suggestion: { test: '补充角色矩阵。', priority: 'P2' }
+      }
+    ]
+  });
+
+  const roleItem = result.regressionPlan.items.find((item) => item.type === 'role-matrix');
+
+  assert.equal(roleItem?.status, 'needs-input');
+  assert.equal(roleItem?.priority, 'P1');
+  assert.equal(result.regressionPlan.commands.some((command) => command.includes('role-matrix')), true);
+  assert.ok(result.qaIntake.questions.some((question) => question.category === 'role-auth'));
+});

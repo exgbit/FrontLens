@@ -434,6 +434,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           summary: result.qaIntake.summary,
           topQuestions: result.qaIntake.topQuestions.map((item) => ({ id: item.id, priority: item.priority, category: item.category, question: item.question }))
         },
+        defectProof: {
+          status: result.defectProof.status,
+          counts: result.defectProof.counts,
+          summary: result.defectProof.summary
+        },
         testData: {
           status: result.testData.status,
           environment: result.testData.environment,
@@ -512,6 +517,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         scopeReview: result.scopeReview,
         claimGuard: result.claimGuard,
         qaIntake: result.qaIntake,
+        defectProof: result.defectProof,
         testData: result.testData,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,

@@ -42,6 +42,7 @@ test('qa intake blocks professional sign-off when source health or artifacts fai
     artifactIntegrity: result.artifactIntegrity,
     testData: result.testData,
     regressionPlan: result.regressionPlan,
+    defectProof: result.defectProof,
     rootCauseGroups: result.rootCauseGroups,
     issueDisposition: result.issueDisposition,
     artifacts: result.artifacts

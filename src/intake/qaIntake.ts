@@ -14,6 +14,7 @@ type QaIntakeInput = Pick<
   | 'artifactIntegrity'
   | 'testData'
   | 'regressionPlan'
+  | 'defectProof'
   | 'rootCauseGroups'
   | 'issueDisposition'
   | 'artifacts'
@@ -296,6 +297,21 @@ function addArtifactQuestions(result: QaIntakeInput, questions: DraftQuestion[])
   });
 }
 
+function addDefectProofQuestions(result: QaIntakeInput, questions: DraftQuestion[]): void {
+  for (const item of result.defectProof.items.filter((entry) => entry.status === 'needs-evidence').slice(0, 5)) {
+    pushUnique(questions, {
+      category: item.missingEvidence.some((entry) => /source/i.test(entry)) ? 'source-health' : 'regression',
+      priority: item.priority === 'P0' || item.priority === 'P1' ? 'P1' : 'P2',
+      question: `${item.rootCauseGroupId} 缺陷证明不足：${item.missingEvidence.slice(0, 2).join('；') || item.title}`,
+      why: '专业缺陷登记需要用户影响、运行时证据、源码/owner 修复面、复现步骤，以及必要的需求/产品范围上下文。',
+      howToAnswer: item.nextSteps.join('；') || '补齐缺陷证明链路后再把该 root cause 排入 must-fix。',
+      evidenceRefs: item.evidenceRefs.length ? item.evidenceRefs : [item.rootCauseGroupId],
+      blocksClaims: ['frontend-defect', 'release-signoff'],
+      configHint: item.nextSteps[0]
+    });
+  }
+}
+
 function buildReadyToProceed(result: QaIntakeInput, questions: QaIntakeQuestion[]): string[] {
   const ready: string[] = [];
   if (result.rootCauseGroups.some((group) => group.status === 'actionable')) {
@@ -323,6 +339,7 @@ export function buildQaIntake(result: QaIntakeInput): QaIntakeResult {
   addSourceQuestions(result, drafts);
   addTestDataQuestions(result, drafts);
   addArtifactQuestions(result, drafts);
+  addDefectProofQuestions(result, drafts);
 
   const questions = sortQuestions(drafts.map((item, index) => ({
     id: `INTAKE-Q-${String(index + 1).padStart(3, '0')}`,

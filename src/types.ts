@@ -1544,6 +1544,53 @@ export interface QaIntakeResult {
   notes: string[];
 }
 
+export type DefectProofStrength = 'strong' | 'medium' | 'weak' | 'missing' | 'not-needed';
+
+export interface DefectProofDimension {
+  strength: DefectProofStrength;
+  reason: string;
+  evidenceRefs: string[];
+}
+
+export interface DefectProofItem {
+  id: string;
+  rootCauseGroupId: string;
+  issueIds: string[];
+  title: string;
+  owner: RootCauseGroup['owner'];
+  priority: RootCauseGroup['priority'];
+  status: 'proven' | 'probable' | 'needs-evidence' | 'not-a-defect';
+  confidence: 'high' | 'medium' | 'low';
+  score: number;
+  dimensions: {
+    userImpact: DefectProofDimension;
+    runtimeEvidence: DefectProofDimension;
+    sourceEvidence: DefectProofDimension;
+    requirementEvidence: DefectProofDimension;
+    productScope: DefectProofDimension;
+    reproducibility: DefectProofDimension;
+    ownerFixSurface: DefectProofDimension;
+  };
+  missingEvidence: string[];
+  nextSteps: string[];
+  evidenceRefs: string[];
+}
+
+export interface DefectProofResult {
+  generatedAt: string;
+  status: 'ready' | 'needs-evidence' | 'blocked';
+  summary: string;
+  counts: {
+    total: number;
+    proven: number;
+    probable: number;
+    needsEvidence: number;
+    notDefect: number;
+  };
+  items: DefectProofItem[];
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -1777,6 +1824,8 @@ export interface ArtifactIndex {
   claimGuardLog?: string;
   qaIntake?: string;
   qaIntakeLog?: string;
+  defectProof?: string;
+  defectProofLog?: string;
   downloadDir?: string;
   downloadedFiles?: string[];
   sourceAnalysisLog?: string;
@@ -1927,6 +1976,7 @@ export interface QaResult {
   fixTasks: FixTask[];
   regressionPlan: RegressionPlanResult;
   professionalSummary: ProfessionalSummaryResult;
+  defectProof: DefectProofResult;
   claimGuard: ClaimGuardResult;
   qaIntake: QaIntakeResult;
   qualityGate: QaQualityGate;

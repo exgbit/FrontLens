@@ -16,6 +16,7 @@ export { buildProfessionalSummary } from './summary/professionalSummary.js';
 export { buildScopeReview, createEmptyScopeReview } from './product/scopeReview.js';
 export { buildClaimGuard, createEmptyClaimGuard } from './claims/claimGuard.js';
 export { buildQaIntake, createEmptyQaIntake } from './intake/qaIntake.js';
+export { buildDefectProof, createEmptyDefectProof } from './proof/defectProof.js';
 export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 export { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 export { buildIssueDisposition } from './disposition/issueDisposition.js';

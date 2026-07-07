@@ -28,6 +28,8 @@ const FILE_ARTIFACT_KEYS = [
   'claimGuardLog',
   'qaIntake',
   'qaIntakeLog',
+  'defectProof',
+  'defectProofLog',
   'sourceAnalysisLog',
   'sourceRuntimeLog',
   'sourceHealthLog',

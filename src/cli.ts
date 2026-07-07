@@ -1087,6 +1087,11 @@ async function main(): Promise<void> {
             summary: result.qaIntake.summary,
             topQuestions: result.qaIntake.topQuestions.map((item) => ({ id: item.id, priority: item.priority, category: item.category, question: item.question }))
           },
+          defectProof: {
+            status: result.defectProof.status,
+            counts: result.defectProof.counts,
+            summary: result.defectProof.summary
+          },
           testData: {
             status: result.testData.status,
             environment: result.testData.environment,
@@ -1143,6 +1148,7 @@ async function main(): Promise<void> {
     console.log(`Scope Review: ${result.scopeReview.status}, questions ${result.scopeReview.questions.length}`);
     console.log(`Claim Guard: ${result.claimGuard.status}, forbidden ${result.claimGuard.forbiddenClaims.length}, required inputs ${result.claimGuard.requiredInputs.length}`);
     console.log(`QA Intake: ${result.qaIntake.status}, questions ${result.qaIntake.questions.length}, top ${result.qaIntake.topQuestions.length}`);
+    console.log(`Defect Proof: ${result.defectProof.status}, proven ${result.defectProof.counts.proven}, needs-evidence ${result.defectProof.counts.needsEvidence}`);
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
     console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
@@ -1159,6 +1165,7 @@ async function main(): Promise<void> {
     console.log(`Scope Review: ${result.artifacts.scopeReview ?? '(disabled)'}`);
     console.log(`Claim Guard: ${result.artifacts.claimGuard ?? '(disabled)'}`);
     console.log(`QA Intake: ${result.artifacts.qaIntake ?? '(disabled)'}`);
+    console.log(`Defect Proof: ${result.artifacts.defectProof ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

@@ -372,6 +372,24 @@ ${rows.length ? ['| ID | Priority | Category | Question | Why | How to answer | 
 `;
 }
 
+function formatDefectProof(result: QaResult): string {
+  const proof = result.defectProof;
+  const rows = proof.items.slice(0, 40).map((item) => {
+    const missing = item.missingEvidence.length ? item.missingEvidence.slice(0, 3).join('；') : '-';
+    const next = item.nextSteps.length ? item.nextSteps.slice(0, 3).join('；') : '-';
+    return `| ${markdownEscape(item.id)} | ${markdownEscape(item.rootCauseGroupId)} | ${item.priority} | ${markdownEscape(item.owner)} | ${markdownEscape(item.status)} | ${item.score} | ${markdownEscape(truncateMiddle(item.title, 90))} | ${markdownEscape(truncateMiddle(missing, 140))} | ${markdownEscape(truncateMiddle(next, 140))} |`;
+  });
+  return `## Defect Proof / 缺陷证明强度
+
+- Status：**${proof.status}**
+- Summary：${markdownEscape(proof.summary)}
+- Counts：proven ${proof.counts.proven} / probable ${proof.counts.probable} / needs-evidence ${proof.counts.needsEvidence} / not-defect ${proof.counts.notDefect}
+- Notes：${proof.notes.length ? markdownEscape(proof.notes.join('；')) : '-'}
+
+${rows.length ? ['| ID | Root cause | Priority | Owner | Proof status | Score | Title | Missing / weak evidence | Next step |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '当前没有 rootCauseGroups 需要证明。'}
+`;
+}
+
 function formatTestDataAssessment(result: QaResult): string {
   const testData = result.testData;
   const rows = testData.findings.slice(0, 30).map((finding) => `| ${markdownEscape(finding.id)} | ${finding.severity} | ${finding.category} | ${markdownEscape(finding.recordId ?? '-')} | ${markdownEscape(finding.operationId ?? '-')} | ${markdownEscape(finding.message)} |`);
@@ -1001,6 +1019,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Professional summary：${markdownEscape(result.professionalSummary.headline)}
 - Claim guard：**${result.claimGuard.status}** / forbidden claims ${result.claimGuard.forbiddenClaims.length}
 - QA intake：**${result.qaIntake.status}** / questions ${result.qaIntake.questions.length}（top ${result.qaIntake.topQuestions.length}）
+- Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
 - Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
 - Actionable root causes：${actionableGroups.length}（P0/P1 ${blockerGroups.length}）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
@@ -1016,6 +1035,14 @@ export function formatProfessionalReview(result: QaResult): string {
 ## 核心缺陷 / 修复根因
 
 ${rootRows.length ? ['| Priority | Severity | Owner | Root cause | Raw issues | Evidence | Fix |', '| --- | --- | --- | --- | --- | --- | --- |', ...rootRows, ''].join('\n') : '当前证据未归并出可执行根因。'}
+
+## 缺陷证明强度
+
+- Defect proof：**${result.defectProof.status}**
+- Artifact：${artifactPath(result.artifacts.defectProof)}
+- Rule：must-fix 缺陷需要用户影响、运行时证据、源码/owner 修复面、复现步骤，以及必要的需求/产品范围上下文。
+
+${result.defectProof.items.length ? ['| Root cause | Proof | Score | Missing / weak evidence | Next step |', '| --- | --- | --- | --- | --- |', ...result.defectProof.items.slice(0, 8).map((item) => `| ${markdownEscape(item.rootCauseGroupId)} | ${markdownEscape(item.status)} | ${item.score} | ${markdownEscape(truncateMiddle(item.missingEvidence.slice(0, 2).join('；') || '-', 140))} | ${markdownEscape(truncateMiddle(item.nextSteps.slice(0, 2).join('；') || '-', 140))} |`), ''].join('\n') : '当前没有 root cause 需要缺陷证明。'}
 
 ## 非缺陷与降噪
 
@@ -1076,12 +1103,14 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
   const qaIntakePath = path.join(result.artifacts.outputDir, 'qa-intake.md');
+  const defectProofPath = path.join(result.artifacts.outputDir, 'defect-proof.md');
   result.artifacts.markdownReport = outputPath;
   result.artifacts.evidenceReport = evidencePath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
   result.artifacts.qaIntake = qaIntakePath;
+  result.artifacts.defectProof = defectProofPath;
 
   const dispositionByIssue = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
   const isReportActionable = (issue: Issue): boolean => dispositionByIssue.get(issue.id)?.actionability === 'actionable' || (!dispositionByIssue.has(issue.id) && isActionableIssue(issue));
@@ -1115,6 +1144,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Professional Summary：${result.professionalSummary.status} / must-fix ${result.professionalSummary.mustFix.length} / non-defect ${result.professionalSummary.nonDefectObservations.length}
 - Claim Guard：${result.claimGuard.status} / forbidden ${result.claimGuard.forbiddenClaims.length}
 - QA Intake：${result.qaIntake.status} / questions ${result.qaIntake.questions.length} / top ${result.qaIntake.topQuestions.length}
+- Defect Proof：${result.defectProof.status} / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
 - QA Sign-off：${result.qaSignoff.status} / ${result.qaSignoff.confidence} / ${result.qaSignoff.businessValidationConfidence}
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
@@ -1142,6 +1172,8 @@ ${formatScopeReview(result)}
 ${formatClaimGuard(result)}
 
 ${formatQaIntake(result)}
+
+${formatDefectProof(result)}
 
 ${formatTestDataAssessment(result)}
 
@@ -1255,4 +1287,5 @@ ${formatArtifacts(result)}
   await writeText(scopeReviewPath, formatScopeReview(result));
   await writeText(claimGuardPath, formatClaimGuard(result));
   await writeText(qaIntakePath, formatQaIntake(result));
+  await writeText(defectProofPath, formatDefectProof(result));
 }

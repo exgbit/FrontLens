@@ -1,5 +1,6 @@
 import type { ProfessionalSummaryItem, QaResult, RootCauseGroup } from '../types.js';
 import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
+import { runProfessionalAudit } from '../audit/professionalAudit.js';
 
 function markdownEscape(value: unknown): string {
   return String(value ?? '')
@@ -38,6 +39,7 @@ function artifactPath(result: QaResult, key: keyof QaResult['artifacts']): strin
 
 export function formatProfessionalBrief(result: QaResult): string {
   const proofReadyGroups = proofReadyRootCauseGroups(result.rootCauseGroups, result.defectProof);
+  const professionalAudit = runProfessionalAudit(result);
   const mustFix = result.professionalSummary.mustFix.slice(0, 5);
   const shouldFix = result.professionalSummary.shouldFix.slice(0, Math.max(0, 5 - mustFix.length));
   const fixItems = [...mustFix, ...shouldFix];
@@ -60,6 +62,10 @@ export function formatProfessionalBrief(result: QaResult): string {
     .filter((item) => item.status === 'needs-evidence')
     .slice(0, 5)
     .map((item) => `- ${item.rootCauseGroupId}: ${markdownEscape(truncate(item.missingEvidence.slice(0, 2).join('；') || item.title, 160))}`);
+  const auditGaps = professionalAudit.findings
+    .filter((item) => item.severity === 'blocker' || item.severity === 'warning')
+    .slice(0, 5)
+    .map((item) => `- audit/${item.severity}/${item.category}: ${markdownEscape(truncate(item.title, 150))}`);
   const forbidden = result.claimGuard.forbiddenClaims.slice(0, 5).map((item) => `- ${markdownEscape(item)}`);
 
   const suggestedFixQueue = summaryFixRows.length && rootRows.length === 0
@@ -75,6 +81,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Raw score: **${result.summary.score}/100**（scanner trend only; raw issues ${result.summary.issueCount}）
 - Proof-ready root causes: **${result.professionalSummary.counts.proofReadyRootCauseCount}** / actionable ${result.professionalSummary.counts.actionableRootCauseCount}
 - Must-fix / should-fix: **${result.professionalSummary.mustFix.length} / ${result.professionalSummary.shouldFix.length}**
+- Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）
 - Claim guard: **${result.claimGuard.status}**；QA intake: **${result.qaIntake.status}**；Defect proof: **${result.defectProof.status}**
 
 ## Core fixes
@@ -88,7 +95,7 @@ ${nonDefectTable.length ? ['| Bucket | Count | Decision |', '| --- | --- | --- |
 
 ## Evidence gaps / questions
 
-${topQuestions.length || proofGaps.length ? [...topQuestions, ...proofGaps].join('\n') : '当前没有必须追问的专业 QA 输入；仍需按报告范围解读。'}
+${topQuestions.length || proofGaps.length || auditGaps.length ? [...auditGaps, ...topQuestions, ...proofGaps].join('\n') : '当前没有必须追问的专业 QA 输入；仍需按报告范围解读。'}
 
 ## Claim guard
 

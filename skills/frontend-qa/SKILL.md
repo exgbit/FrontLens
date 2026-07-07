@@ -95,7 +95,7 @@ Use the default QA command from the workflow for normal runs. Read `references/c
 
 ## Output Contract for Other Skills
 
-Read `references/result-schema.md` before consuming `result.json`, filtering issues, or driving code/backend fixes. Prioritize `professionalSummary`, `claimGuard`, `qaIntake`, `defectProof`, `qaSignoff`, `issueDisposition`, `rootCauseGroups`, `regressionPlan`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `environment`, and `artifactIntegrity` over raw issue count. Read `references/ci-mcp.md` for GitHub Action, CI, or MCP integration and `references/commands.md` for stable result-consumption commands.
+Read `references/result-schema.md` before consuming `result.json`, filtering issues, or driving code/backend fixes. Prioritize `professional-audit.md` / `professionalAudit`, `professionalSummary`, `claimGuard`, `qaIntake`, `defectProof`, `qaSignoff`, `issueDisposition`, `rootCauseGroups`, `regressionPlan`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `environment`, and `artifactIntegrity` over raw issue count. Read `references/ci-mcp.md` for GitHub Action, CI, or MCP integration and `references/commands.md` for stable result-consumption commands.
 
 ## Reporting Back
 

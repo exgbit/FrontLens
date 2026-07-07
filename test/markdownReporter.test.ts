@@ -55,6 +55,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(brief, /FrontLens QA Brief/);
   assert.match(audit, /FrontLens Professional Audit/);
   assert.match(brief, /Core fixes/);
+  assert.match(brief, /Professional audit:/);
   assert.match(brief, /professional-audit\.md/);
   assert.match(report, /核心缺陷 \/ 修复根因/);
   assert.match(report, /Professional audit/);

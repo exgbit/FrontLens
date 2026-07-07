@@ -111,3 +111,22 @@ test('professional brief highlights source-bound proof-ready root causes', () =>
   assert.match(brief, /source:src\/api\/credentials\.ts:8, src\/views\/CredentialsView\.vue:55/);
   assert.match(brief, /Render error state and retry button/);
 });
+
+test('professional brief surfaces failed report-contract audit before trusting sign-off', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/admin', title: 'Admin', testedAt: '2026-07-07T00:00:00.000Z', browser: 'chromium' },
+    pageModel: { url: 'https://example.com/admin', title: 'Admin', stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: 'Admin' } }
+  });
+  result.qaSignoff.businessValidationConfidence = 'runtime-verified';
+  result.qaSignoff.scope.providedRequirementCount = 0;
+  result.qaSignoff.scope.assertionStepCount = 0;
+  result.qaSignoff.scope.passedAssertionStepCount = 0;
+  result.claimGuard.items = result.claimGuard.items.map((item) => item.claim === 'business-validation' ? { ...item, status: 'limited' } : item);
+  result.claimGuard.status = 'limited';
+
+  const brief = formatProfessionalBrief(result);
+
+  assert.match(brief, /Professional audit: \*\*failed\*\*/);
+  assert.match(brief, /audit\/blocker\/overclaim/);
+  assert.match(brief, /runtime-verified without provided requirements/);
+});

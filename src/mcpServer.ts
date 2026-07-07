@@ -112,7 +112,7 @@ function listTools(): Record<string, unknown> {
             trace: { type: 'boolean' },
             video: { type: 'boolean' },
             screenshot: { type: 'boolean' },
-            reportProfile: { type: 'string', enum: ['executive', 'professional', 'full'], description: 'Primary report.md depth. Default: professional.' },
+            reportProfile: { type: 'string', enum: ['executive', 'professional', 'full'], description: 'Primary report.md depth. Default: executive.' },
             simulateExceptions: { type: 'boolean', description: 'Enable or disable exception simulations. Default: enabled.' },
             ai: { type: 'boolean', description: 'Enable or disable heuristic AI analysis. Default: enabled.' },
             coverage: { type: 'boolean' },

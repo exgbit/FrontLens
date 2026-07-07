@@ -91,6 +91,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Test case matrix: **${result.testCases.status}** / confidence **${result.testCases.confidence}**（total ${result.testCases.summary.totalCount}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}）
 - Risk register: **${result.riskRegister.status}**（total ${result.riskRegister.summary.totalCount}, release-blocking ${result.riskRegister.summary.releaseBlockingCount}）
 - Risk acceptance: **${result.riskAcceptance.status}**（must-mitigate ${result.riskAcceptance.summary.mustMitigateCount}, needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}）
+- Artifact integrity: **${result.artifactIntegrity.status}**（missing ${result.artifactIntegrity.missingCount}）
 
 ## Core fixes
 

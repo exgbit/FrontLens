@@ -2257,7 +2257,7 @@ export interface ArtifactIntegrityResult {
 export interface ArtifactIndex {
   [key: string]: unknown;
   outputDir: string;
-  /** Concise professional report intended as the default human-facing Markdown. */
+  /** Default executive decision brief for human-facing Markdown; use professional/full profiles for more depth. */
   markdownReport?: string;
   /** Full raw evidence appendix for drill-down; not the default work queue. */
   evidenceReport?: string;

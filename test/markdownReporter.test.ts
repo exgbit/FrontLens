@@ -18,6 +18,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
       browser: 'chromium',
       viewport: { width: 1440, height: 900 }
     },
+    metadata: { config: { report: { profile: 'professional' } } },
     artifacts: { outputDir },
     pageModel: {
       url: 'https://example.com/credentials',
@@ -216,7 +217,7 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.riskAcceptanceLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.evidenceReport' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.htmlReport' && entry.exists), true);
-  assert.match(report, /Artifact integrity：passed（missing 0）/);
+  assert.match(report, /Artifact integrity: \*\*passed\*\*（missing 0）/);
   assert.match(evidence, /- Artifact Integrity：passed（missing 0）/);
   assert.match(html, /<span>Artifacts<\/span><strong>passed<\/strong>/);
 });
@@ -265,7 +266,7 @@ test('markdown reporter annotates missing local artifact references inline', asy
 
   assert.equal(result.artifactIntegrity.status, 'failed');
   assert.equal(result.artifactIntegrity.missing.some((entry) => entry.source === 'issues.ISSUE-001.evidence.screenshot'), true);
-  assert.match(report, /Artifact integrity：failed（missing 1）/);
+  assert.match(report, /Artifact integrity: \*\*failed\*\*（missing 1）/);
   assert.match(evidence, /screenshots\/missing\.png \(missing artifact\)/);
 });
 

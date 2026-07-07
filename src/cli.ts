@@ -69,7 +69,7 @@ Options:
   --source-script-timeout-ms <ms>
                               Timeout per source script. Default: 120000.
   --output <dir>              Output report directory.
-  --report-profile <profile>  Primary report.md depth: executive | professional | full. Default: professional.
+  --report-profile <profile>  Primary report.md depth: executive | professional | full. Default: executive.
   --name <name>               Journey name for journey record.
   --browser <name>            chromium | firefox | webkit. Default: chromium.
   --headed                    Run headed browser.

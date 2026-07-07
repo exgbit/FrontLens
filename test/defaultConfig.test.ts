@@ -36,7 +36,7 @@ test('default config enables complete non-destructive QA capabilities', () => {
   assert.equal(config.source.runScripts, false);
   assert.deepEqual(config.source.scriptNames, ['typecheck', 'lint']);
   assert.equal(config.source.scriptTimeoutMs, 120_000);
-  assert.equal(config.report.profile, 'professional');
+  assert.equal(config.report.profile, 'executive');
 
   assert.equal(config.safety.blockMutatingRequests, true);
   assert.equal(config.safety.allowCreate, false);

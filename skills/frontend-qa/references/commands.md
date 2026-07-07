@@ -371,4 +371,4 @@ node dist/cli.js suggestions --report "reports/frontlens/users/result.json"
 
 `--severity high` returns high and above (`critical` + `high`), not only exact high.
 
-Report depth: pass `--report-profile executive|professional|full` or set `report.profile` in config. Default `professional` keeps `report.md` decision-oriented; `executive` makes the primary report shortest; `full` appends the evidence appendix into `report.md`. `evidence-report.md` is always written.
+Report depth: pass `--report-profile executive|professional|full` or set `report.profile` in config. Default `executive` keeps `report.md` as the shortest decision brief; use `professional` for a fuller QA-lead review; `full` appends the evidence appendix into `report.md`. `evidence-report.md` is always written.

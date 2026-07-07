@@ -534,15 +534,16 @@ function formatInteractionTests(result: QaResult): string {
   const rows = result.interactionTests.map((test) => {
     const network = test.observations.networkRequestIds?.join(', ') || '-';
     const consoleIds = test.observations.consoleIds?.join(', ') || '-';
-    return `| ${test.id} | ${test.kind} | ${test.status} | ${markdownEscape(test.target)} | ${markdownEscape(test.issue ?? '-')} | ${markdownEscape(network)} | ${markdownEscape(consoleIds)} |`;
+    const download = test.observations.downloadPath ? `\`${reportPath(result, test.observations.downloadPath)}\` (${test.observations.downloadSizeBytes ?? 0} bytes)` : '-';
+    return `| ${test.id} | ${test.kind} | ${test.status} | ${markdownEscape(test.target)} | ${markdownEscape(test.issue ?? '-')} | ${markdownEscape(network)} | ${markdownEscape(consoleIds)} | ${markdownEscape(download)} |`;
   });
 
   return `## 三、安全交互测试
 
 默认尽量只执行非破坏性交互：搜索、筛选重置、分页、查看/详情、刷新等。上传、下载/导出、创建、编辑、删除、真实提交需通过 safety 配置显式开启；本节按实际执行动作列出证据。
 
-| ID | 类型 | 状态 | 目标 | 观察/问题 | 新请求 | 新 Console |
-| --- | --- | --- | --- | --- | --- | --- |
+| ID | 类型 | 状态 | 目标 | 观察/问题 | 新请求 | 新 Console | 下载文件 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 ${rows.join('\n')}
 `;
 }

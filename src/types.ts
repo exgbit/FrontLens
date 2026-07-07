@@ -690,6 +690,9 @@ export interface InteractionTestResult {
     pageErrorIds?: string[];
     dialogDetected?: boolean;
     downloadSuggestedFilename?: string;
+    downloadPath?: string;
+    downloadSizeBytes?: number;
+    downloadSha256?: string;
     downloadFailure?: string | null;
     valueChanged?: boolean;
     urlChanged?: boolean;
@@ -720,6 +723,11 @@ export interface JourneyStepResult {
   networkRequestIds?: string[];
   consoleIds?: string[];
   pageErrorIds?: string[];
+  downloadSuggestedFilename?: string;
+  downloadPath?: string;
+  downloadSizeBytes?: number;
+  downloadSha256?: string;
+  downloadFailure?: string | null;
 }
 
 export interface JourneyTestResult {
@@ -1542,6 +1550,8 @@ export interface ArtifactIndex {
   apiContractLog?: string;
   p2Log?: string;
   testDataLog?: string;
+  downloadDir?: string;
+  downloadedFiles?: string[];
   sourceAnalysisLog?: string;
   sourceRuntimeLog?: string;
   sourceHealthLog?: string;

@@ -451,6 +451,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     interactionTests = await safePhase('interactions.run', phaseErrors, [], () =>
       new SafeInteractionTester({
         config,
+        artifacts,
         getNetworkRecords: () => networkCollector.list(),
         getConsoleRecords: () => consoleCollector.getMessages(),
         getPageErrors: () => consoleCollector.getPageErrors()
@@ -476,6 +477,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     journeyTests = await safePhase('journeys.run', phaseErrors, [], () =>
       new JourneyTester({
         config,
+        artifacts,
         getNetworkRecords: () => networkCollector.list(),
         getConsoleRecords: () => consoleCollector.getMessages(),
         getPageErrors: () => consoleCollector.getPageErrors()

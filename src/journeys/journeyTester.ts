@@ -1,11 +1,14 @@
+import path from 'node:path';
 import type { BrowserContext, Locator, Page } from 'playwright';
-import type { ConsoleRecord, FrontLensConfig, JourneyStepConfig, JourneyStepResult, JourneyTestResult, PageErrorRecord } from '../types.js';
+import type { ArtifactIndex, ConsoleRecord, FrontLensConfig, JourneyStepConfig, JourneyStepResult, JourneyTestResult, PageErrorRecord } from '../types.js';
 import { createId } from '../utils/id.js';
 import { redactText, redactUrl } from '../utils/redact.js';
 import { isActionableConsoleError } from '../utils/console.js';
+import { saveDownloadArtifact } from '../downloads/downloadArtifact.js';
 
 interface JourneyTesterDeps {
   config: FrontLensConfig;
+  artifacts: ArtifactIndex;
   getNetworkRecords: () => Array<{ id: string; startedAt: string }>;
   getConsoleRecords: () => ConsoleRecord[];
   getPageErrors: () => PageErrorRecord[];
@@ -25,6 +28,11 @@ function isUnsafeStep(step: JourneyStepConfig): boolean {
   if (step.allowMutating) return false;
   if (step.action !== 'click' && step.action !== 'press') return false;
   return /(delete|remove|destroy|submit|save|create|update|upload|confirm|删除|移除|提交|保存|新增|创建|上传|确认)/i.test(`${step.target ?? ''} ${step.value ?? ''} ${step.description ?? ''}`);
+}
+
+function isDownloadStep(step: JourneyStepConfig): boolean {
+  if (step.action !== 'click' && step.action !== 'press') return false;
+  return /导出|下载|download|export/i.test(`${step.target ?? ''} ${step.value ?? ''} ${step.description ?? ''}`);
 }
 
 async function targetLocator(page: Page, target?: string): Promise<Locator> {
@@ -52,6 +60,9 @@ async function runStep(page: Page, step: JourneyStepConfig, config: FrontLensCon
   const timeout = step.timeoutMs ?? Math.min(config.browser.timeoutMs, 10_000);
   if (isUnsafeStep(step) && config.safety.blockMutatingRequests) {
     throw new Error(`Unsafe journey step skipped by default safety policy: ${step.action} ${step.target ?? ''}`);
+  }
+  if (isDownloadStep(step) && !config.safety.allowDownload) {
+    throw new Error(`Download journey step skipped by default safety policy: ${step.action} ${step.target ?? ''}`);
   }
   switch (step.action) {
     case 'goto': {
@@ -124,17 +135,33 @@ export class JourneyTester {
           const beforeErrors = new Set(this.deps.getPageErrors().map((record) => record.id));
           const stepStartedAt = now();
           try {
+            const expectDownload = isDownloadStep(step) && config.safety.allowDownload;
+            const downloadPromise = expectDownload ? page.waitForEvent('download', { timeout: 4_000 }).catch(() => null) : undefined;
             await runStep(page, step, config);
+            const download = downloadPromise ? await downloadPromise : null;
             const networkRequestIds = idsAfter(this.deps.getNetworkRecords(), beforeNetwork);
             const consoleIds = this.deps.getConsoleRecords().filter((record) => !beforeConsole.has(record.id) && isActionableConsoleError(record)).map((record) => record.id);
             const pageErrorIds = idsAfter(this.deps.getPageErrors(), beforeErrors);
-            const stepStatus: JourneyStepResult['status'] = pageErrorIds.length > 0 ? 'failed' : consoleIds.length > 0 ? 'warning' : 'passed';
+            const downloadFailure = download ? await download.failure().catch(() => null) : null;
+            const savedDownload = download && !downloadFailure
+              ? await saveDownloadArtifact(download, this.deps.artifacts.outputDir, `JOURNEY-${index + 1}-STEP-${stepIndex + 1}`).catch((error: unknown) => ({
+                  failure: error instanceof Error ? error.message : String(error)
+                }))
+              : undefined;
+            if (savedDownload && 'path' in savedDownload) {
+              this.deps.artifacts.downloadDir = path.dirname(savedDownload.path);
+              this.deps.artifacts.downloadedFiles = [...(this.deps.artifacts.downloadedFiles ?? []), savedDownload.path];
+            }
+            const downloadSaveFailure = savedDownload && 'failure' in savedDownload ? savedDownload.failure : undefined;
+            const emptyDownload = Boolean(savedDownload && 'path' in savedDownload && savedDownload.sizeBytes === 0);
+            const downloadMissing = expectDownload && !savedDownload;
+            const stepStatus: JourneyStepResult['status'] = pageErrorIds.length > 0 || downloadFailure || downloadSaveFailure || emptyDownload ? 'failed' : consoleIds.length > 0 || downloadMissing ? 'warning' : 'passed';
             if (stepStatus === 'failed') {
               status = 'failed';
-              issue = '用户旅程步骤触发页面运行时错误。';
+              issue = downloadFailure ? `用户旅程下载失败：${downloadFailure}` : downloadSaveFailure ? `用户旅程下载文件保存失败：${downloadSaveFailure}` : emptyDownload ? '用户旅程下载文件为空。' : '用户旅程步骤触发页面运行时错误。';
             } else if (stepStatus === 'warning' && status === 'passed') {
               status = 'warning';
-              issue = '用户旅程步骤触发可处理的 Console Error。';
+              issue = downloadMissing ? '用户旅程预期下载/导出，但未保存到可校验的下载文件。' : '用户旅程步骤触发可处理的 Console Error。';
             }
             stepResults.push({
               index: stepIndex,
@@ -147,11 +174,16 @@ export class JourneyTester {
               durationMs: Date.now() - new Date(stepStartedAt).getTime(),
               networkRequestIds,
               consoleIds,
-              pageErrorIds
+              pageErrorIds,
+              downloadSuggestedFilename: download?.suggestedFilename(),
+              downloadPath: savedDownload && 'path' in savedDownload ? savedDownload.path : undefined,
+              downloadSizeBytes: savedDownload && 'path' in savedDownload ? savedDownload.sizeBytes : undefined,
+              downloadSha256: savedDownload && 'path' in savedDownload ? savedDownload.sha256 : undefined,
+              downloadFailure
             });
           } catch (error) {
             const message = redactText(error instanceof Error ? error.message : String(error));
-            const skippedBySafety = /^Unsafe journey step skipped by default safety policy/i.test(message);
+            const skippedBySafety = /^(Unsafe|Download) journey step skipped by default safety policy/i.test(message);
             if (skippedBySafety && status === 'passed') {
               status = 'skipped';
             } else if (!skippedBySafety) {

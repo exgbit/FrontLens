@@ -64,13 +64,17 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
 
   const interactionRows = result.interactionTests
     .map(
-      (test) => `<tr>
+      (test) => {
+        const download = test.observations.downloadPath ? `<a href="${escapeHtml(path.relative(result.artifacts.outputDir, test.observations.downloadPath))}">${escapeHtml(test.observations.downloadSuggestedFilename ?? 'download')}</a> (${test.observations.downloadSizeBytes ?? 0} bytes)` : '-';
+        return `<tr>
         <td>${escapeHtml(test.id)}</td>
         <td>${escapeHtml(test.kind)}</td>
         <td>${escapeHtml(test.status)}</td>
         <td>${escapeHtml(test.target)}</td>
         <td>${escapeHtml(test.issue ?? '-')}</td>
-      </tr>`
+        <td>${download}</td>
+      </tr>`;
+      }
     )
     .join('\n');
 
@@ -539,8 +543,8 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
       <section>
         <h2>安全交互测试</h2>
         <table>
-          <thead><tr><th>ID</th><th>Kind</th><th>Status</th><th>Target</th><th>Issue</th></tr></thead>
-          <tbody>${interactionRows || '<tr><td colspan="5">No interaction tests</td></tr>'}</tbody>
+          <thead><tr><th>ID</th><th>Kind</th><th>Status</th><th>Target</th><th>Issue</th><th>Download</th></tr></thead>
+          <tbody>${interactionRows || '<tr><td colspan="6">No interaction tests</td></tr>'}</tbody>
         </table>
       </section>
 

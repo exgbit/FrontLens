@@ -2,6 +2,7 @@ import { unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Page } from 'playwright';
 import type {
+  ArtifactIndex,
   ComponentRecord,
   ConsoleRecord,
   FrontLensConfig,
@@ -13,9 +14,11 @@ import type {
 } from '../types.js';
 import { compactText } from '../utils/text.js';
 import { isActionableConsoleError } from '../utils/console.js';
+import { saveDownloadArtifact } from '../downloads/downloadArtifact.js';
 
 interface SafeInteractionTesterOptions {
   config: FrontLensConfig;
+  artifacts: ArtifactIndex;
   getNetworkRecords: () => NetworkRecord[];
   getConsoleRecords: () => ConsoleRecord[];
   getPageErrors: () => PageErrorRecord[];
@@ -1084,28 +1087,47 @@ export class SafeInteractionTester {
       const consoleIds = newConsoleErrorIds(this.options.getConsoleRecords(), before.consoleIds);
       const pageErrorIds = newIds(this.options.getPageErrors(), before.pageErrorIds);
       const failure = download ? await download.failure().catch(() => null) : null;
-      const hasDownload = Boolean(download && !failure);
+      const savedDownload = download && !failure
+        ? await saveDownloadArtifact(download, this.options.artifacts.outputDir, `IT-${String(this.counter + 1).padStart(3, '0')}`).catch((error: unknown) => ({
+            failure: error instanceof Error ? error.message : String(error)
+          }))
+        : undefined;
+      if (savedDownload && 'path' in savedDownload) {
+        this.options.artifacts.downloadDir = path.dirname(savedDownload.path);
+        this.options.artifacts.downloadedFiles = [...(this.options.artifacts.downloadedFiles ?? []), savedDownload.path];
+      }
+      const downloadSaveFailure = savedDownload && 'failure' in savedDownload ? savedDownload.failure : undefined;
+      const hasDownload = Boolean(download && !failure && savedDownload && 'path' in savedDownload && savedDownload.sizeBytes > 0);
       const hasNetwork = networkIds.length > 0;
+      const emptyDownload = Boolean(savedDownload && 'path' in savedDownload && savedDownload.sizeBytes === 0);
+      const issue =
+        consoleIds.length > 0 || pageErrorIds.length > 0
+          ? '点击下载/导出后出现新的 Console/Page Error。'
+          : failure
+            ? `下载失败：${failure}`
+            : downloadSaveFailure
+              ? `下载文件保存失败：${downloadSaveFailure}`
+              : emptyDownload
+                ? '下载文件为空。'
+                : hasDownload
+                  ? undefined
+                  : hasNetwork
+                    ? '点击下载/导出后仅观察到网络请求，未保存到可校验的下载文件。'
+                    : '点击下载/导出后未观察到 download 事件或新的网络请求。';
+      const status: InteractionTestResult['status'] = consoleIds.length > 0 || pageErrorIds.length > 0 || failure || downloadSaveFailure || emptyDownload ? 'failed' : hasDownload ? 'passed' : 'warning';
 
       return [
         this.createResult({
           kind: 'download',
           target: labelOf(button),
           selector: button.selector,
-          status: consoleIds.length > 0 || pageErrorIds.length > 0 || failure ? 'failed' : hasDownload || hasNetwork ? 'passed' : 'warning',
+          status,
           startedAt,
           actions,
           before,
-          issue:
-            consoleIds.length > 0 || pageErrorIds.length > 0
-              ? '点击下载/导出后出现新的 Console/Page Error。'
-              : failure
-                ? `下载失败：${failure}`
-                : hasDownload || hasNetwork
-                  ? undefined
-                  : '点击下载/导出后未观察到 download 事件或新的网络请求。',
+          issue,
           suggestion:
-            !failure && (hasDownload || hasNetwork)
+            !failure && hasDownload
               ? undefined
               : {
                   frontend: '检查下载按钮是否正确绑定导出逻辑，并在导出中/失败时给出提示。',
@@ -1117,6 +1139,9 @@ export class SafeInteractionTester {
             consoleIds,
             pageErrorIds,
             downloadSuggestedFilename: download?.suggestedFilename(),
+            downloadPath: savedDownload && 'path' in savedDownload ? savedDownload.path : undefined,
+            downloadSizeBytes: savedDownload && 'path' in savedDownload ? savedDownload.sizeBytes : undefined,
+            downloadSha256: savedDownload && 'path' in savedDownload ? savedDownload.sha256 : undefined,
             downloadFailure: failure
           }
         })

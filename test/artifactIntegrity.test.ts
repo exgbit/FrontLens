@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { normalizeResult } from '../src/resultNormalizer.ts';
@@ -92,4 +92,32 @@ test('artifact integrity tracks generated JSON sidecars before report writing', 
   assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.sourceAnalysisLog'), true);
   assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.sourceRuntimeLog'), true);
   assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.sourceHealthLog'), true);
+});
+
+test('artifact integrity verifies downloaded files referenced by interaction observations', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-artifacts-downloads-'));
+  const downloadPath = path.join(dir, 'downloads', 'export.csv');
+  await mkdir(path.dirname(downloadPath), { recursive: true });
+  await writeFile(downloadPath, 'id,name\n1,Alice\n', 'utf8');
+  const result = normalizeResult({
+    summary: { url: 'https://example.com', title: 'Example' },
+    artifacts: { outputDir: dir, downloadDir: path.dirname(downloadPath), downloadedFiles: [downloadPath] },
+    pageModel: { url: 'https://example.com', title: 'Example', stats: { domNodes: 10, visibleTextLength: 20, bodyTextSample: 'ok' } },
+    interactionTests: [
+      {
+        id: 'IT-001',
+        kind: 'download',
+        target: 'Export',
+        status: 'passed',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 0,
+        actions: [],
+        observations: { downloadPath, downloadSizeBytes: 16 }
+      }
+    ]
+  });
+  const integrity = await buildArtifactIntegrity(result);
+  assert.equal(integrity.entries.some((entry) => entry.source === 'interactionTests[0].observations.downloadPath' && entry.exists), true);
+  assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.downloadedFiles[0]' && entry.exists), true);
 });

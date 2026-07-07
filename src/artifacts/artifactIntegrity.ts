@@ -116,11 +116,15 @@ export async function buildArtifactIntegrity(result: QaResult): Promise<Artifact
 
   pushDirectory(candidates, 'artifacts.outputDir', outputDir, outputDir, true);
   pushDirectory(candidates, 'artifacts.videoDir', result.artifacts.videoDir, outputDir, Boolean(result.metadata.config.report.video || (result.artifacts.videoFiles?.length ?? 0) > 0));
+  pushDirectory(candidates, 'artifacts.downloadDir', result.artifacts.downloadDir, outputDir, (result.artifacts.downloadedFiles?.length ?? 0) > 0);
   for (const key of FILE_ARTIFACT_KEYS) {
     pushFile(candidates, `artifacts.${key}`, result.artifacts[key], outputDir, { expected: true });
   }
   for (const [index, file] of (result.artifacts.videoFiles ?? []).entries()) {
     pushFile(candidates, `artifacts.videoFiles[${index}]`, file, outputDir, { expected: true });
+  }
+  for (const [index, file] of (result.artifacts.downloadedFiles ?? []).entries()) {
+    pushFile(candidates, `artifacts.downloadedFiles[${index}]`, file, outputDir, { expected: true });
   }
 
   for (const issue of result.issues) {
@@ -129,6 +133,14 @@ export async function buildArtifactIntegrity(result: QaResult): Promise<Artifact
   }
   for (const [index, check] of result.responsiveChecks.entries()) {
     pushFile(candidates, `responsiveChecks[${index}].screenshot`, check.screenshot, outputDir, { expected: true });
+  }
+  for (const [index, test] of result.interactionTests.entries()) {
+    pushFile(candidates, `interactionTests[${index}].observations.downloadPath`, test.observations.downloadPath, outputDir, { expected: Boolean(test.observations.downloadPath) });
+  }
+  for (const [journeyIndex, journey] of result.journeyTests.entries()) {
+    for (const [stepIndex, step] of journey.steps.entries()) {
+      pushFile(candidates, `journeyTests[${journeyIndex}].steps[${stepIndex}].downloadPath`, step.downloadPath, outputDir, { expected: Boolean(step.downloadPath) });
+    }
   }
   pushFile(candidates, 'p2.visual.currentScreenshot', result.p2.visual.currentScreenshot, outputDir, { expected: true });
   pushFile(candidates, 'p2.visual.baselinePath', result.p2.visual.baselinePath, outputDir, { expected: true });

@@ -164,7 +164,7 @@ If the user selects "all/default", run the full default QA command. If the user 
 
 - Keep default non-destructive behavior.
 - Do not enable create/edit/delete/upload/submit actions unless the user explicitly requests destructive testing.
-- Do not click download/export unless the user explicitly allows it or sets `safety.allowDownload=true`.
+- Do not click download/export unless the user explicitly allows it or sets `safety.allowDownload=true`. When allowed, require a saved `downloadPath`, non-zero size, hash, and passing `artifactIntegrity` before calling export/download runtime-verified.
 - Keep `safety.blockMutatingRequests=true` for production or unknown URLs. If a report shows safety-blocked writes, treat them as evidence of potential side effects, not backend failures.
 - Treat successful `POST`, `PUT`, `PATCH`, or `DELETE` requests during page load as suspicious unless known to be analytics/heartbeat.
 - Keep `security.mode=passive` by default. Enable `security.mode=active` and `security.activeProbing=true` only for explicitly authorized security regression tests.

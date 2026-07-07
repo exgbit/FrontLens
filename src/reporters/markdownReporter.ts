@@ -213,6 +213,40 @@ ${rows.length ? ['| 类型 | 说明 |', '| --- | --- |', ...rows, ''].join('\n')
 `;
 }
 
+function formatSourceAnalysis(result: QaResult): string {
+  const source = result.sourceAnalysis;
+  const findingRows = source.findings.slice(0, 20).map((finding) => {
+    const locations = finding.locations.slice(0, 4).map((location) => `${location.file}:${location.line}`).join(', ');
+    return `| ${markdownEscape(finding.id)} | ${markdownEscape(finding.kind)} | ${markdownEscape(finding.severity)} | ${markdownEscape(finding.title)} | ${markdownEscape(locations || '-')} |`;
+  });
+  const routeRows = source.routes.slice(0, 20).map((route) => `| ${markdownEscape(route.path ?? '-')} | ${markdownEscape(route.name ?? '-')} | ${route.lazy ? 'lazy' : 'eager/unknown'} | ${markdownEscape(route.file)}:${route.line} |`);
+  const apiRows = source.apiCalls.slice(0, 20).map((api) => `| ${markdownEscape(api.method ?? '-')} | ${markdownEscape(api.path ?? '-')} | ${markdownEscape(api.client ?? '-')} | ${markdownEscape(api.file)}:${api.line} |`);
+  return `## Source Analysis / 源码索引
+
+- Enabled：${source.enabled}
+- Status：${source.status}
+- Root：${source.root ? `\`${markdownEscape(source.root)}\`` : '-'}
+- Scanned files / bytes：${source.scannedFiles} / ${source.scannedBytes}
+- Routes：${source.summary.routeCount}（route files ${source.summary.routeFileCount}，eager imports ${source.summary.eagerRouteImportCount}）
+- Heavy imports：${source.summary.heavyImportCount}
+- API calls：${source.summary.apiCallCount}
+- Error / Empty signals：${source.summary.errorStateSignalCount} / ${source.summary.emptyStateSignalCount}
+- Error：${markdownEscape(source.error ?? '-')}
+
+### 源码发现
+
+${findingRows.length ? ['| ID | Kind | Severity | Title | Locations |', '| --- | --- | --- | --- | --- |', ...findingRows, ''].join('\n') : '未发现源码级风险。'}
+
+### 路由线索
+
+${routeRows.length ? ['| Path | Name | Loading | Location |', '| --- | --- | --- | --- |', ...routeRows, ''].join('\n') : '未识别到路由定义。'}
+
+### API 调用线索
+
+${apiRows.length ? ['| Method | Path | Client | Location |', '| --- | --- | --- | --- |', ...apiRows, ''].join('\n') : '未识别到 API 调用。'}
+`;
+}
+
 function formatRootCauseGroups(result: QaResult): string {
   const groups = result.rootCauseGroups ?? [];
   const rows = groups.slice(0, 50).map((group) => {
@@ -705,6 +739,8 @@ ${formatRootCauseGroups(result)}
 ${formatIssueDisposition(result)}
 
 ${formatRequirementCoverage(result)}
+
+${formatSourceAnalysis(result)}
 
 ## 核心可执行问题列表
 

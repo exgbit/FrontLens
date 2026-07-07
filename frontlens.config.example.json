@@ -180,6 +180,32 @@
     ],
     "adrRefs": []
   },
+  "source": {
+    "enabled": true,
+    "root": "../target-frontend",
+    "maxFiles": 1200,
+    "maxBytesPerFile": 250000,
+    "include": [
+      "src",
+      "app",
+      "pages",
+      "views",
+      "components",
+      "router",
+      "routes"
+    ],
+    "exclude": [
+      "node_modules",
+      "dist",
+      "build",
+      ".git",
+      "coverage",
+      "reports",
+      ".next",
+      ".nuxt",
+      ".output"
+    ]
+  },
   "contract": {
     "enabled": true,
     "inferFromTraffic": true,

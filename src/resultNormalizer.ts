@@ -29,7 +29,7 @@ import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 
-export const RESULT_SCHEMA_VERSION = '1.9.0';
+export const RESULT_SCHEMA_VERSION = '1.10.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -580,6 +580,59 @@ function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): 
   };
 }
 
+function normalizeSourceAnalysis(raw: unknown, config: FrontLensConfig): QaResult['sourceAnalysis'] {
+  const empty = {
+    enabled: config.source.enabled,
+    status: 'skipped' as const,
+    checkedAt: new Date().toISOString(),
+    root: config.source.root,
+    error: config.source.root ? 'Source analysis missing from report.' : 'No source.root/sourceRoot was provided.',
+    scannedFiles: 0,
+    scannedBytes: 0,
+    summary: {
+      routeFileCount: 0,
+      routeCount: 0,
+      eagerRouteImportCount: 0,
+      heavyImportCount: 0,
+      apiCallCount: 0,
+      errorStateSignalCount: 0,
+      emptyStateSignalCount: 0
+    },
+    routeFiles: [],
+    routes: [],
+    imports: [],
+    apiCalls: [],
+    stateSignals: [],
+    findings: []
+  };
+  if (!isRecord(raw)) return empty;
+  const summary = isRecord(raw.summary) ? raw.summary : {};
+  return {
+    enabled: Boolean(raw.enabled),
+    status: raw.status === 'passed' || raw.status === 'failed' || raw.status === 'skipped' ? raw.status : empty.status,
+    checkedAt: asString(raw.checkedAt, empty.checkedAt),
+    root: optionalString(raw.root) ?? empty.root,
+    error: optionalString(raw.error),
+    scannedFiles: asNumber(raw.scannedFiles),
+    scannedBytes: asNumber(raw.scannedBytes),
+    summary: {
+      routeFileCount: asNumber(summary.routeFileCount),
+      routeCount: asNumber(summary.routeCount),
+      eagerRouteImportCount: asNumber(summary.eagerRouteImportCount),
+      heavyImportCount: asNumber(summary.heavyImportCount),
+      apiCallCount: asNumber(summary.apiCallCount),
+      errorStateSignalCount: asNumber(summary.errorStateSignalCount),
+      emptyStateSignalCount: asNumber(summary.emptyStateSignalCount)
+    },
+    routeFiles: asArray<string>(raw.routeFiles).filter((item) => typeof item === 'string'),
+    routes: asArray(raw.routes),
+    imports: asArray(raw.imports),
+    apiCalls: asArray(raw.apiCalls),
+    stateSignals: asArray(raw.stateSignals),
+    findings: asArray(raw.findings)
+  };
+}
+
 export function normalizeResult(raw: unknown): QaResult {
   if (!isRecord(raw)) {
     throw new Error('Invalid FrontLens result: expected a JSON object.');
@@ -681,6 +734,7 @@ export function normalizeResult(raw: unknown): QaResult {
     accessibilityChecks
   });
   const artifactIntegrity = normalizeArtifactIntegrity(raw.artifactIntegrity);
+  const sourceAnalysis = normalizeSourceAnalysis(raw.sourceAnalysis, metadataConfig);
   const rootCauseGroups = buildRootCauseGroups(issues, metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
   const qualityGateFallback = buildQualityGate({
@@ -717,6 +771,7 @@ export function normalizeResult(raw: unknown): QaResult {
     exceptionSimulations,
     security,
     requirementCoverage,
+    sourceAnalysis,
     p2: normalizeP2(raw.p2),
     artifactIntegrity,
     rootCauseGroups,

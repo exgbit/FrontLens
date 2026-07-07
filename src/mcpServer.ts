@@ -92,6 +92,7 @@ function listTools(): Record<string, unknown> {
             config: { type: 'string', description: 'Alias for configPath.' },
             requirementsPath: { type: 'string', description: 'Optional requirements/acceptance criteria JSON path.' },
             requirements: { type: 'string', description: 'Alias for requirementsPath.' },
+            sourceRoot: { type: 'string', description: 'Optional frontend source repository root for static source correlation.' },
             browser: { type: 'string', enum: ['chromium', 'firefox', 'webkit'] },
             headless: { type: 'boolean' },
             storageState: { type: 'string' },
@@ -224,13 +225,14 @@ function requireString(args: Record<string, unknown>, key: string): string {
 async function callTool(params: ToolCallParams): Promise<Record<string, unknown>> {
   switch (params.name) {
     case 'frontlens_qa': {
-      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
+      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
       const url = requireString(args, 'url');
       const input: QaRunInput = {
         url,
         outputDir: typeof args.outputDir === 'string' ? args.outputDir : typeof args.output === 'string' ? args.output : undefined,
         configPath: typeof args.configPath === 'string' ? args.configPath : typeof args.config === 'string' ? args.config : undefined,
         requirementsPath: typeof args.requirementsPath === 'string' ? args.requirementsPath : typeof args.requirements === 'string' ? args.requirements : undefined,
+        sourceRoot: typeof args.sourceRoot === 'string' ? args.sourceRoot : undefined,
         browser: normalizeBrowser(args.browser),
         headless: typeof args.headless === 'boolean' ? args.headless : undefined,
         storageState: typeof args.storageState === 'string' ? args.storageState : undefined,

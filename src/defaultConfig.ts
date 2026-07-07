@@ -71,6 +71,13 @@ export function createDefaultConfig(url = 'about:blank'): FrontLensConfig {
       decisions: [],
       adrRefs: []
     },
+    source: {
+      enabled: true,
+      maxFiles: 1200,
+      maxBytesPerFile: 250_000,
+      include: ['src', 'app', 'pages', 'views', 'components', 'router', 'routes'],
+      exclude: ['node_modules', 'dist', 'build', '.git', 'coverage', 'reports', '.next', '.nuxt', '.output']
+    },
     contract: {
       enabled: true,
       inferFromTraffic: true,

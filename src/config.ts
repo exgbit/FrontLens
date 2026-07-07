@@ -58,6 +58,7 @@ function resolveConfigRelativePaths(config: FrontLensConfig, baseDir: string): v
   config.auth.storageState = resolveRelativePath(config.auth.storageState, baseDir);
   config.auth.sessionStorageState = resolveRelativePath(config.auth.sessionStorageState, baseDir);
   config.contract.schemaPath = resolveRelativePath(config.contract.schemaPath, baseDir);
+  config.source.root = resolveRelativePath(config.source.root, baseDir);
   config.p2.visual.baselineDir = resolveRelativePath(config.p2.visual.baselineDir, baseDir);
   config.productContext.adrRefs = resolveRelativePathArray(config.productContext.adrRefs, baseDir);
   config.plugins.analyzers = resolveRelativePathArray(config.plugins.analyzers, baseDir);
@@ -127,6 +128,7 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
   assert(isRecord(config.journeys), 'journeys must be an object.');
   assert(isRecord(config.requirements), 'requirements must be an object.');
   assert(isRecord(config.productContext), 'productContext must be an object.');
+  assert(isRecord(config.source), 'source must be an object.');
   assert(isRecord(config.contract), 'contract must be an object.');
   assert(isRecord(config.realtime), 'realtime must be an object.');
   assert(isRecord(config.p2), 'p2 must be an object.');
@@ -231,6 +233,13 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
     if (decision.appliesTo !== undefined) assertStringArray(decision.appliesTo, `${decisionPath}.appliesTo`);
     if (decision.rationale !== undefined) assert(typeof decision.rationale === 'string', `${decisionPath}.rationale must be a string.`);
   });
+
+  assertBoolean(config.source.enabled, 'source.enabled');
+  if (config.source.root !== undefined) assert(typeof config.source.root === 'string', 'source.root must be a string.');
+  assertFiniteNumber(config.source.maxFiles, 'source.maxFiles', 0);
+  assertFiniteNumber(config.source.maxBytesPerFile, 'source.maxBytesPerFile', 1024);
+  assertStringArray(config.source.include, 'source.include');
+  assertStringArray(config.source.exclude, 'source.exclude');
 
   assertBoolean(config.contract.enabled, 'contract.enabled');
   if (config.contract.schemaPath !== undefined) assert(typeof config.contract.schemaPath === 'string', 'contract.schemaPath must be a string.');
@@ -357,6 +366,10 @@ export async function loadConfig(input: QaRunInput): Promise<FrontLensConfig> {
     const requirements = extractRequirementsConfig(await loadRequirementsFile(input.requirementsPath));
     config.requirements = deepMerge(config.requirements as unknown as Record<string, unknown>, requirements) as unknown as FrontLensConfig['requirements'];
     config.requirements.enabled = true;
+  }
+  if (input.sourceRoot) {
+    config.source.root = path.isAbsolute(input.sourceRoot) ? input.sourceRoot : path.resolve(process.cwd(), input.sourceRoot);
+    config.source.enabled = true;
   }
 
   return validateConfig(config);

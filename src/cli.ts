@@ -36,6 +36,7 @@ Options:
   --url <url>                 Target page URL.
   --config <path>             Optional config file (.json/.js/.mjs).
   --requirements <path>       Optional requirements/acceptance criteria JSON file.
+  --source-root <path>        Optional frontend source repository root for static source correlation.
   --output <dir>              Output report directory.
   --browser <name>            chromium | firefox | webkit. Default: chromium.
   --headed                    Run headed browser.
@@ -446,6 +447,7 @@ async function main(): Promise<void> {
         url: { type: 'string' },
         config: { type: 'string' },
         requirements: { type: 'string' },
+        'source-root': { type: 'string' },
         output: { type: 'string' },
         browsers: { type: 'string' },
         headed: { type: 'boolean' },
@@ -509,6 +511,7 @@ async function main(): Promise<void> {
       url,
       configPath: parsed.values.config,
       requirementsPath: parsed.values.requirements,
+      sourceRoot: parsed.values['source-root'],
       outputDir: parsed.values.output,
       browsers: uniqueBrowsers,
       headless: parsed.values.headed ? false : parsed.values.headless,
@@ -565,6 +568,7 @@ async function main(): Promise<void> {
       url: { type: 'string' },
       config: { type: 'string' },
       requirements: { type: 'string' },
+      'source-root': { type: 'string' },
       output: { type: 'string' },
       browser: { type: 'string' },
       headed: { type: 'boolean' },
@@ -624,6 +628,7 @@ async function main(): Promise<void> {
     url,
     configPath: parsed.values.config,
     requirementsPath: parsed.values.requirements,
+    sourceRoot: parsed.values['source-root'],
     outputDir: parsed.values.output,
     browser: normalizeBrowser(parsed.values.browser),
     headless: parsed.values.headed ? false : parsed.values.headless,

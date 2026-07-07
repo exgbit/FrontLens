@@ -218,6 +218,13 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
       return `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.priority)}</td><td>${escapeHtml(item.source)}</td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.confidence)}</td><td>${escapeHtml(item.title)}</td><td>${escapeHtml(evidence)}</td><td>${escapeHtml(item.gaps.join('；') || '-')}</td></tr>`;
     })
     .join('\n');
+  const sourceFindingRows = result.sourceAnalysis.findings
+    .slice(0, 50)
+    .map((finding) => {
+      const locations = finding.locations.slice(0, 4).map((location) => `${location.file}:${location.line}`).join(', ');
+      return `<tr><td>${escapeHtml(finding.id)}</td><td>${escapeHtml(finding.kind)}</td><td>${issueBadge(finding.severity)}</td><td>${escapeHtml(finding.title)}</td><td>${escapeHtml(locations || '-')}</td></tr>`;
+    })
+    .join('\n');
   const phaseErrorRows = result.metadata.phaseErrors
     .map((item) => `<tr><td>${escapeHtml(item.phase)}</td><td>${escapeHtml(item.message)}</td><td>${escapeHtml(item.timestamp)}</td></tr>`)
     .join('\n');
@@ -273,6 +280,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
+          <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
           <div class="metric"><span>Phase errors</span><strong>${result.metadata.phaseErrors.length}</strong></div>
         </div>
       </section>
@@ -339,6 +347,23 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>ID</th><th>Priority</th><th>Source</th><th>Status</th><th>Confidence</th><th>Requirement</th><th>Evidence</th><th>Gaps</th></tr></thead>
           <tbody>${requirementRows || '<tr><td colspan="8">No requirements collected</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Source Analysis / 源码索引</h2>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
+          <div class="metric"><span>Files</span><strong>${result.sourceAnalysis.scannedFiles}</strong></div>
+          <div class="metric"><span>Routes</span><strong>${result.sourceAnalysis.summary.routeCount}</strong></div>
+          <div class="metric"><span>Eager routes</span><strong>${result.sourceAnalysis.summary.eagerRouteImportCount}</strong></div>
+          <div class="metric"><span>Heavy imports</span><strong>${result.sourceAnalysis.summary.heavyImportCount}</strong></div>
+          <div class="metric"><span>API calls</span><strong>${result.sourceAnalysis.summary.apiCallCount}</strong></div>
+        </div>
+        <p>${escapeHtml(result.sourceAnalysis.root ?? result.sourceAnalysis.error ?? 'No source root')}</p>
+        <table>
+          <thead><tr><th>ID</th><th>Kind</th><th>Severity</th><th>Title</th><th>Locations</th></tr></thead>
+          <tbody>${sourceFindingRows || '<tr><td colspan="5">No source findings</td></tr>'}</tbody>
         </table>
       </section>
 

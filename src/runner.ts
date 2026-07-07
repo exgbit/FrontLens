@@ -32,8 +32,9 @@ import { applyRequirementJourneySynthesis } from './requirements/requirementJour
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
+import { analyzeSource, createEmptySourceAnalysis } from './source/sourceAnalyzer.js';
 import { sessionStorageSidecarPath } from './auth.js';
-import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult } from './types.js';
+import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
 import { RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 import { redactText, redactUrl } from './utils/redact.js';
@@ -367,6 +368,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   let securityIssues: Issue[] = [];
   let apiContract: ApiContractResult = emptyApiContract(config);
   let contractIssues: Issue[] = [];
+  let sourceAnalysis: SourceAnalysisResult = createEmptySourceAnalysis(config, config.source.enabled ? 'skipped' : 'skipped', config.source.enabled ? 'Source analysis was not collected.' : 'Source analysis disabled.');
+  let sourceIssues: Issue[] = [];
   let realtime: RealtimeResult = createEmptyRealtimeResult(config);
   let p2: P2TestResult = createEmptyP2Result(config);
   let p2Issues: Issue[] = [];
@@ -384,6 +387,9 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   const realtimeCollector = new RealtimeCollector(config);
 
   try {
+    const sourceOutput = await safePhase('source.analyze', phaseErrors, { result: sourceAnalysis, issues: [] as Issue[] }, () => analyzeSource(config));
+    sourceAnalysis = sourceOutput.result;
+    sourceIssues = sourceOutput.issues;
     context = await createContext(browser, config, artifacts);
     realtimeCollector.attach(context);
     if (config.analysis.console) {
@@ -598,6 +604,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     exceptionSimulations,
     security,
     p2,
+    sourceAnalysis,
     analysisExclusions: {
       networkRequestIds: [...interactionRestoreNetworkRequestIds, ...securityNetworkRequestIds, ...p2NetworkRequestIds, ...exceptionPhaseNetworkRequestIds],
       consoleIds: [...interactionRestoreConsoleIds, ...exceptionPhaseConsoleIds],
@@ -625,6 +632,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     ...securityIssues,
     ...contractIssues,
     ...p2Issues,
+    ...sourceIssues,
     ...pluginIssues
   ];
   const normalizedBaseIssues = reindexIssues(dedupeIssues(applySuggestionTemplates(baseIssues)));
@@ -697,6 +705,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     exceptionSimulations,
     security,
     requirementCoverage,
+    sourceAnalysis,
     p2,
     artifactIntegrity: createEmptyArtifactIntegrity(),
     rootCauseGroups,

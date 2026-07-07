@@ -44,8 +44,16 @@ When the user provides `sourceRoot`, a professional QA pass should include sourc
 - build/typecheck/lint/unit/e2e scripts discovered
 - commands run, pass/fail/skipped, and log excerpts
 - whether the tested URL appears to match the inspected source branch/build
+- `result.json.sourceAnalysis.status`, route/import findings, API call index, and loading/error/empty/retry state signals
 
 Do not mark business functionality as passed just because source-health commands pass. Treat them as one layer of evidence.
+
+Use `sourceAnalysis` before manual grep:
+
+1. If `sourceAnalysis.status=passed`, inspect `sourceAnalysis.findings[]` for route-level eager imports and heavy dependencies.
+2. Use `sourceAnalysis.apiCalls[]` to map network endpoints to source files before claiming API/UI binding issues.
+3. Use `sourceAnalysis.stateSignals[]` as a starting map for loading/error/empty/retry triage; still verify the actual rendered view before filing a bug.
+4. If `sourceAnalysis.status=skipped`, mention that no source root was provided or indexing was disabled.
 
 If an existing server is already healthy, do not restart it unless the user asked for a fresh deployment or assets are clearly stale versus the source under review.
 

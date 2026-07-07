@@ -158,6 +158,15 @@ export interface ProductContextConfig {
   adrRefs: string[];
 }
 
+export interface SourceAnalysisConfig {
+  enabled: boolean;
+  root?: string;
+  maxFiles: number;
+  maxBytesPerFile: number;
+  include: string[];
+  exclude: string[];
+}
+
 export interface ContractConfig {
   enabled: boolean;
   schemaPath?: string;
@@ -248,6 +257,7 @@ export interface FrontLensConfig {
   journeys: JourneyTestConfig;
   requirements: RequirementCoverageConfig;
   productContext: ProductContextConfig;
+  source: SourceAnalysisConfig;
   contract: ContractConfig;
   realtime: RealtimeConfig;
   p2: P2TestConfig;
@@ -295,6 +305,7 @@ export interface QaRunInput {
   realtime?: boolean;
   p2?: boolean;
   requirementsPath?: string;
+  sourceRoot?: string;
 }
 
 export interface BoundingBox {
@@ -726,6 +737,71 @@ export interface AiAnalysisResult {
   error?: string;
 }
 
+export interface SourceLocation {
+  file: string;
+  line: number;
+  column?: number;
+}
+
+export interface SourceImportRecord extends SourceLocation {
+  source: string;
+  kind: 'static' | 'dynamic';
+  specifier?: string;
+  isRouteComponent: boolean;
+  isHeavy: boolean;
+}
+
+export interface SourceRouteRecord extends SourceLocation {
+  path?: string;
+  name?: string;
+  component?: string;
+  lazy: boolean;
+}
+
+export interface SourceApiRecord extends SourceLocation {
+  method?: string;
+  path?: string;
+  client?: string;
+  expression: string;
+}
+
+export interface SourceStateSignal extends SourceLocation {
+  kind: 'loading' | 'error' | 'empty' | 'retry';
+  text: string;
+}
+
+export interface SourceAnalysisResult {
+  enabled: boolean;
+  status: 'passed' | 'skipped' | 'failed';
+  checkedAt: string;
+  root?: string;
+  error?: string;
+  scannedFiles: number;
+  scannedBytes: number;
+  summary: {
+    routeFileCount: number;
+    routeCount: number;
+    eagerRouteImportCount: number;
+    heavyImportCount: number;
+    apiCallCount: number;
+    errorStateSignalCount: number;
+    emptyStateSignalCount: number;
+  };
+  routeFiles: string[];
+  routes: SourceRouteRecord[];
+  imports: SourceImportRecord[];
+  apiCalls: SourceApiRecord[];
+  stateSignals: SourceStateSignal[];
+  findings: Array<{
+    id: string;
+    kind: 'eager-route-imports' | 'heavy-import' | 'api-surface' | 'state-signal';
+    severity: Severity;
+    title: string;
+    locations: SourceLocation[];
+    details: Record<string, unknown>;
+  }>;
+}
+
 export type SecurityCheckCategory =
   | 'headers'
   | 'cookies'
@@ -1086,6 +1162,7 @@ export interface ArtifactIndex {
   realtimeLog?: string;
   apiContractLog?: string;
   p2Log?: string;
+  sourceAnalysisLog?: string;
   pageModel?: string;
 }
 
@@ -1203,6 +1280,7 @@ export interface QaResult {
   exceptionSimulations: ExceptionSimulationResult[];
   security: SecurityScanResult;
   requirementCoverage: RequirementCoverageResult;
+  sourceAnalysis: SourceAnalysisResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];
@@ -1240,6 +1318,7 @@ export interface AnalyzerContext {
   exceptionSimulations: ExceptionSimulationResult[];
   security: SecurityScanResult;
   requirementCoverage?: RequirementCoverageResult;
+  sourceAnalysis?: SourceAnalysisResult;
   p2: P2TestResult;
   artifactIntegrity?: ArtifactIntegrityResult;
   analysisExclusions?: {

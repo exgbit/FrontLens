@@ -14,7 +14,7 @@ Use this reference when consuming QA results from another skill.
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose a safe default `artifactIntegrity` when older reports do not contain it.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose a safe default `artifactIntegrity` when older reports do not contain it.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -38,6 +38,7 @@ interface QaResult {
   realtime: RealtimeResult;
   security: SecurityScanResult; // always present; skipped when disabled
   requirementCoverage: RequirementCoverageResult;
+  sourceAnalysis: SourceAnalysisResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];
@@ -346,9 +347,9 @@ interface ExceptionSimulationResult {
 }
 ```
 
-## API Contract, Realtime, Requirement Coverage, Product Context, P2, Root Cause Groups, Issue Disposition, Fix Tasks, Diff
+## API Contract, Realtime, Requirement Coverage, Product Context, Source Analysis, P2, Root Cause Groups, Issue Disposition, Fix Tasks, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided.
 
 ```ts
 interface ApiContractResult {
@@ -570,6 +571,36 @@ interface ProductContextConfig {
 ```
 
 Use product features such as `export`, `pagination`, `manual-refresh`, `mobile-touch-target`, `seo`, `visual-design`, `empty-state`, `error-state`, `search`, `filter`, or project-specific strings. `issueDisposition` expands common Chinese/English aliases. This is the preferred way to prevent “designed as intended” findings from becoming mandatory defects while still keeping required product capabilities actionable.
+
+`sourceAnalysis` is the machine-readable static source index. It is skipped unless `source.root` or CLI/MCP `sourceRoot` is provided.
+
+```ts
+interface SourceAnalysisResult {
+  enabled: boolean;
+  status: 'passed' | 'skipped' | 'failed';
+  root?: string;
+  error?: string;
+  scannedFiles: number;
+  scannedBytes: number;
+  summary: {
+    routeFileCount: number;
+    routeCount: number;
+    eagerRouteImportCount: number;
+    heavyImportCount: number;
+    apiCallCount: number;
+    errorStateSignalCount: number;
+    emptyStateSignalCount: number;
+  };
+  routeFiles: string[];
+  routes: Array<{ file: string; line: number; path?: string; name?: string; component?: string; lazy: boolean }>;
+  imports: Array<{ file: string; line: number; source: string; kind: 'static' | 'dynamic'; isRouteComponent: boolean; isHeavy: boolean }>;
+  apiCalls: Array<{ file: string; line: number; method?: string; path?: string; client?: string; expression: string }>;
+  stateSignals: Array<{ file: string; line: number; kind: 'loading' | 'error' | 'empty' | 'retry'; text: string }>;
+  findings: Array<{ id: string; kind: string; severity: Issue['severity']; title: string; locations: Array<{ file: string; line: number; column?: number }>; details: Record<string, unknown> }>;
+}
+```
+
+Use `sourceAnalysis` before manual source grep: route/import findings explain code-splitting risks, API calls map endpoints to files, and state signals guide error/loading/empty-state validation. Static source findings are source evidence, not complete business validation by themselves.
 
 `qualityGate` is the machine-readable professional QA gate. Use it for release/sign-off conversations, but still inspect `issues[]` and evidence before deciding whether to ship:
 
@@ -800,7 +831,7 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Read `qualityGate`, `requirementCoverage`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, requirement gaps, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
+3. Read `qualityGate`, `requirementCoverage`, `sourceAnalysis`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, requirement gaps, static source index, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
 4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.

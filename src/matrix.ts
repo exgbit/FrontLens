@@ -10,6 +10,7 @@ export interface CompatibilityRunInput {
   outputDir?: string;
   configPath?: string;
   requirementsPath?: string;
+  sourceRoot?: string;
   browsers: BrowserName[];
   headless?: boolean;
   storageState?: string;
@@ -125,6 +126,7 @@ export async function runCompatibility(input: CompatibilityRunInput): Promise<Co
         url: input.url,
         configPath: input.configPath,
         requirementsPath: input.requirementsPath,
+        sourceRoot: input.sourceRoot,
         outputDir: browserOutput,
         browser,
         headless: input.headless,

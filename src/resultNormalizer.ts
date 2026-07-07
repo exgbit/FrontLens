@@ -25,8 +25,9 @@ import { calculateScore } from './summary.js';
 import { buildQualityGate } from './qualityGate.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { deepMerge } from './utils/deepMerge.js';
+import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 
-export const RESULT_SCHEMA_VERSION = '1.4.0';
+export const RESULT_SCHEMA_VERSION = '1.5.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -521,6 +522,43 @@ function normalizeFixTasks(raw: unknown): QaResult['fixTasks'] {
   });
 }
 
+function normalizeArtifactIntegrity(raw: unknown): QaResult['artifactIntegrity'] {
+  if (!isRecord(raw)) return createEmptyArtifactIntegrity('Artifact integrity missing from report.');
+  const entries = asArray(raw.entries).filter(isRecord).map((entry) => ({
+    source: asString(entry.source),
+    path: asString(entry.path),
+    absolutePath: optionalString(entry.absolutePath),
+    kind: entry.kind === 'directory' ? 'directory' as const : 'file' as const,
+    expected: Boolean(entry.expected),
+    exists: Boolean(entry.exists),
+    sizeBytes: optionalNumber(entry.sizeBytes),
+    issueId: optionalString(entry.issueId),
+    message: optionalString(entry.message)
+  }));
+  const missing = asArray(raw.missing).filter(isRecord).map((entry) => ({
+    source: asString(entry.source),
+    path: asString(entry.path),
+    absolutePath: optionalString(entry.absolutePath),
+    kind: entry.kind === 'directory' ? 'directory' as const : 'file' as const,
+    expected: Boolean(entry.expected),
+    exists: Boolean(entry.exists),
+    sizeBytes: optionalNumber(entry.sizeBytes),
+    issueId: optionalString(entry.issueId),
+    message: optionalString(entry.message)
+  }));
+  const status = raw.status === 'passed' || raw.status === 'warning' || raw.status === 'failed' || raw.status === 'skipped' ? raw.status : 'skipped';
+  return {
+    status,
+    checkedAt: asString(raw.checkedAt, new Date().toISOString()),
+    presentCount: asNumber(raw.presentCount, entries.filter((entry) => entry.exists).length),
+    missingCount: asNumber(raw.missingCount, missing.length),
+    skippedCount: asNumber(raw.skippedCount, entries.filter((entry) => !entry.expected || !entry.absolutePath).length),
+    entries,
+    missing,
+    summary: asString(raw.summary, status)
+  };
+}
+
 function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): QaResult['qualityGate'] {
   if (!isRecord(raw)) return fallback;
   const status = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
@@ -640,6 +678,7 @@ export function normalizeResult(raw: unknown): QaResult {
     interactionTests,
     accessibilityChecks
   });
+  const artifactIntegrity = normalizeArtifactIntegrity(raw.artifactIntegrity);
   const qualityGateFallback = buildQualityGate({
     issues,
     pageModel,
@@ -649,7 +688,8 @@ export function normalizeResult(raw: unknown): QaResult {
     exceptionSimulations,
     coverage,
     security,
-    requirementCoverage
+    requirementCoverage,
+    artifactIntegrity
   });
   const qualityGate = isRecord(raw.requirementCoverage) ? normalizeQualityGate(raw.qualityGate, qualityGateFallback) : qualityGateFallback;
 
@@ -673,6 +713,7 @@ export function normalizeResult(raw: unknown): QaResult {
     security,
     requirementCoverage,
     p2: normalizeP2(raw.p2),
+    artifactIntegrity,
     fixTasks,
     qualityGate,
     aiAnalysis,

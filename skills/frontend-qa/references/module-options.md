@@ -119,12 +119,12 @@ Use a fresh worker prompt like:
 如果需要部署/刷新本地页面：先在源码目录检查 package.json；页面不可达或用户要求部署时，按 source-code-correlation.md 自动安装缺失依赖、构建、启动 Vite dev/preview 服务；服务可达后再运行 FrontLens。不要修改业务代码。
 先运行 npm run build，再按模块选择生成配置并执行 QA 命令。
 如果 Chromium 或私网访问被沙箱限制，使用 escalated 执行；仍失败则输出诊断。
-读取 report.md/result.json，优先查看 qualityGate 和 requirementCoverage，并按 skills/frontend-qa/references/triage-guidelines.md 做二次校准。若有源码路径，逐项核对相关 router/view/composable/store/api/component/vite/ADR 文件，为每个保留的前端问题给出 file:line 证据；对误报给出被源码、部署归属、异常模拟或扫描阶段反驳的理由。降级 dev/synthetic raw issue 后仍要继续做源码归因；若源码或 dev 模块图揭示真实设计缺陷（如路由静态导入导致非当前页面代码进入首屏），必须以 source-discovered/frontend fix 单独保留。
+读取 report.md/result.json，优先查看 qualityGate、requirementCoverage 和 artifactIntegrity，并按 skills/frontend-qa/references/triage-guidelines.md 做二次校准。若有源码路径，逐项核对相关 router/view/composable/store/api/component/vite/ADR 文件，为每个保留的前端问题给出 file:line 证据；对误报给出被源码、部署归属、异常模拟或扫描阶段反驳的理由。降级 dev/synthetic raw issue 后仍要继续做源码归因；若源码或 dev 模块图揭示真实设计缺陷（如路由静态导入导致非当前页面代码进入首屏），必须以 source-discovered/frontend fix 单独保留。
 必须按“实现根因”合并 raw issue：同一视图/组件/组合函数导致的 500/401/403/404/timeout 无反馈，只作为一个可执行前端修复输出，并列出支持它的 raw issue / EX-*；不要把 raw issue 数量或 fixTasks 数量当成工作量。若报告建议与问题类别不匹配（例如触控尺寸却建议表格分页接口），标记为模板噪音并改写建议。
 必须做可执行性过滤：核心问题只保留运行时错误、核心旅程失败、真实接口失败无反馈、硬性 a11y、源码确认的数据绑定/性能问题；样式密度、按钮层级、刷新/导出/分页/SEO 等默认放“产品决策/参考观察”，不要生成修复任务。不要展开大量参考项的逐 selector 细节。
 “接口有数据但页面为空”属于高风险推断：只有在具体列表响应、当前可见 DOM 为空、且源码/E2E 能证明该响应绑定该 UI 时才保留；否则写成未验证/证据不足/误报，不要猜测字段映射错误。
 业务功能/需求验证必须标注证据置信度：runtime-verified / runtime-partial / static-source-only / not-verified。除非有完整运行时页面、DOM/截图、API 响应和必要下载文件证据，否则不要写“业务功能验证 100% 通过”。样式风格、按钮层级、是否需要刷新/导出等默认归为产品决策/可选，除非有 ADR、a11y 或核心任务阻塞证据。
-证据路径必须优先使用报告目录相对路径，并检查截图、视频、trace、下载文件是否真实存在；不存在的路径要标记为报告/工具问题，不要作为证据。
+证据路径必须优先使用报告目录相对路径，并先读取 artifactIntegrity；截图、视频、trace、下载文件不存在时要标记为报告/工具问题，不要作为证据。
 返回 Markdown 摘要：页面信息、部署/服务动作、原始分数、调整后风险判断、问题计数（raw issue 与根因计数分开）、业务验证置信度表、已启用模块、triage 分桶（真实前端 / 后端API / 部署安全 / 产品决策 / 误报或工具局限）、源码关联复核表、根因合并表、核心问题、前端问题、后端/API问题、安全问题、性能/P2、用户旅程（特别标注 skipped 覆盖缺口）、异常模拟、AI结论、证据路径、修改建议和复测命令。
 若使用专业 QA 模式，最后必须给出 sign-off：pass / pass-with-risks / blocked / fail，以及 confidence high/medium/low。缺少 PRD、登录态、测试数据、角色矩阵、导出文件或破坏性动作授权时，不能给高置信通过。
 不要修改业务代码。

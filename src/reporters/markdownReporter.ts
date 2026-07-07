@@ -601,6 +601,19 @@ ${rows.length ? ['| ID | 优先级 | Owner | Type | Title | Issues |', '| --- | 
 `;
 }
 
+function formatArtifactIntegrity(result: QaResult): string {
+  const integrity = result.artifactIntegrity;
+  const missingRows = integrity.missing.slice(0, 50).map((entry) => `| ${markdownEscape(entry.source)} | ${markdownEscape(entry.kind)} | ${markdownEscape(reportPath(result, entry.path) ?? entry.path)} | ${markdownEscape(entry.issueId ?? '-')} | ${markdownEscape(entry.message ?? '-')} |`);
+  return `## Artifact Integrity / 证据路径完整性
+
+- Status：${integrity.status}
+- Present / Missing / Skipped：${integrity.presentCount} / ${integrity.missingCount} / ${integrity.skippedCount}
+- Summary：${markdownEscape(integrity.summary)}
+
+${missingRows.length ? ['| Source | Kind | Path | Issue | Message |', '| --- | --- | --- | --- | --- |', ...missingRows, ''].join('\n') : '未发现缺失的本地证据路径。'}
+`;
+}
+
 function formatArtifacts(result: QaResult): string {
   const entries = Object.entries(result.artifacts).filter(([, value]) => typeof value === 'string' && value);
   return `## 十九、证据索引
@@ -637,6 +650,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - API Contract：${result.apiContract.summary.endpointCount} endpoints / ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings
 - Realtime：GraphQL ${result.realtime.summary.graphqlOperationCount} / WS ${result.realtime.summary.webSocketCount} / SSE ${result.realtime.summary.sseCount}
 - Fix Tasks：${result.fixTasks.length}
+- Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
 - 严重 / 高 / 中 / 低 / 信息：${result.summary.criticalCount} / ${result.summary.highCount} / ${result.summary.mediumCount} / ${result.summary.lowCount} / ${result.summary.infoCount}
@@ -729,6 +743,8 @@ ${formatCoverageSummary(result)}
 ${formatOptimizationSummary(result)}
 
 ${formatFixTasks(result)}
+
+${formatArtifactIntegrity(result)}
 
 ${formatArtifacts(result)}
 `;

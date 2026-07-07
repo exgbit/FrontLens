@@ -6,4 +6,5 @@ export { createDefaultConfig } from './defaultConfig.js';
 export { normalizeResult, normalizeIssueLike, fingerprintIssue, RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 export { buildQualityGate, isActionableIssue } from './qualityGate.js';
 export { buildRequirementCoverage } from './requirements/requirementCoverage.js';
+export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 export type * from './types.js';

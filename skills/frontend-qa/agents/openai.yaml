@@ -1,4 +1,4 @@
 interface:
   display_name: "Frontend QA"
-  short_description: "Select modules, deploy local app when needed, run Playwright QA, correlate with source, and triage findings"
-  default_prompt: "Use $frontend-qa to ask me which QA modules to enable, deploy or refresh the local frontend when a source path is provided and needed, delegate URL analysis to a fresh subagent, then return report.md/result.json plus source-code-correlated frontend/backend API, deployment security, performance, accessibility, P2, AI, false-positive decisions, and fixTasks."
+  short_description: "Playwright QA with source triage and QA gates"
+  default_prompt: "Use $frontend-qa to run evidence-backed frontend QA, correlate results with source code when available, validate requirement coverage and artifact integrity, then return triaged root-cause fixes with QA gate status."

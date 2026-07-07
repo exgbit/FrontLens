@@ -8,13 +8,13 @@ Use this reference when consuming QA results from another skill.
 - Summary, page model, artifacts
 - Network, console, resources
 - Interactions, journeys, responsive, accessibility, permission, exceptions
-- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Fix Tasks, QA Gate, AI
+- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Artifact Integrity, Fix Tasks, QA Gate, AI
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`. CLI/MCP helper commands normalize common missing sections to safe defaults and synthesize `fixTasks[]`, `qualityGate`, and `requirementCoverage` from normalized evidence when older reports do not contain them.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, and `requirementCoverage` from normalized evidence, and expose a safe default `artifactIntegrity` when older reports do not contain it.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -39,6 +39,7 @@ interface QaResult {
   security: SecurityScanResult; // always present; skipped when disabled
   requirementCoverage: RequirementCoverageResult;
   p2: P2TestResult;
+  artifactIntegrity: ArtifactIntegrityResult;
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
   aiAnalysis: AiAnalysisResult; // always present; skipped when disabled
@@ -345,7 +346,7 @@ interface ExceptionSimulationResult {
 
 ## API Contract, Realtime, Requirement Coverage, P2, Fix Tasks, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`.
 
 ```ts
 interface ApiContractResult {
@@ -426,6 +427,29 @@ interface RequirementCoverageItem {
   gaps: string[];
 }
 
+interface ArtifactIntegrityResult {
+  status: 'passed' | 'warning' | 'failed' | 'skipped';
+  checkedAt: string;
+  presentCount: number;
+  missingCount: number;
+  skippedCount: number;
+  entries: ArtifactIntegrityEntry[];
+  missing: ArtifactIntegrityEntry[];
+  summary: string;
+}
+
+interface ArtifactIntegrityEntry {
+  source: string;
+  path: string;
+  absolutePath?: string;
+  kind: 'file' | 'directory';
+  expected: boolean;
+  exists: boolean;
+  sizeBytes?: number;
+  issueId?: string;
+  message?: string;
+}
+
 interface FixTask {
   id: string;
   issueIds: string[];
@@ -453,6 +477,8 @@ interface QaQualityGate {
   summary: string;
 }
 ```
+
+`artifactIntegrity` validates all local artifact paths referenced by the report, including screenshots, DOM snapshots, trace/video, JSON sidecars, responsive/P2 screenshots, and issue evidence paths. Missing referenced files are report-quality defects and should not be used as evidence.
 
 `requirementCoverage` is the machine-readable requirement/ability coverage matrix. User-provided requirements come from config/`--requirements`; when none are provided, FrontLens only infers obvious page abilities and marks them as `source: inferred`. Inferred coverage is useful for gaps but must not be reported as 100% business validation. P0/P1 uncovered or failed requirements influence `qualityGate`.
 
@@ -685,7 +711,7 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Read `qualityGate` and `requirementCoverage` for machine-readable QA status and requirement gaps, but do not use them as a substitute for source/PRD triage.
+3. Read `qualityGate`, `requirementCoverage`, and `artifactIntegrity` for machine-readable QA status, requirement gaps, and evidence-path reliability; do not use them as a substitute for source/PRD triage.
 4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.

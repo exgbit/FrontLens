@@ -258,6 +258,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         apiContract: result.apiContract.summary,
         realtime: result.realtime.summary,
         requirementCoverage: result.requirementCoverage.summary,
+        artifactIntegrity: result.artifactIntegrity,
         fixTaskCount: result.fixTasks.length,
         qualityGate: result.qualityGate
       });
@@ -287,6 +288,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           summary: result.security.summary
         },
         requirementCoverage: result.requirementCoverage,
+        artifactIntegrity: result.artifactIntegrity,
         qualityGate: result.qualityGate
       });
     }

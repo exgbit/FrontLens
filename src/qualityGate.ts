@@ -1,4 +1,4 @@
-import type { CoverageResult, ExceptionSimulationResult, InteractionTestResult, Issue, JourneyTestResult, PageModel, PhaseError, QaQualityGate, RequirementCoverageResult, SecurityScanResult } from './types.js';
+import type { ArtifactIntegrityResult, CoverageResult, ExceptionSimulationResult, InteractionTestResult, Issue, JourneyTestResult, PageModel, PhaseError, QaQualityGate, RequirementCoverageResult, SecurityScanResult } from './types.js';
 
 export function isActionableIssue(issue: Issue): boolean {
   return issue.severity !== 'info';
@@ -23,6 +23,7 @@ function collectCoverageGaps(input: {
   coverage: CoverageResult;
   security: SecurityScanResult;
   requirementCoverage?: RequirementCoverageResult;
+  artifactIntegrity?: ArtifactIntegrityResult;
 }): string[] {
   const gaps: string[] = [];
   if (input.phaseErrors.length > 0) gaps.push(`${input.phaseErrors.length} 个采集阶段异常，部分证据可能缺失。`);
@@ -37,6 +38,7 @@ function collectCoverageGaps(input: {
   if (input.requirementCoverage?.enabled) {
     for (const gap of input.requirementCoverage.gaps) gaps.push(`需求覆盖：${gap}`);
   }
+  if (input.artifactIntegrity && input.artifactIntegrity.status === 'failed') gaps.push(`证据产物：${input.artifactIntegrity.missingCount} 个引用路径不存在。`);
   return gaps;
 }
 
@@ -50,6 +52,7 @@ export function buildQualityGate(input: {
   coverage: CoverageResult;
   security: SecurityScanResult;
   requirementCoverage?: RequirementCoverageResult;
+  artifactIntegrity?: ArtifactIntegrityResult;
 }): QaQualityGate {
   const actionableIssues = input.issues.filter(isActionableIssue);
   const referenceIssues = input.issues.filter((issue) => !isActionableIssue(issue));

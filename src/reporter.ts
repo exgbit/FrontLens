@@ -8,8 +8,9 @@ import { normalizeIssueLike } from './resultNormalizer.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
+import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 
-function normalizeAndRebuildSummary(result: QaResult): void {
+async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.issues = result.issues.map((issue, index) =>
     normalizeIssueLike({
       ...issue,
@@ -33,6 +34,7 @@ function normalizeAndRebuildSummary(result: QaResult): void {
     interactionTests: result.interactionTests,
     accessibilityChecks: result.accessibilityChecks
   });
+  result.artifactIntegrity = await buildArtifactIntegrity(result);
   result.qualityGate = buildQualityGate({
     issues: result.issues,
     pageModel: result.pageModel,
@@ -42,33 +44,39 @@ function normalizeAndRebuildSummary(result: QaResult): void {
     exceptionSimulations: result.exceptionSimulations,
     coverage: result.coverage,
     security: result.security,
-    requirementCoverage: result.requirementCoverage
+    requirementCoverage: result.requirementCoverage,
+    artifactIntegrity: result.artifactIntegrity
   });
 }
 
 export async function writeReports(result: QaResult): Promise<QaResult> {
   const formats = new Set(result.metadata.config.report.formats);
-  normalizeAndRebuildSummary(result);
+  await normalizeAndRebuildSummary(result);
   await writeJsonReports(result);
+  await normalizeAndRebuildSummary(result);
   if (formats.has('markdown')) {
     await writeMarkdownReport(result);
+    await normalizeAndRebuildSummary(result);
     // Re-write result.json after markdown path is populated.
     await writeJsonReports(result);
   }
   if (formats.has('html')) {
     await writeHtmlReport(result);
+    await normalizeAndRebuildSummary(result);
     await writeJsonReports(result);
   }
   const issueCountBeforePlugins = result.issues.length;
   await runReporterPlugins(result);
   if (result.metadata.config.plugins.reporters.length > 0 || result.issues.length !== issueCountBeforePlugins) {
-    normalizeAndRebuildSummary(result);
+    await normalizeAndRebuildSummary(result);
     result.fixTasks = generateFixTasks(result.issues, result.metadata.config);
     if (formats.has('markdown')) {
       await writeMarkdownReport(result);
+      await normalizeAndRebuildSummary(result);
     }
     if (formats.has('html')) {
       await writeHtmlReport(result);
+      await normalizeAndRebuildSummary(result);
     }
     await writeJsonReports(result);
   }

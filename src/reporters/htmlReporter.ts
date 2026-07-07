@@ -201,6 +201,10 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
   const artifactRows = Object.entries(result.artifacts)
     .map(([key, value]) => `<tr><td>${escapeHtml(key)}</td><td>${escapeHtml(Array.isArray(value) ? value.join(', ') : String(value ?? '-'))}</td></tr>`)
     .join('\n');
+  const artifactIntegrityRows = result.artifactIntegrity.missing
+    .slice(0, 50)
+    .map((entry) => `<tr><td>${escapeHtml(entry.source)}</td><td>${escapeHtml(entry.kind)}</td><td>${escapeHtml(entry.path)}</td><td>${escapeHtml(entry.issueId ?? '-')}</td><td>${escapeHtml(entry.message ?? '-')}</td></tr>`)
+    .join('\n');
 
   const html = `<!doctype html>
 <html lang="zh-CN">
@@ -243,6 +247,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
+          <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Phase errors</span><strong>${result.metadata.phaseErrors.length}</strong></div>
         </div>
       </section>
@@ -435,6 +440,21 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>ID</th><th>Priority</th><th>Owner</th><th>Type</th><th>Title</th><th>Issues</th></tr></thead>
           <tbody>${fixTaskRows || '<tr><td colspan="6">No fix tasks</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Artifact Integrity / 证据路径完整性</h2>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
+          <div class="metric"><span>Present</span><strong>${result.artifactIntegrity.presentCount}</strong></div>
+          <div class="metric"><span>Missing</span><strong>${result.artifactIntegrity.missingCount}</strong></div>
+          <div class="metric"><span>Skipped</span><strong>${result.artifactIntegrity.skippedCount}</strong></div>
+        </div>
+        <p>${escapeHtml(result.artifactIntegrity.summary)}</p>
+        <table>
+          <thead><tr><th>Source</th><th>Kind</th><th>Path</th><th>Issue</th><th>Message</th></tr></thead>
+          <tbody>${artifactIntegrityRows || '<tr><td colspan="5">No missing local artifact paths</td></tr>'}</tbody>
         </table>
       </section>
 

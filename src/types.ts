@@ -933,6 +933,29 @@ export interface ResultDiff {
   };
 }
 
+export interface ArtifactIntegrityEntry {
+  source: string;
+  path: string;
+  absolutePath?: string;
+  kind: 'file' | 'directory';
+  expected: boolean;
+  exists: boolean;
+  sizeBytes?: number;
+  issueId?: string;
+  message?: string;
+}
+
+export interface ArtifactIntegrityResult {
+  status: 'passed' | 'warning' | 'failed' | 'skipped';
+  checkedAt: string;
+  presentCount: number;
+  missingCount: number;
+  skippedCount: number;
+  entries: ArtifactIntegrityEntry[];
+  missing: ArtifactIntegrityEntry[];
+  summary: string;
+}
+
 export interface ArtifactIndex {
   [key: string]: unknown;
   outputDir: string;
@@ -1070,6 +1093,7 @@ export interface QaResult {
   security: SecurityScanResult;
   requirementCoverage: RequirementCoverageResult;
   p2: P2TestResult;
+  artifactIntegrity: ArtifactIntegrityResult;
   fixTasks: FixTask[];
   qualityGate: QaQualityGate;
   aiAnalysis: AiAnalysisResult;
@@ -1104,6 +1128,7 @@ export interface AnalyzerContext {
   security: SecurityScanResult;
   requirementCoverage?: RequirementCoverageResult;
   p2: P2TestResult;
+  artifactIntegrity?: ArtifactIntegrityResult;
   analysisExclusions?: {
     networkRequestIds?: string[];
     consoleIds?: string[];

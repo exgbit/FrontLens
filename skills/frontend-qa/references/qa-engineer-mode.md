@@ -10,13 +10,13 @@ A professional-test-engineer answer must include:
 
 1. **Scope and assumptions**: target URL, route/page, sourceRoot, environment, auth role, selected modules, allowed/destructive actions, known missing inputs.
 2. **Requirement coverage matrix**: business requirement / evidence / confidence / result / gaps. If no PRD or acceptance criteria was provided, infer only obvious page capabilities and mark them `inferred`, not `confirmed requirement`.
-3. **Execution evidence**: report-relative screenshot/DOM/network/console/download/source file references that exist.
+3. **Execution evidence**: report-relative screenshot/DOM/network/console/download/source file references that exist; treat `artifactIntegrity.status === failed` as a report-quality defect.
 4. **Defect triage**: core defects by root cause, severity, owner, reproduction, and fix surface. Do not list every raw issue as a separate bug.
 5. **Non-defect observations**: product decisions, style/design suggestions, skipped checks, environment/deployment tasks.
 6. **Regression pack**: exact FrontLens rerun command, any journey config needed, and focused verification steps after fixes.
 7. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
-Use `result.json.qualityGate` plus `result.json.requirementCoverage` as the first machine-readable gate, then adjust them with requirement/source context. For example, a raw `pass` can only become business `pass` when requirements, role, test data, and relevant journeys are actually verified; otherwise report `pass-with-risks` or `blocked` for acceptance.
+Use `result.json.qualityGate` plus `result.json.requirementCoverage` and `result.json.artifactIntegrity` as the first machine-readable gate, then adjust them with requirement/source context. For example, a raw `pass` can only become business `pass` when requirements, role, test data, and relevant journeys are actually verified; otherwise report `pass-with-risks` or `blocked` for acceptance.
 
 ## Inputs a human QA would ask for
 

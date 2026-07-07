@@ -32,6 +32,7 @@ FrontLens 的推荐使用方式是：
 - 性能、资源体积、Coverage、P2 预算检查
 - 结合前端源码进行 file:line 级别的问题定位
 - 基于 PRD/验收标准 JSON 生成需求覆盖矩阵和 QA Gate
+- 自动校验证据截图、DOM、trace、视频和报告路径是否真实存在
 - 生成可交给后续修复 Agent 使用的 fix tasks
 
 ## 为什么还需要代码
@@ -176,13 +177,13 @@ Skill 会按规则：
 - 证据路径
 - 复测命令
 
-从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`；从 `1.4.0` 开始还包含 `requirementCoverage`：
+从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`；从 `1.4.0` 开始包含 `requirementCoverage`；从 `1.5.0` 开始包含 `artifactIntegrity`：
 
 - `status`: `pass` / `pass-with-risks` / `fail` / `blocked`
 - `confidence`: `high` / `medium` / `low`
 - `reasons` / `coverageGaps`: 为什么可以验收、为什么有风险、或为什么阻断
 
-`requirementCoverage` 会区分用户提供的验收标准和从页面推断的能力覆盖；推断项只能说明覆盖缺口，不能代表 100% 业务通过。CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate` + `requirementCoverage`，再结合需求、源码和运行证据做最终验收判断。
+`requirementCoverage` 会区分用户提供的验收标准和从页面推断的能力覆盖；推断项只能说明覆盖缺口，不能代表 100% 业务通过。`artifactIntegrity` 会检查报告引用的本地证据路径是否存在，缺失路径不能作为证据。CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate` + `requirementCoverage` + `artifactIntegrity`，再结合需求、源码和运行证据做最终验收判断。
 
 ## 误报降噪原则
 

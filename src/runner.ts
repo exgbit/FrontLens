@@ -28,6 +28,7 @@ import { dedupeIssues } from './fix/issueDedupe.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
+import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { sessionStorageSidecarPath } from './auth.js';
 import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
@@ -691,6 +692,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     security,
     requirementCoverage,
     p2,
+    artifactIntegrity: createEmptyArtifactIntegrity(),
     fixTasks,
     qualityGate: buildQualityGate({
       issues,

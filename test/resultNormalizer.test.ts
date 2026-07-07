@@ -144,3 +144,26 @@ test('normalizeResult marks navigation blocker as blocked quality gate', () => {
   assert.equal(result.qualityGate.status, 'blocked');
   assert.equal(result.qualityGate.confidence, 'low');
 });
+
+test('normalizeResult preserves artifact integrity summaries from reports', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com' },
+    artifactIntegrity: {
+      status: 'failed',
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      presentCount: 1,
+      missingCount: 1,
+      skippedCount: 0,
+      entries: [
+        { source: 'artifacts.screenshot', path: '/tmp/missing.png', kind: 'file', expected: true, exists: false, message: 'missing' }
+      ],
+      missing: [
+        { source: 'artifacts.screenshot', path: '/tmp/missing.png', kind: 'file', expected: true, exists: false, message: 'missing' }
+      ],
+      summary: '1 missing'
+    }
+  });
+  assert.equal(result.artifactIntegrity.status, 'failed');
+  assert.equal(result.artifactIntegrity.missingCount, 1);
+  assert.equal(result.artifactIntegrity.missing[0].source, 'artifacts.screenshot');
+});

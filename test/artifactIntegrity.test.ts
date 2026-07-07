@@ -1,0 +1,80 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { normalizeResult } from '../src/resultNormalizer.ts';
+import { buildArtifactIntegrity } from '../src/artifacts/artifactIntegrity.ts';
+import { buildQualityGate } from '../src/qualityGate.ts';
+
+test('artifact integrity detects missing issue evidence paths', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-artifacts-'));
+  const screenshot = path.join(dir, 'page.png');
+  await writeFile(screenshot, 'png', 'utf8');
+  const result = normalizeResult({
+    summary: { url: 'https://example.com', title: 'Example' },
+    artifacts: { outputDir: dir, screenshot },
+    pageModel: { url: 'https://example.com', title: 'Example', stats: { domNodes: 10, visibleTextLength: 20, bodyTextSample: 'ok' } },
+    issues: [
+      {
+        id: 'ISSUE-001',
+        title: 'Evidence missing',
+        category: 'frontend-ui',
+        severity: 'low',
+        confidence: 0.9,
+        description: 'missing dom evidence',
+        evidence: { screenshot, dom: path.join(dir, 'missing-dom.html') },
+        reproduceSteps: [],
+        reason: 'test',
+        suggestion: { test: 'fix artifact', priority: 'P3' }
+      }
+    ]
+  });
+
+  const integrity = await buildArtifactIntegrity(result);
+  assert.equal(integrity.status, 'failed');
+  assert.equal(integrity.missingCount, 1);
+  assert.equal(integrity.missing[0].source, 'issues.ISSUE-001.evidence.dom');
+  assert.equal(integrity.presentCount >= 2, true);
+});
+
+test('artifact integrity failures become QA gate coverage gaps', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-artifacts-gate-'));
+  const result = normalizeResult({
+    summary: { url: 'https://example.com', title: 'Example' },
+    artifacts: { outputDir: dir },
+    pageModel: { url: 'https://example.com', title: 'Example', stats: { domNodes: 10, visibleTextLength: 20, bodyTextSample: 'ok' } },
+    journeyTests: [{ id: 'JOURNEY-001', name: 'smoke', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, startUrl: 'https://example.com', steps: [] }],
+    interactionTests: [{ id: 'IT-001', kind: 'search', target: 'search', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, actions: [], observations: {} }],
+    exceptionSimulations: [{ id: 'EX-001', kind: 'page-refresh', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, observations: {} }],
+    issues: [
+      {
+        id: 'ISSUE-001',
+        title: 'Missing screenshot reference',
+        category: 'frontend-ui',
+        severity: 'info',
+        confidence: 0.5,
+        description: 'reference-only',
+        evidence: { screenshot: path.join(dir, 'missing.png') },
+        reproduceSteps: [],
+        reason: 'test',
+        suggestion: { test: 'fix artifact', priority: 'P3' }
+      }
+    ]
+  });
+  const artifactIntegrity = await buildArtifactIntegrity(result);
+  const gate = buildQualityGate({
+    issues: result.issues,
+    pageModel: result.pageModel,
+    phaseErrors: [],
+    interactionTests: result.interactionTests,
+    journeyTests: result.journeyTests,
+    exceptionSimulations: result.exceptionSimulations,
+    coverage: result.coverage,
+    security: result.security,
+    requirementCoverage: result.requirementCoverage,
+    artifactIntegrity
+  });
+  assert.equal(gate.status, 'pass-with-risks');
+  assert.equal(gate.coverageGaps.some((gap) => gap.includes('证据产物')), true);
+});

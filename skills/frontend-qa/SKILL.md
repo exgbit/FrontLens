@@ -1,6 +1,6 @@
 ---
 name: frontend-qa
-description: Run FrontLens Playwright QA for live webpage testing/auditing and produce evidence-backed Markdown/JSON reports covering frontend UI/interaction issues, user journeys, console errors, network/API failures, API schema/contract drift, GraphQL/WebSocket/SSE realtime issues, frontend-backend data mismatch, resource/performance/P2 budget and visual checks, accessibility, permissions, passive security scanning, machine-executable fix tasks, diff/baseline comparison, source-code correlation when a repo path is provided, optional local build/serve before analysis, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare QA runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/fixTasks to drive frontend/backend/security fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
+description: Run FrontLens Playwright QA for live webpage testing/auditing and produce evidence-backed Markdown/JSON reports covering frontend UI/interaction issues, user journeys, console errors, network/API failures, API schema/contract drift, GraphQL/WebSocket/SSE realtime issues, frontend-backend data mismatch, resource/performance/P2 budget and visual checks, accessibility, permissions, passive security scanning, machine-executable fix tasks, diff/baseline comparison, artifact path integrity validation, source-code correlation when a repo path is provided, optional local build/serve before analysis, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare QA runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/fixTasks to drive frontend/backend/security fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
 ---
 
 # Frontend QA
@@ -261,6 +261,7 @@ Minimum stable fields:
 - `coverage`
 - `p2`
 - `requirementCoverage`
+- `artifactIntegrity`
 - `fixTasks[]`
 - `qualityGate`
 - `aiAnalysis`
@@ -295,7 +296,7 @@ Summarize:
 - top backend/API fixes;
 - API contract / GraphQL / WebSocket / SSE findings;
 - machine-executable fix task count and important task IDs;
-- generated artifact paths;
+- generated artifact paths and artifact integrity status;
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation;
 - raw score plus confidence/adjusted-risk note when score is distorted by skipped/synthetic/deployment-only findings;
 - raw issue count separated from implementation root-cause count;

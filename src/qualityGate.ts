@@ -1,4 +1,5 @@
-import type { ArtifactIntegrityResult, CoverageResult, ExceptionSimulationResult, InteractionTestResult, Issue, IssueDispositionResult, JourneyTestResult, PageModel, PhaseError, QaQualityGate, RequirementCoverageResult, SecurityScanResult } from './types.js';
+import type { ArtifactIntegrityResult, CoverageResult, DefectProofResult, ExceptionSimulationResult, InteractionTestResult, Issue, IssueDispositionResult, JourneyTestResult, PageModel, PhaseError, QaQualityGate, RequirementCoverageResult, SecurityScanResult } from './types.js';
+import { issueHasProofReadyRootCause, proofNeedsEvidenceItems } from './proof/proofReadiness.js';
 
 export function isActionableIssue(issue: Issue): boolean {
   return issue.severity !== 'info';
@@ -11,6 +12,10 @@ function dispositionFor(issue: Issue, issueDisposition?: IssueDispositionResult)
 function isActionableIssueForGate(issue: Issue, issueDisposition?: IssueDispositionResult): boolean {
   const disposition = dispositionFor(issue, issueDisposition);
   return disposition ? disposition.actionability === 'actionable' : isActionableIssue(issue);
+}
+
+function isProofReadyIssueForGate(issue: Issue, issueDisposition?: IssueDispositionResult, defectProof?: DefectProofResult): boolean {
+  return isActionableIssueForGate(issue, issueDisposition) && issueHasProofReadyRootCause(issue, issueDisposition, defectProof);
 }
 
 function allSkipped(items: Array<{ status: string }>): boolean {
@@ -34,6 +39,7 @@ function collectCoverageGaps(input: {
   requirementCoverage?: RequirementCoverageResult;
   artifactIntegrity?: ArtifactIntegrityResult;
   issueDisposition?: IssueDispositionResult;
+  defectProof?: DefectProofResult;
 }): string[] {
   const gaps: string[] = [];
   if (input.phaseErrors.length > 0) gaps.push(`${input.phaseErrors.length} 个采集阶段异常，部分证据可能缺失。`);
@@ -50,6 +56,12 @@ function collectCoverageGaps(input: {
   }
   if (input.artifactIntegrity && input.artifactIntegrity.status === 'failed') gaps.push(`证据产物：${input.artifactIntegrity.missingCount} 个引用路径不存在。`);
   if (input.issueDisposition && input.issueDisposition.summary.conditionalCount > 0) gaps.push(`Raw finding 处置：${input.issueDisposition.summary.conditionalCount} 个问题需要源码、需求或部署归属确认。`);
+  if (input.defectProof) {
+    const proofGaps = proofNeedsEvidenceItems(input.defectProof);
+    const p0p1 = proofGaps.filter((item) => item.priority === 'P0' || item.priority === 'P1').length;
+    if (p0p1 > 0) gaps.push(`缺陷证明：${p0p1} 个 P0/P1 根因缺少 professional defect proof；先补证据，不能直接按 must-fix 排期。`);
+    else if (proofGaps.length > 0) gaps.push(`缺陷证明：${proofGaps.length} 个根因需要补充 evidence 后再决定是否排期。`);
+  }
   return gaps;
 }
 
@@ -65,9 +77,11 @@ export function buildQualityGate(input: {
   requirementCoverage?: RequirementCoverageResult;
   artifactIntegrity?: ArtifactIntegrityResult;
   issueDisposition?: IssueDispositionResult;
+  defectProof?: DefectProofResult;
 }): QaQualityGate {
-  const actionableIssues = input.issues.filter((issue) => isActionableIssueForGate(issue, input.issueDisposition));
-  const referenceIssues = input.issues.filter((issue) => !isActionableIssueForGate(issue, input.issueDisposition));
+  const actionableIssues = input.issues.filter((issue) => isProofReadyIssueForGate(issue, input.issueDisposition, input.defectProof));
+  const referenceIssues = input.issues.filter((issue) => !isProofReadyIssueForGate(issue, input.issueDisposition, input.defectProof));
+  const proofNeedsEvidence = proofNeedsEvidenceItems(input.defectProof);
   const blockers = actionableIssues.filter((issue) => issue.severity === 'critical' || issue.severity === 'high');
   const mediumRisks = actionableIssues.filter((issue) => issue.severity === 'medium');
   const failedJourneys = input.journeyTests.filter((journey) => journey.status === 'failed');
@@ -93,6 +107,7 @@ export function buildQualityGate(input: {
     if (mediumRisks.length > 0) reasons.push(`${mediumRisks.length} 个 Medium 可执行风险。`);
     if (failedExceptions.length > 0) reasons.push(`${failedExceptions.length} 个异常场景失败。`);
     if (input.issueDisposition && input.issueDisposition.summary.conditionalCount > 0) reasons.push(`${input.issueDisposition.summary.conditionalCount} 个 raw finding 需要源码/需求/部署确认。`);
+    if (proofNeedsEvidence.length > 0) reasons.push(`${proofNeedsEvidence.length} 个 root-cause 缺少 defectProof，已从阻断性 must-fix 中移出，需补证据。`);
     if (coverageGaps.length > 0) reasons.push(`${coverageGaps.length} 个覆盖缺口。`);
   } else {
     status = 'pass';

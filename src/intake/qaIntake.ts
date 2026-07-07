@@ -314,8 +314,11 @@ function addDefectProofQuestions(result: QaIntakeInput, questions: DraftQuestion
 
 function buildReadyToProceed(result: QaIntakeInput, questions: QaIntakeQuestion[]): string[] {
   const ready: string[] = [];
-  if (result.rootCauseGroups.some((group) => group.status === 'actionable')) {
-    ready.push('已有 actionable rootCauseGroups，可先按根因表安排修复，不要按 raw issue 数量排期。');
+  const proofReadyCount = result.defectProof.items.filter((item) => item.status === 'proven' || item.status === 'probable').length;
+  if (proofReadyCount > 0) {
+    ready.push(`已有 ${proofReadyCount} 个 proof-ready rootCauseGroups，可先按根因表安排修复，不要按 raw issue 数量排期。`);
+  } else if (result.rootCauseGroups.some((group) => group.status === 'actionable')) {
+    ready.push('存在 actionable rootCauseGroups，但 defectProof 尚未证明；先补证据或降级，不要直接排入 must-fix。');
   }
   if (result.issueDisposition.summary.nonActionableCount > 0) {
     ready.push('已有 raw finding 被归入部署/产品/工具/证据不足等非缺陷或条件项，可先从修复队列中排除。');

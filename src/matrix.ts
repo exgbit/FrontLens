@@ -4,6 +4,7 @@ import { runQa } from './runner.js';
 import type { BrowserName, QaResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson, writeText } from './utils/fs.js';
 import { markdownEscape } from './utils/text.js';
+import { issueHasProofReadyRootCause } from './proof/proofReadiness.js';
 
 export interface CompatibilityRunInput {
   url: string;
@@ -156,7 +157,7 @@ export async function runCompatibility(input: CompatibilityRunInput): Promise<Co
       });
       runResults.push({ browser, result });
       const actionableIssueIds = new Set(result.issueDisposition.items.filter((item) => item.actionability === 'actionable').map((item) => item.issueId));
-      const actionableIssues = result.issues.filter((issue) => actionableIssueIds.has(issue.id));
+      const actionableIssues = result.issues.filter((issue) => actionableIssueIds.has(issue.id) && issueHasProofReadyRootCause(issue, result.issueDisposition, result.defectProof));
       const actionableCount = (severity: QaResult['issues'][number]['severity']) => actionableIssues.filter((issue) => issue.severity === severity).length;
       items.push({
         browser,

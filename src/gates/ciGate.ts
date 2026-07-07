@@ -1,4 +1,5 @@
-import type { Issue, IssueDispositionResult, QaResult, Severity } from '../types.js';
+import type { DefectProofResult, Issue, IssueDispositionResult, QaResult, Severity } from '../types.js';
+import { issueHasProofReadyRootCause } from '../proof/proofReadiness.js';
 
 export type CiGateMode = 'professional' | 'raw';
 export type CiGateStatus = 'passed' | 'failed';
@@ -33,10 +34,11 @@ function actionableIssueIds(disposition: IssueDispositionResult | undefined): Se
   return new Set((disposition?.items ?? []).filter((item) => item.actionability === 'actionable').map((item) => item.issueId));
 }
 
-export function severityCountsForResult(result: Pick<QaResult, 'issues' | 'summary' | 'issueDisposition'>, mode: CiGateMode): Record<Severity, number> {
+export function severityCountsForResult(result: Pick<QaResult, 'issues' | 'summary' | 'issueDisposition'> & Partial<Pick<QaResult, 'defectProof'>>, mode: CiGateMode): Record<Severity, number> {
   if (mode === 'raw') return countBySeverity(result.issues);
   const actionable = actionableIssueIds(result.issueDisposition);
-  return countBySeverity(result.issues.filter((issue) => actionable.has(issue.id)));
+  const defectProof = 'defectProof' in result ? (result as { defectProof?: DefectProofResult }).defectProof : undefined;
+  return countBySeverity(result.issues.filter((issue) => actionable.has(issue.id) && issueHasProofReadyRootCause(issue, result.issueDisposition, defectProof)));
 }
 
 function hasSeverityAtOrAbove(counts: Record<Severity, number>, failOn: Severity | undefined): boolean {
@@ -45,7 +47,7 @@ function hasSeverityAtOrAbove(counts: Record<Severity, number>, failOn: Severity
 }
 
 export function evaluateQaCiGate(input: {
-  result: Pick<QaResult, 'issues' | 'summary' | 'issueDisposition'>;
+  result: Pick<QaResult, 'issues' | 'summary' | 'issueDisposition'> & Partial<Pick<QaResult, 'defectProof'>>;
   failOn?: Severity;
   minScore?: number;
   mode?: CiGateMode;
@@ -66,7 +68,7 @@ export function evaluateQaCiGate(input: {
     failedBySeverity,
     severityCounts,
     notes: mode === 'professional'
-      ? ['Professional gate uses adjustedScore and actionable findings only; raw deployment/product/tool findings do not fail CI.']
+      ? ['Professional gate uses adjustedScore and actionable+proof-ready findings only; raw deployment/product/tool/needs-evidence findings do not fail CI.']
       : ['Raw gate uses raw score and all raw findings for backward-compatible scanner behavior.']
   };
 }
@@ -128,7 +130,7 @@ export function evaluateMatrixItemCiGate(input: {
     failedBySeverity,
     severityCounts,
     notes: mode === 'professional'
-      ? ['Professional matrix gate uses adjustedScore and actionable findings only.']
+      ? ['Professional matrix gate uses adjustedScore and proof-ready actionable findings only.']
       : ['Raw matrix gate uses raw score and raw severity counts.']
   };
 }

@@ -1,4 +1,5 @@
-import type { BrowserName, Issue, IssueDispositionResult, QaSummary } from './types.js';
+import type { BrowserName, DefectProofResult, Issue, IssueDispositionResult, QaSummary } from './types.js';
+import { issueHasProofReadyRootCause, proofNeedsEvidenceItems } from './proof/proofReadiness.js';
 
 function severityPenalty(issue: Issue): number {
   const base = (() => {
@@ -74,7 +75,7 @@ export function buildSummary(input: {
   };
 }
 
-export function applyAdjustedScore(summary: QaSummary, issues: Issue[], issueDisposition?: IssueDispositionResult): QaSummary {
+export function applyAdjustedScore(summary: QaSummary, issues: Issue[], issueDisposition?: IssueDispositionResult, defectProof?: DefectProofResult): QaSummary {
   if (!issueDisposition) {
     summary.adjustedScore = summary.score;
     summary.adjustedIssueCount = summary.issueCount;
@@ -84,18 +85,22 @@ export function applyAdjustedScore(summary: QaSummary, issues: Issue[], issueDis
   }
 
   const dispositionByIssueId = new Map(issueDisposition.items.map((item) => [item.issueId, item]));
-  const actionableIssues = issues.filter((issue) => dispositionByIssueId.get(issue.id)?.actionability === 'actionable');
+  const actionableIssues = issues.filter((issue) => dispositionByIssueId.get(issue.id)?.actionability === 'actionable' && issueHasProofReadyRootCause(issue, issueDisposition, defectProof));
   const conditionalCount = issueDisposition.summary.conditionalCount;
   const nonActionableCount = issueDisposition.summary.nonActionableCount;
+  const needsEvidenceCount = proofNeedsEvidenceItems(defectProof).length;
   summary.adjustedScore = calculateScore(actionableIssues);
   summary.adjustedIssueCount = actionableIssues.length;
-  summary.scoreBasis = 'actionable';
+  summary.scoreBasis = defectProof?.items.length ? 'actionable+proof' : 'actionable';
   summary.scoreNotes = [
     `Raw score ${summary.score}/100 is based on ${summary.issueCount} raw finding(s).`,
-    `Adjusted score ${summary.adjustedScore}/100 is based on ${summary.adjustedIssueCount} actionable finding(s).`,
+    `Adjusted score ${summary.adjustedScore}/100 is based on ${summary.adjustedIssueCount} actionable${defectProof?.items.length ? ' and proof-ready' : ''} finding(s).`,
     conditionalCount + nonActionableCount > 0
       ? `${conditionalCount} conditional and ${nonActionableCount} non-actionable finding(s) were excluded from adjustedScore; inspect issueDisposition before scheduling work.`
-      : 'No conditional or non-actionable findings were excluded from adjustedScore.'
-  ];
+      : 'No conditional or non-actionable findings were excluded from adjustedScore.',
+    needsEvidenceCount > 0
+      ? `${needsEvidenceCount} root-cause item(s) are defectProof.needs-evidence and were excluded from adjustedScore until confirmed.`
+      : ''
+  ].filter(Boolean);
   return summary;
 }

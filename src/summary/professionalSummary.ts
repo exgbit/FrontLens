@@ -1,4 +1,5 @@
-import type { IssueDispositionItem, ProfessionalSummaryItem, ProfessionalSummaryResult, QaQualityGate, QaSignoffResult, RegressionPlanResult, RequirementCoverageResult, RootCauseGroup } from '../types.js';
+import type { DefectProofItem, DefectProofResult, IssueDispositionItem, ProfessionalSummaryItem, ProfessionalSummaryResult, QaQualityGate, QaSignoffResult, RegressionPlanResult, RequirementCoverageResult, RootCauseGroup } from '../types.js';
+import { proofItemForGroup, proofNeedsEvidenceItems, proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 
 export interface ProfessionalSummaryInput {
   rootCauseGroups: RootCauseGroup[];
@@ -7,6 +8,7 @@ export interface ProfessionalSummaryInput {
   qualityGate: QaQualityGate;
   qaSignoff: QaSignoffResult;
   regressionPlan: RegressionPlanResult;
+  defectProof?: DefectProofResult;
 }
 
 const PRIORITY_RANK = { P0: 0, P1: 1, P2: 2, P3: 3 } as const;
@@ -20,30 +22,38 @@ function sortRootCause(a: RootCauseGroup, b: RootCauseGroup): number {
   return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || a.title.localeCompare(b.title);
 }
 
-function makeHeadline(input: ProfessionalSummaryInput, p0p1: number): string {
+function makeHeadline(input: ProfessionalSummaryInput, p0p1: number, p0p1ProofGaps: number): string {
   if (input.qaSignoff.status === 'blocked') return `QA blocked: ${input.qaSignoff.blockers[0] ?? 'evidence collection or release sign-off is blocked.'}`;
-  if (input.qaSignoff.status === 'fail') return `QA failed: ${p0p1} P0/P1 actionable root-cause item(s) require fixes before release.`;
+  if (input.qaSignoff.status === 'fail' && p0p1 > 0) return `QA failed: ${p0p1} P0/P1 proof-ready root-cause item(s) require fixes before release.`;
+  if (input.qaSignoff.status === 'fail') return 'QA failed: release/sign-off gates contain failing requirements, journeys, source-health, test-data, or other non-root-cause blockers.';
+  if (p0p1ProofGaps > 0) return `QA needs evidence: ${p0p1ProofGaps} P0/P1 candidate root-cause item(s) lack professional defect proof and must not be scheduled as must-fix until confirmed.`;
   if (input.qaSignoff.status === 'pass-with-risks') return `QA pass with risks: ${input.qaSignoff.coverageGaps.length + input.qaSignoff.risks.length} risk/gap item(s) need explicit acceptance or follow-up.`;
   return 'QA passed for the collected evidence scope; keep regression rerun as the release verification gate.';
 }
 
-function defectItems(groups: RootCauseGroup[]): ProfessionalSummaryItem[] {
-  return groups
-    .filter((group) => group.status === 'actionable')
+function proofLabel(proof?: DefectProofItem): string {
+  return proof ? `Defect proof=${proof.status} (${proof.score}/100).` : 'Defect proof not available; using root-cause actionability only.';
+}
+
+function defectItems(groups: RootCauseGroup[], defectProof?: DefectProofResult): ProfessionalSummaryItem[] {
+  return proofReadyRootCauseGroups(groups, defectProof)
     .sort(sortRootCause)
     .slice(0, 12)
-    .map((group) => ({
-      id: `PS-DEFECT-${group.id}`,
-      kind: 'defect',
-      priority: group.priority,
-      owner: group.owner,
-      title: group.title,
-      rationale: group.summary,
-      action: group.suggestedFix,
-      evidenceRefs: unique([group.id, ...group.issueIds, ...group.networkRequestIds, ...group.consoleIds, ...group.pageErrorIds]),
-      issueIds: group.issueIds,
-      rootCauseGroupId: group.id
-    }));
+    .map((group) => {
+      const proof = proofItemForGroup(defectProof, group.id);
+      return {
+        id: `PS-DEFECT-${group.id}`,
+        kind: 'defect',
+        priority: group.priority,
+        owner: group.owner,
+        title: group.title,
+        rationale: `${group.summary} ${proofLabel(proof)}`,
+        action: group.suggestedFix,
+        evidenceRefs: unique([group.id, proof?.id ?? '', ...group.issueIds, ...group.networkRequestIds, ...group.consoleIds, ...group.pageErrorIds]),
+        issueIds: group.issueIds,
+        rootCauseGroupId: group.id
+      };
+    });
 }
 
 function statusTitle(status: IssueDispositionItem['status']): string {
@@ -122,6 +132,20 @@ function coverageGapItems(input: ProfessionalSummaryInput): ProfessionalSummaryI
       evidenceRefs: ['qaSignoff']
     });
   }
+  for (const proof of proofNeedsEvidenceItems(input.defectProof).slice(0, Math.max(0, 12 - items.length))) {
+    items.push({
+      id: `PS-GAP-${proof.id}`,
+      kind: 'coverage-gap',
+      priority: proof.priority,
+      owner: 'test',
+      title: `缺陷证据不足：${proof.title}`,
+      rationale: proof.missingEvidence.slice(0, 4).join('；') || 'defectProof 将该根因标记为 needs-evidence。',
+      action: proof.nextSteps.join('；') || '补充运行时、源码、需求/产品范围、复现步骤和 owner/fix surface 证据后再决定是否排期。',
+      evidenceRefs: unique([proof.id, proof.rootCauseGroupId, ...proof.evidenceRefs]),
+      issueIds: proof.issueIds,
+      rootCauseGroupId: proof.rootCauseGroupId
+    });
+  }
   return items;
 }
 
@@ -165,8 +189,11 @@ function nextActionItems(plan: RegressionPlanResult): ProfessionalSummaryItem[] 
 
 export function buildProfessionalSummary(input: ProfessionalSummaryInput): ProfessionalSummaryResult {
   const actionableGroups = input.rootCauseGroups.filter((group) => group.status === 'actionable');
-  const p0p1DefectCount = actionableGroups.filter((group) => group.priority === 'P0' || group.priority === 'P1').length;
-  const defects = defectItems(input.rootCauseGroups);
+  const proofReadyGroups = proofReadyRootCauseGroups(input.rootCauseGroups, input.defectProof);
+  const proofNeedsEvidence = proofNeedsEvidenceItems(input.defectProof);
+  const proofBlockedCount = proofNeedsEvidence.filter((item) => item.priority === 'P0' || item.priority === 'P1').length;
+  const p0p1DefectCount = proofReadyGroups.filter((group) => group.priority === 'P0' || group.priority === 'P1').length;
+  const defects = defectItems(input.rootCauseGroups, input.defectProof);
   const nonDefects = nonDefectItems(input.issueDisposition.items);
   const gaps = coverageGapItems(input);
   const risks = releaseRiskItems(input);
@@ -177,10 +204,13 @@ export function buildProfessionalSummary(input: ProfessionalSummaryInput): Profe
     confidence: input.qaSignoff.confidence,
     businessValidationConfidence: input.qaSignoff.businessValidationConfidence,
     generatedAt: new Date().toISOString(),
-    headline: makeHeadline(input, p0p1DefectCount),
+    headline: makeHeadline(input, p0p1DefectCount, proofBlockedCount),
     counts: {
       actionableRootCauseCount: actionableGroups.length,
+      proofReadyRootCauseCount: proofReadyGroups.length,
       p0p1DefectCount,
+      defectProofNeedsEvidenceCount: proofNeedsEvidence.length,
+      defectProofBlockedCount: proofBlockedCount,
       nonDefectFindingCount: input.issueDisposition.summary.nonActionableCount + input.issueDisposition.summary.conditionalCount,
       coverageGapCount: gaps.length,
       releaseRiskCount: risks.length,
@@ -196,6 +226,7 @@ export function buildProfessionalSummary(input: ProfessionalSummaryInput): Profe
     notes: unique([
       'Use this professionalSummary as the default human-facing answer; keep raw issues in result.json/evidence-report.md for evidence drill-down.',
       input.issueDisposition.summary.conditionalCount > 0 ? `${input.issueDisposition.summary.conditionalCount} raw finding(s) still need confirmation before they can become defects.` : '',
+      proofNeedsEvidence.length > 0 ? `${proofNeedsEvidence.length} root-cause item(s) are needs-evidence and are excluded from must-fix/should-fix implementation scheduling until confirmed.` : '',
       input.regressionPlan.status !== 'ready' ? `Regression plan is ${input.regressionPlan.status}; inspect blocked/needs-input items before sign-off.` : ''
     ])
   };

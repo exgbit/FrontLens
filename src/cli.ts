@@ -93,7 +93,7 @@ Options:
   --json                      Print machine-readable JSON summary.
   --full                      For issues command, print full Issue objects.
   --gate-mode <mode>          CI gate mode: professional (default) | raw.
-  --fail-on <severity>        Exit non-zero if issues at severity or above exist. In professional mode, only actionable findings count.
+  --fail-on <severity>        Exit non-zero if issues at severity or above exist. In professional mode, only actionable + defectProof proven/probable findings count.
   --min-score <number>        Exit non-zero if score is lower. In professional mode, uses adjustedScore.
   --fail-on-browser-failure   Matrix: exit non-zero when any browser run fails.
   --timeout-ms <ms>           Journey record maximum wait time. Default: 300000.
@@ -1135,7 +1135,7 @@ async function main(): Promise<void> {
     );
   } else {
     console.log(`\nFrontLens QA completed`);
-    console.log(`Adjusted score: ${result.summary.adjustedScore}/100 (${result.summary.adjustedIssueCount} actionable findings)`);
+    console.log(`Adjusted score: ${result.summary.adjustedScore}/100 (${result.summary.adjustedIssueCount} ${result.summary.scoreBasis} findings)`);
     console.log(`Raw score: ${result.summary.score}/100 (${result.summary.issueCount} raw findings)`);
     console.log(`CI Gate: ${ciGate.status} (${ciGate.mode}, score field ${ciGate.scoreField})`);
     console.log(`Security: ${result.security.status}, ${result.security.score}/100 (${result.security.summary.failedCount} failed, ${result.security.summary.warningCount} warnings)`);
@@ -1152,7 +1152,7 @@ async function main(): Promise<void> {
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
     console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
-    console.log(`Root causes: ${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total`);
+    console.log(`Root causes: ${result.professionalSummary.counts.proofReadyRootCauseCount} proof-ready / ${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total`);
     console.log(`Disposition: ${result.issueDisposition.summary.actionableCount} actionable, ${result.issueDisposition.summary.conditionalCount} conditional, ${result.issueDisposition.summary.nonActionableCount} non-actionable`);
     console.log(`Fix tasks: ${result.fixTasks.length}`);
     console.log(`Professional Summary: ${result.professionalSummary.status}, must-fix ${result.professionalSummary.mustFix.length}, non-defect buckets ${result.professionalSummary.nonDefectObservations.length}`);

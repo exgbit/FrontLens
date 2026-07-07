@@ -1393,6 +1393,7 @@ export type RegressionPlanItemType =
   | 'download'
   | 'environment'
   | 'artifact-integrity'
+  | 'defect-proof'
   | 'role-matrix';
 
 export interface RegressionPlanItem {
@@ -1460,7 +1461,10 @@ export interface ProfessionalSummaryResult {
   headline: string;
   counts: {
     actionableRootCauseCount: number;
+    proofReadyRootCauseCount: number;
     p0p1DefectCount: number;
+    defectProofNeedsEvidenceCount: number;
+    defectProofBlockedCount: number;
     nonDefectFindingCount: number;
     coverageGapCount: number;
     releaseRiskCount: number;
@@ -1889,7 +1893,7 @@ export interface QaSummary {
   adjustedScore: number;
   issueCount: number;
   adjustedIssueCount: number;
-  scoreBasis: 'raw' | 'actionable';
+  scoreBasis: 'raw' | 'actionable' | 'actionable+proof';
   scoreNotes: string[];
   criticalCount: number;
   highCount: number;

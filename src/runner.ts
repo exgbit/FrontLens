@@ -711,7 +711,18 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   const preliminaryDisposition = buildIssueDisposition(issues, resultConfig);
   const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), resultConfig);
   const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
-  const fixTasks: FixTask[] = generateFixTasks(issues, resultConfig, rootCauseGroups);
+  const defectProof: DefectProofResult = buildDefectProof({
+    rootCauseGroups,
+    issues,
+    issueDisposition,
+    requirementCoverage,
+    sourceAnalysis,
+    sourceRuntimeCorrelation,
+    sourceHealth,
+    scopeReview,
+    environment
+  });
+  const fixTasks: FixTask[] = generateFixTasks(issues, resultConfig, rootCauseGroups, defectProof);
   const initialArtifactIntegrity = createEmptyArtifactIntegrity();
   const qualityGate = buildQualityGate({
     issues,
@@ -724,7 +735,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     security,
     requirementCoverage,
     artifactIntegrity: initialArtifactIntegrity,
-    issueDisposition
+    issueDisposition,
+    defectProof
   });
   const qaSignoff = buildQaSignoff({
     config: resultConfig,
@@ -754,7 +766,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     pageProfile,
     testData,
     qualityGate,
-    qaSignoff
+    qaSignoff,
+    defectProof
   });
   const professionalSummary = buildProfessionalSummary({
     rootCauseGroups,
@@ -762,18 +775,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     requirementCoverage,
     qualityGate,
     qaSignoff,
-    regressionPlan
-  });
-  const defectProof: DefectProofResult = buildDefectProof({
-    rootCauseGroups,
-    issues,
-    issueDisposition,
-    requirementCoverage,
-    sourceAnalysis,
-    sourceRuntimeCorrelation,
-    sourceHealth,
-    scopeReview,
-    environment
+    regressionPlan,
+    defectProof
   });
   const claimGuard = buildClaimGuard({
     qaSignoff,
@@ -786,6 +789,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     sourceHealth,
     rootCauseGroups,
     issueDisposition,
+    defectProof,
     p2,
     security,
     artifacts,
@@ -819,7 +823,8 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
       viewport: config.browser.viewport
     }),
     issues,
-    issueDisposition
+    issueDisposition,
+    defectProof
   );
 
   const result: QaResult = {

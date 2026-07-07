@@ -24,7 +24,8 @@ function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
   result.rootCauseGroups = buildRootCauseGroups(filterActionableIssues(result.issues, preliminaryDisposition), result.metadata.config);
   result.issueDisposition = buildIssueDisposition(result.issues, result.metadata.config, result.rootCauseGroups);
-  result.fixTasks = generateFixTasks(result.issues, result.metadata.config, result.rootCauseGroups);
+  result.defectProof = buildDefectProof(result);
+  result.fixTasks = generateFixTasks(result.issues, result.metadata.config, result.rootCauseGroups, result.defectProof);
 }
 
 async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
@@ -60,7 +61,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     title: result.summary.title
   });
   rebuildTriageArtifacts(result);
-  applyAdjustedScore(result.summary, result.issues, result.issueDisposition);
+  applyAdjustedScore(result.summary, result.issues, result.issueDisposition, result.defectProof);
   result.qualityGate = buildQualityGate({
     issues: result.issues,
     pageModel: result.pageModel,
@@ -72,7 +73,8 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     security: result.security,
     requirementCoverage: result.requirementCoverage,
     artifactIntegrity: result.artifactIntegrity,
-    issueDisposition: result.issueDisposition
+    issueDisposition: result.issueDisposition,
+    defectProof: result.defectProof
   });
   result.qaSignoff = buildQaSignoff({
     config: result.metadata.config,
@@ -102,7 +104,8 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     pageProfile: result.pageProfile,
     testData: result.testData,
     qualityGate: result.qualityGate,
-    qaSignoff: result.qaSignoff
+    qaSignoff: result.qaSignoff,
+    defectProof: result.defectProof
   });
   result.professionalSummary = buildProfessionalSummary({
     rootCauseGroups: result.rootCauseGroups,
@@ -110,9 +113,9 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     requirementCoverage: result.requirementCoverage,
     qualityGate: result.qualityGate,
     qaSignoff: result.qaSignoff,
-    regressionPlan: result.regressionPlan
+    regressionPlan: result.regressionPlan,
+    defectProof: result.defectProof
   });
-  result.defectProof = buildDefectProof(result);
   result.claimGuard = buildClaimGuard(result);
   result.qaIntake = buildQaIntake(result);
 }
@@ -153,7 +156,8 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
       pageProfile: result.pageProfile,
       testData: result.testData,
       qualityGate: result.qualityGate,
-      qaSignoff: result.qaSignoff
+      qaSignoff: result.qaSignoff,
+      defectProof: result.defectProof
     });
     result.professionalSummary = buildProfessionalSummary({
       rootCauseGroups: result.rootCauseGroups,
@@ -161,9 +165,9 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
       requirementCoverage: result.requirementCoverage,
       qualityGate: result.qualityGate,
       qaSignoff: result.qaSignoff,
-      regressionPlan: result.regressionPlan
+      regressionPlan: result.regressionPlan,
+      defectProof: result.defectProof
     });
-    result.defectProof = buildDefectProof(result);
     result.claimGuard = buildClaimGuard(result);
     result.qaIntake = buildQaIntake(result);
     if (formats.has('markdown')) {

@@ -1,6 +1,7 @@
 import type { ClaimGuardItem, ClaimGuardResult, QaResult } from '../types.js';
+import { proofNeedsEvidenceItems, proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 
-type ClaimGuardInput = Pick<QaResult, 'qaSignoff' | 'qualityGate' | 'requirementCoverage' | 'environment' | 'scopeReview' | 'sourceRuntimeCorrelation' | 'artifactIntegrity' | 'sourceHealth' | 'rootCauseGroups' | 'issueDisposition' | 'p2' | 'security' | 'artifacts' | 'journeyTests'>;
+type ClaimGuardInput = Pick<QaResult, 'qaSignoff' | 'qualityGate' | 'requirementCoverage' | 'environment' | 'scopeReview' | 'sourceRuntimeCorrelation' | 'artifactIntegrity' | 'sourceHealth' | 'rootCauseGroups' | 'issueDisposition' | 'defectProof' | 'p2' | 'security' | 'artifacts' | 'journeyTests'>;
 
 function uniq(items: string[]): string[] {
   return [...new Set(items.filter(Boolean))];
@@ -119,22 +120,23 @@ function buildSecurityClaim(result: ClaimGuardInput): Omit<ClaimGuardItem, 'id'>
 }
 
 function buildFrontendDefectClaim(result: ClaimGuardInput): Omit<ClaimGuardItem, 'id'> {
-  const actionable = result.rootCauseGroups.filter((group) => group.status === 'actionable');
+  const actionable = proofReadyRootCauseGroups(result.rootCauseGroups, result.defectProof);
+  const proofGaps = proofNeedsEvidenceItems(result.defectProof);
   const conditional = result.issueDisposition.summary.conditionalCount;
-  const status: ClaimGuardItem['status'] = actionable.length > 0 ? 'allowed' : conditional > 0 || result.qaSignoff.confidence !== 'high' ? 'limited' : 'allowed';
+  const status: ClaimGuardItem['status'] = actionable.length > 0 ? 'allowed' : conditional > 0 || proofGaps.length > 0 || result.qaSignoff.confidence !== 'high' ? 'limited' : 'allowed';
   return {
     claim: 'frontend-defect',
     status,
     confidence: status === 'allowed' && actionable.length > 0 ? 'high' : status === 'allowed' ? 'medium' : 'low',
     summary: actionable.length > 0
-      ? `可以讨论 ${actionable.length} 个 actionable root cause；不要按 raw issue 数量计算工作量。`
+      ? `可以讨论 ${actionable.length} 个 proof-ready actionable root cause；不要按 raw issue 数量计算工作量。`
       : status === 'limited'
-        ? '当前没有可执行前端根因，但仍有条件项/覆盖缺口，不能说“无缺陷”。'
+        ? '当前没有 proof-ready 前端根因，但仍有条件项/证据缺口，不能说“无缺陷”。'
         : '当前证据未发现可执行前端根因。',
-    allowedWording: actionable.length > 0 ? '按 rootCauseGroups 列出可执行前端缺陷。' : '当前证据未发现 actionable 前端根因。',
-    forbiddenWording: ['raw issue 数量等同修复工作量', 'conditional/insufficient-evidence 直接变成必须修的前端 bug', '覆盖不足时宣称完全无缺陷'],
-    evidenceRefs: ['rootCauseGroups', 'issueDisposition', 'sourceAnalysis', 'sourceRuntimeCorrelation'],
-    requiredInputs: status === 'limited' ? ['为 conditional findings 补充源码、PRD、角色或运行时复验证据。'] : []
+    allowedWording: actionable.length > 0 ? '按 defectProof=proven/probable 的 rootCauseGroups 列出可执行前端缺陷。' : '当前证据未发现 proof-ready actionable 前端根因。',
+    forbiddenWording: ['raw issue 数量等同修复工作量', 'conditional/insufficient-evidence/needs-evidence 直接变成必须修的前端 bug', '覆盖不足时宣称完全无缺陷'],
+    evidenceRefs: ['rootCauseGroups', 'issueDisposition', 'defectProof', 'sourceAnalysis', 'sourceRuntimeCorrelation'],
+    requiredInputs: status === 'limited' ? ['为 conditional 或 defectProof.needs-evidence findings 补充源码、PRD、角色或运行时复验证据。'] : []
   };
 }
 

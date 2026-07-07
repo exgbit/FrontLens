@@ -3,6 +3,7 @@ import type { Issue, QaResult, Severity } from '../types.js';
 import { markdownEscape, truncateMiddle } from '../utils/text.js';
 import { writeText } from '../utils/fs.js';
 import { isActionableIssue } from '../qualityGate.js';
+import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -260,7 +261,8 @@ function formatProfessionalSummary(result: QaResult): string {
 - Confidence：**${summary.confidence}**
 - Business validation：**${summary.businessValidationConfidence}**
 - Headline：${markdownEscape(summary.headline)}
-- Must-fix / Should-fix：${summary.mustFix.length} / ${summary.shouldFix.length}
+- Must-fix / Should-fix：${summary.mustFix.length} / ${summary.shouldFix.length}（proof-ready root causes ${summary.counts.proofReadyRootCauseCount}/${summary.counts.actionableRootCauseCount}）
+- Defect proof needs-evidence / P0-P1 blocked：${summary.counts.defectProofNeedsEvidenceCount} / ${summary.counts.defectProofBlockedCount}
 - Non-defect observations / Coverage gaps / Release risks：${summary.nonDefectObservations.length} / ${summary.coverageGaps.length} / ${summary.releaseRisks.length}
 - Regression blocked / needs-input：${summary.counts.regressionBlockedCount} / ${summary.counts.regressionNeedsInputCount}
 
@@ -966,7 +968,8 @@ ${entries.map(([key, value]) => `- ${key}: \`${reportPath(result, value as strin
 }
 
 export function formatProfessionalReview(result: QaResult): string {
-  const actionableGroups = result.rootCauseGroups.filter((group) => group.status === 'actionable');
+  const actionableGroups = proofReadyRootCauseGroups(result.rootCauseGroups, result.defectProof);
+  const rawActionableGroupCount = result.rootCauseGroups.filter((group) => group.status === 'actionable').length;
   const blockerGroups = actionableGroups.filter((group) => group.priority === 'P0' || group.priority === 'P1');
   const sourceScriptPassed = result.sourceHealth.scriptChecks.filter((check) => check.status === 'passed').length;
   const sourceScriptFailed = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
@@ -1014,14 +1017,14 @@ export function formatProfessionalReview(result: QaResult): string {
 
 - Target：${markdownEscape(result.summary.url)}
 - Raw score：**${result.summary.score}/100**（全量 raw finding，仅作趋势/排序参考）
-- Adjusted score：**${result.summary.adjustedScore}/100**（基于 ${result.summary.adjustedIssueCount} 个 actionable finding）
+- Adjusted score：**${result.summary.adjustedScore}/100**（基于 ${result.summary.adjustedIssueCount} 个 ${result.summary.scoreBasis} finding）
 - QA sign-off：**${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
 - Professional summary：${markdownEscape(result.professionalSummary.headline)}
 - Claim guard：**${result.claimGuard.status}** / forbidden claims ${result.claimGuard.forbiddenClaims.length}
 - QA intake：**${result.qaIntake.status}** / questions ${result.qaIntake.questions.length}（top ${result.qaIntake.topQuestions.length}）
 - Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
 - Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
-- Actionable root causes：${actionableGroups.length}（P0/P1 ${blockerGroups.length}）
+- Proof-ready root causes：${actionableGroups.length} / actionable ${rawActionableGroupCount}（P0/P1 ${blockerGroups.length}）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
 - Requirement coverage：${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed；provided / inferred：${result.requirementCoverage.summary.providedCount}/${result.requirementCoverage.summary.inferredCount}
 - Environment：${result.environment.kind} / trust performance ${result.environment.trust.performance} / security ${result.environment.trust.security}
@@ -1134,11 +1137,11 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Result Schema：${result.metadata.schemaVersion}
 - 采集阶段异常：${result.metadata.phaseErrors.length}
 - Raw score：**${result.summary.score}/100**（全量 raw finding）
-- Adjusted score：**${result.summary.adjustedScore}/100**（${result.summary.scoreBasis}，基于 ${result.summary.adjustedIssueCount} 个可执行问题）
+- Adjusted score：**${result.summary.adjustedScore}/100**（${result.summary.scoreBasis}，基于 ${result.summary.adjustedIssueCount} 个 proof-ready 可执行问题）
 - 安全评分：**${result.security.score}/100**（${result.security.status}）
 - API Contract：${result.apiContract.summary.endpointCount} endpoints / ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings
 - Realtime：GraphQL ${result.realtime.summary.graphqlOperationCount} / WS ${result.realtime.summary.webSocketCount} / SSE ${result.realtime.summary.sseCount}
-- Root Causes：${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total
+- Root Causes：${result.professionalSummary.counts.proofReadyRootCauseCount} proof-ready / ${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total
 - Raw Finding Disposition：${result.issueDisposition.summary.actionableCount} actionable / ${result.issueDisposition.summary.conditionalCount} conditional / ${result.issueDisposition.summary.nonActionableCount} non-actionable
 - Fix Tasks：${result.fixTasks.length}
 - Professional Summary：${result.professionalSummary.status} / must-fix ${result.professionalSummary.mustFix.length} / non-defect ${result.professionalSummary.nonDefectObservations.length}

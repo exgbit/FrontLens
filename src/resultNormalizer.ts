@@ -43,7 +43,7 @@ import { buildClaimGuard } from './claims/claimGuard.js';
 import { buildQaIntake } from './intake/qaIntake.js';
 import { buildDefectProof } from './proof/defectProof.js';
 
-export const RESULT_SCHEMA_VERSION = '1.31.0';
+export const RESULT_SCHEMA_VERSION = '1.32.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -998,7 +998,7 @@ export function normalizeResult(raw: unknown): QaResult {
     adjustedScore: Math.max(0, Math.min(100, asNumber(summaryRaw.adjustedScore, rawScore === undefined ? calculateScore(issues) : rawScore))),
     issueCount: issues.length,
     adjustedIssueCount: asNumber(summaryRaw.adjustedIssueCount, issues.length),
-    scoreBasis: summaryRaw.scoreBasis === 'actionable' ? 'actionable' : 'raw',
+    scoreBasis: summaryRaw.scoreBasis === 'actionable+proof' ? 'actionable+proof' : summaryRaw.scoreBasis === 'actionable' ? 'actionable' : 'raw',
     scoreNotes: asArray<string>(summaryRaw.scoreNotes).filter((item) => typeof item === 'string'),
     criticalCount: issues.filter((issue) => issue.severity === 'critical').length,
     highCount: issues.filter((issue) => issue.severity === 'high').length,
@@ -1098,8 +1098,19 @@ export function normalizeResult(raw: unknown): QaResult {
   const preliminaryDisposition = buildIssueDisposition(issues, metadataConfig);
   const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
-  applyAdjustedScore(summary, issues, issueDisposition);
-  const fixTasks = generateFixTasks(issues, metadataConfig, rootCauseGroups);
+  const defectProof = buildDefectProof({
+    rootCauseGroups,
+    issues,
+    issueDisposition,
+    requirementCoverage,
+    sourceAnalysis,
+    sourceRuntimeCorrelation,
+    sourceHealth,
+    scopeReview,
+    environment
+  });
+  applyAdjustedScore(summary, issues, issueDisposition, defectProof);
+  const fixTasks = generateFixTasks(issues, metadataConfig, rootCauseGroups, defectProof);
   const qualityGateFallback = buildQualityGate({
     issues,
     pageModel,
@@ -1111,7 +1122,8 @@ export function normalizeResult(raw: unknown): QaResult {
     security,
     requirementCoverage,
     artifactIntegrity,
-    issueDisposition
+    issueDisposition,
+    defectProof
   });
   const qualityGate = isRecord(raw.qualityGate) ? normalizeQualityGate(raw.qualityGate, qualityGateFallback) : qualityGateFallback;
   const qaSignoffFallback = buildQaSignoff({
@@ -1143,7 +1155,8 @@ export function normalizeResult(raw: unknown): QaResult {
     pageProfile,
     testData,
     qualityGate,
-    qaSignoff
+    qaSignoff,
+    defectProof
   });
   const professionalSummary = buildProfessionalSummary({
     rootCauseGroups,
@@ -1151,18 +1164,8 @@ export function normalizeResult(raw: unknown): QaResult {
     requirementCoverage,
     qualityGate,
     qaSignoff,
-    regressionPlan
-  });
-  const defectProof = buildDefectProof({
-    rootCauseGroups,
-    issues,
-    issueDisposition,
-    requirementCoverage,
-    sourceAnalysis,
-    sourceRuntimeCorrelation,
-    sourceHealth,
-    scopeReview,
-    environment
+    regressionPlan,
+    defectProof
   });
   const claimGuard = buildClaimGuard({
     qaSignoff,
@@ -1175,6 +1178,7 @@ export function normalizeResult(raw: unknown): QaResult {
     sourceHealth,
     rootCauseGroups,
     issueDisposition,
+    defectProof,
     p2,
     security,
     artifacts: {

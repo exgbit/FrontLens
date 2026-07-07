@@ -342,7 +342,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
       <section>
         <h1>FrontLens QA Report</h1>
         <div class="score">${result.summary.adjustedScore}/100</div>
-        <p>Adjusted score based on ${result.summary.adjustedIssueCount} actionable finding(s). Raw score: ${result.summary.score}/100.</p>
+        <p>Adjusted score based on ${result.summary.adjustedIssueCount} ${escapeHtml(result.summary.scoreBasis)} finding(s). Raw score: ${result.summary.score}/100.</p>
         <p>${escapeHtml(result.summary.url)}</p>
         <div class="grid">
           <div class="metric"><span>Issues</span><strong>${result.summary.issueCount}</strong></div>
@@ -353,7 +353,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Medium</span><strong>${result.summary.mediumCount}</strong></div>
           <div class="metric"><span>Low</span><strong>${result.summary.lowCount}</strong></div>
           <div class="metric"><span>Security</span><strong>${result.security.score}/100</strong></div>
-          <div class="metric"><span>Root Causes</span><strong>${result.rootCauseGroups.filter((group) => group.status === 'actionable').length}/${result.rootCauseGroups.length}</strong></div>
+          <div class="metric"><span>Root Causes</span><strong>${result.professionalSummary.counts.proofReadyRootCauseCount}/${result.rootCauseGroups.filter((group) => group.status === 'actionable').length}/${result.rootCauseGroups.length}</strong></div>
           <div class="metric"><span>Disposition</span><strong>${result.issueDisposition.summary.actionableCount}/${result.issueDisposition.summary.conditionalCount}/${result.issueDisposition.summary.nonActionableCount}</strong></div>
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
           <div class="metric"><span>Professional</span><strong>${escapeHtml(result.professionalSummary.status)} / ${result.professionalSummary.mustFix.length}</strong></div>
@@ -786,6 +786,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Status</span><strong>${escapeHtml(result.professionalSummary.status)}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.professionalSummary.confidence)}</strong></div>
           <div class="metric"><span>Must-fix</span><strong>${result.professionalSummary.mustFix.length}</strong></div>
+          <div class="metric"><span>Proof-ready</span><strong>${result.professionalSummary.counts.proofReadyRootCauseCount}/${result.professionalSummary.counts.actionableRootCauseCount}</strong></div>
           <div class="metric"><span>Non-defect</span><strong>${result.professionalSummary.nonDefectObservations.length}</strong></div>
         </div>
         <table>

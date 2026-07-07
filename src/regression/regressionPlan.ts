@@ -1,4 +1,5 @@
-import type { ArtifactIntegrityResult, EnvironmentAssessment, FixTask, InteractionTestResult, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RegressionPlanItem, RegressionPlanResult, RequirementCoverageResult, RootCauseGroup, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
+import type { ArtifactIntegrityResult, DefectProofResult, EnvironmentAssessment, FixTask, InteractionTestResult, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RegressionPlanItem, RegressionPlanResult, RequirementCoverageResult, RootCauseGroup, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
+import { proofNeedsEvidenceItems, proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 
 export interface RegressionPlanInput {
   targetUrl: string;
@@ -15,6 +16,7 @@ export interface RegressionPlanInput {
   testData: TestDataAssessmentResult;
   qualityGate: QaQualityGate;
   qaSignoff: QaSignoffResult;
+  defectProof?: DefectProofResult;
 }
 
 function quote(value: string): string {
@@ -103,7 +105,7 @@ export function buildRegressionPlan(input: RegressionPlanInput): RegressionPlanR
     evidenceRefs: ['qaSignoff', 'qualityGate', 'artifactIntegrity']
   });
 
-  for (const group of input.rootCauseGroups.filter((item) => item.status === 'actionable').sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)).slice(0, 20)) {
+  for (const group of proofReadyRootCauseGroups(input.rootCauseGroups, input.defectProof).sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)).slice(0, 20)) {
     addItem(items, {
       type: 'root-cause',
       priority: group.priority,
@@ -116,6 +118,22 @@ export function buildRegressionPlan(input: RegressionPlanInput): RegressionPlanR
       evidenceRefs: [group.id, ...group.issueIds, ...group.networkRequestIds, ...group.consoleIds, ...group.pageErrorIds],
       issueIds: group.issueIds,
       notes: [group.summary]
+    });
+  }
+
+  for (const proof of proofNeedsEvidenceItems(input.defectProof).sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)).slice(0, 20)) {
+    addItem(items, {
+      type: 'defect-proof',
+      priority: proof.priority,
+      title: `补充缺陷证据：${proof.title}`,
+      owner: 'test',
+      status: 'needs-input',
+      commands: [baseCommand],
+      steps: proof.nextSteps.length ? proof.nextSteps : ['补充可复核 runtime/source/requirement/product/repro/owner 证据。', '重新运行 FrontLens 并查看 defectProof。'],
+      expected: ['defectProof 中该 rootCauseGroup 变为 proven/probable，或 issueDisposition 降级为 product/tool/insufficient-evidence。'],
+      evidenceRefs: [proof.id, proof.rootCauseGroupId, ...proof.evidenceRefs],
+      issueIds: proof.issueIds,
+      notes: proof.missingEvidence.length ? proof.missingEvidence : ['Needs-evidence root cause is not an implementation fix task yet.']
     });
   }
 
@@ -254,6 +272,7 @@ export function buildRegressionPlan(input: RegressionPlanInput): RegressionPlanR
   const notes = unique([
     status === 'blocked' ? 'Regression is blocked until P0/source/test-data/artifact blockers are resolved.' : '',
     needsInputCount > 0 ? 'Some regression items require product/role/test-data/environment input before high-confidence sign-off.' : '',
+    proofNeedsEvidenceItems(input.defectProof).length > 0 ? 'defect-proof items are evidence-collection work, not implementation must-fix tasks.' : '',
     'Use root-cause items for implementation verification; do not schedule by raw issue count.'
   ]);
 

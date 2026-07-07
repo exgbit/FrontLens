@@ -311,7 +311,7 @@ test('professional QA review summarizes actionable work without dumping raw evid
 
   const review = formatProfessionalReview(result);
   assert.match(review, /FrontLens Professional QA Review/);
-  assert.match(review, /Actionable root causes/);
+  assert.match(review, /Proof-ready root causes/);
   assert.match(review, /Raw score/);
   assert.match(review, /script checks 1/);
   assert.doesNotMatch(review, /<details><summary>Evidence details/);

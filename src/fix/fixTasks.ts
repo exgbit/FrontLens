@@ -1,4 +1,5 @@
-import type { FixTask, FrontLensConfig, Issue, IssueCategory, RootCauseGroup } from '../types.js';
+import type { DefectProofResult, FixTask, FrontLensConfig, Issue, IssueCategory, RootCauseGroup } from '../types.js';
+import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 
 function ownerFor(issue: Issue): FixTask['owner'] {
   if (issue.ownerHint) return issue.ownerHint;
@@ -44,11 +45,10 @@ function safeOutputName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'root-cause';
 }
 
-export function generateFixTasks(issues: Issue[], config: FrontLensConfig, rootCauseGroups?: RootCauseGroup[]): FixTask[] {
+export function generateFixTasks(issues: Issue[], config: FrontLensConfig, rootCauseGroups?: RootCauseGroup[], defectProof?: DefectProofResult): FixTask[] {
   if (rootCauseGroups) {
     const issueById = new Map(issues.map((issue) => [issue.id, issue]));
-    return rootCauseGroups
-      .filter((group) => group.status === 'actionable')
+    return proofReadyRootCauseGroups(rootCauseGroups, defectProof)
       .map((group, index) => {
         const representative = group.issueIds.map((id) => issueById.get(id)).find((issue): issue is Issue => Boolean(issue));
         const verificationOutput = `reports/frontlens/verify-${safeOutputName(group.id || group.rootCauseKey)}`;

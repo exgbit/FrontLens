@@ -49,8 +49,9 @@ import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
+import { buildTestCaseMatrix } from './cases/testCases.js';
 
-export const RESULT_SCHEMA_VERSION = '1.65.0';
+export const RESULT_SCHEMA_VERSION = '1.66.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1377,6 +1378,26 @@ export function normalizeResult(raw: unknown): QaResult {
     defectProof,
     qaSignoff
   });
+  const testCases = buildTestCaseMatrix({
+    summary,
+    requirementCoverage,
+    journeyTests,
+    journeyAssertionAudit,
+    interactionTests,
+    exceptionSimulations,
+    accessibilityChecks,
+    responsiveChecks: asArray(raw.responsiveChecks),
+    apiContract: normalizeApiContract(raw.apiContract),
+    coverage,
+    p2,
+    security,
+    sourceHealth,
+    testData,
+    artifactIntegrity,
+    qaCoverage,
+    issueDisposition,
+    defectProof
+  });
   const riskRegister = buildRiskRegister({
     professionalSummary,
     qaSignoff,
@@ -1425,6 +1446,7 @@ export function normalizeResult(raw: unknown): QaResult {
     regressionPlan,
     qaPlan,
     qaCoverage,
+    testCases,
     riskRegister,
     riskAcceptance,
     reportContentAudit,

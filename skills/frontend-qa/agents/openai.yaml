@@ -1,4 +1,4 @@
 interface:
   display_name: "Frontend QA"
   short_description: "Professional frontend QA with proof guard"
-  default_prompt: "Use $frontend-qa to run evidence-backed frontend QA, correlate with source/PRD when available, apply riskRegister/riskAcceptance/claimGuard/reportContentAudit/journeyAssertionAudit/qaIntake/defectProof to avoid overclaims, guessing, noisy report wording, and weak defect scheduling, and return professional root-cause fixes, QA sign-off, release-risk register/acceptance checklist, and regression steps."
+  default_prompt: "Use $frontend-qa to run evidence-backed frontend QA, correlate with source/PRD when available, apply testCases/riskRegister/riskAcceptance/claimGuard/reportContentAudit/journeyAssertionAudit/qaIntake/defectProof to avoid overclaims, guessing, noisy report wording, and weak defect scheduling, and return professional root-cause fixes, QA sign-off, formal test-case matrix, release-risk register/acceptance checklist, and regression steps."

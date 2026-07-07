@@ -13,6 +13,7 @@ import { buildQaExecutionPlan, formatQaExecutionPlan } from '../plan/qaExecution
 import { buildQaCoverageMatrix, formatQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
 import { buildRiskRegister, formatRiskRegister } from '../risk/riskRegister.js';
 import { buildRiskAcceptance, formatRiskAcceptance } from '../risk/riskAcceptance.js';
+import { buildTestCaseMatrix, formatTestCaseMatrix } from '../cases/testCases.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1070,6 +1071,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
 - Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
+- Test cases：**${result.testCases.status}** / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount} / artifact ${artifactPath(result.artifacts.testCases)}
 - Risk register：**${result.riskRegister.status}** / total ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount} / artifact ${artifactPath(result.artifacts.riskRegister)}
 - Risk acceptance：**${result.riskAcceptance.status}** / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount} / artifact ${artifactPath(result.artifacts.riskAcceptance)}
 - Raw score：**${result.summary.score}/100**（原始扫描趋势分，不能直接等同页面质量或修复工作量）
@@ -1173,6 +1175,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
   const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
+  const testCasesPath = path.join(result.artifacts.outputDir, 'test-cases.md');
   const riskRegisterPath = path.join(result.artifacts.outputDir, 'risk-register.md');
   const riskAcceptancePath = path.join(result.artifacts.outputDir, 'risk-acceptance.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
@@ -1189,6 +1192,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.productContext = productContextPath;
   result.artifacts.qaPlan = qaPlanPath;
   result.artifacts.qaCoverage = qaCoveragePath;
+  result.artifacts.testCases = testCasesPath;
   result.artifacts.riskRegister = riskRegisterPath;
   result.artifacts.riskAcceptance = riskAcceptancePath;
   result.artifacts.qaReview = reviewPath;
@@ -1234,6 +1238,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
 - Regression Plan：${result.regressionPlan.status} / items ${result.regressionPlan.summary.itemCount} / blocked ${result.regressionPlan.summary.blockedCount}
+- Test Cases：${result.testCases.status} / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount}
 - Risk Register：${result.riskRegister.status} / risks ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}
 - Risk Acceptance：${result.riskAcceptance.status} / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
@@ -1384,6 +1389,8 @@ ${formatArtifacts(result)}
   await writeText(qaPlanPath, formatQaExecutionPlan(result.qaPlan));
   result.qaCoverage = buildQaCoverageMatrix(result);
   await writeText(qaCoveragePath, formatQaCoverageMatrix(result.qaCoverage));
+  result.testCases = buildTestCaseMatrix(result);
+  await writeText(testCasesPath, formatTestCaseMatrix(result.testCases));
   result.riskRegister = buildRiskRegister(result);
   await writeText(riskRegisterPath, formatRiskRegister(result.riskRegister));
   result.riskAcceptance = buildRiskAcceptance(result);

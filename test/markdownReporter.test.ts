@@ -53,6 +53,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   const claimGuard = await readFile(result.artifacts.claimGuard!, 'utf8');
   const qaIntake = await readFile(result.artifacts.qaIntake!, 'utf8');
   const defectProof = await readFile(result.artifacts.defectProof!, 'utf8');
+  const testCases = await readFile(result.artifacts.testCases!, 'utf8');
   const riskRegister = await readFile(result.artifacts.riskRegister!, 'utf8');
   const riskAcceptance = await readFile(result.artifacts.riskAcceptance!, 'utf8');
 
@@ -74,6 +75,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(brief, /product-context\.config\.json/);
   assert.match(brief, /qa-plan\.md/);
   assert.match(brief, /qa-coverage\.md/);
+  assert.match(brief, /test-cases\.md/);
   assert.match(brief, /risk-register\.md/);
   assert.match(brief, /risk-acceptance\.md/);
   assert.match(report, /核心缺陷 \/ 修复根因/);
@@ -99,6 +101,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(qaIntake, /Top questions/);
   assert.match(defectProof, /Defect Proof \/ 缺陷证明强度/);
   assert.match(defectProof, /Proof status/);
+  assert.match(testCases, /FrontLens Test Case Matrix/);
   assert.match(riskRegister, /FrontLens Risk Register/);
   assert.match(riskAcceptance, /FrontLens Risk Acceptance/);
 });
@@ -199,6 +202,8 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaPlanLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaCoverage' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaCoverageLog' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.testCases' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.testCasesLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.riskRegister' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.riskRegisterLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.riskAcceptance' && entry.exists), true);

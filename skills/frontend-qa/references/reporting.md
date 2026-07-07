@@ -13,6 +13,7 @@ Default to a concise, decision-oriented answer. Respect `report.profile`: execut
 Summarize:
 
 - professionalSummary headline/status and must-fix/non-defect counts;
+- testCases status, total/passed/failed/blocked/needs-input counts, `test-cases.md` path, and whether failures are runtime defects or manual-required coverage gaps;
 - riskRegister status, release-blocking count, top high/critical risks, `risk-register.md` path, riskAcceptance status, must-mitigate/needs-acceptance counts, and `risk-acceptance.md` path; if blocked/at-risk, report it before raw issue totals;
 - adjusted score, raw score, and issue counts;
 - in FrontLens 1.45+, lead with adjusted score/proof-ready root causes and mention raw score only as scanner trend context;
@@ -45,6 +46,7 @@ Summarize:
 - if `qaPlan.items[]` or `regressionPlan.items[]` contains `type=role-matrix`, report it as a permission sign-off input gap until role storage states and expected allowed/forbidden contracts are provided;
 - if `qaPlan.items[]` or `regressionPlan.items[]` contains `type=source-health` for detected-but-unexecuted package scripts, report it as a source/CI sign-off gap until build/typecheck/test/e2e/lint evidence is attached or explicitly scoped out;
 - QA coverage matrix status/items from `result.json.qaCoverage` and `qa-coverage.md`; skipped and needs-input rows must be phrased as coverage gaps, not passes;
+- formal test case matrix from `result.json.testCases` and `test-cases.md`; use it to say which cases actually passed/failed/blocked/need input, and do not turn manual-required rows into code bugs unless `defectProof` and source/runtime evidence support it;
 - release-risk matrix from `result.json.riskRegister` and `risk-register.md`; separate implementation defects, coverage gaps, environment/source/test-data/artifact risks, and accepted product risks.
 - risk-acceptance checklist from `result.json.riskAcceptance` and `risk-acceptance.md`; blocked must-mitigate items are not releasable, while needs-acceptance items require named Product/QA/Release approval and evidence before they can be treated as accepted risk.
 - generated-report content audit from `result.json.reportContentAudit` and `report-content-audit.md`; blockers mean the report text itself overclaims or violates the selected depth profile; compactness warnings mean the report should be summarized rather than copied into the final answer;

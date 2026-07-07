@@ -63,6 +63,7 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.equal(result.qualityGate.blockingIssueCount, 1);
   assert.equal(result.qaSignoff.status, 'fail');
   assert.equal(result.qaSignoff.businessValidationConfidence, 'not-verified');
+  assert.ok(result.testCases.summary.totalCount >= 1);
   assert.ok(result.riskRegister.summary.totalCount >= 1);
   assert.ok(result.riskAcceptance.summary.itemCount >= 1);
 });

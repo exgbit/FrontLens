@@ -15,6 +15,7 @@ export { buildTestDataAssessment, writeTestDataAssessment } from './testData/tes
 export { buildRegressionPlan } from './regression/regressionPlan.js';
 export { buildQaExecutionPlan, formatQaExecutionPlan } from './plan/qaExecutionPlan.js';
 export { buildQaCoverageMatrix, formatQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
+export { buildTestCaseMatrix, formatTestCaseMatrix } from './cases/testCases.js';
 export { buildProfessionalSummary } from './summary/professionalSummary.js';
 export { buildScopeReview, createEmptyScopeReview } from './product/scopeReview.js';
 export { buildProductContextSuggestion, formatProductContextSuggestion } from './product/productContextSuggestion.js';

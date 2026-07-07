@@ -8,6 +8,7 @@ import { buildQaExecutionPlan } from '../plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
 import { buildRiskRegister } from '../risk/riskRegister.js';
 import { buildRiskAcceptance } from '../risk/riskAcceptance.js';
+import { buildTestCaseMatrix } from '../cases/testCases.js';
 
 export function assignJsonArtifactPaths(result: QaResult): void {
   const outputDir = result.artifacts.outputDir;
@@ -29,6 +30,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.productContextConfig = path.join(outputDir, 'product-context.config.json');
   result.artifacts.qaPlanLog = path.join(outputDir, 'qa-plan.json');
   result.artifacts.qaCoverageLog = path.join(outputDir, 'qa-coverage.json');
+  result.artifacts.testCasesLog = path.join(outputDir, 'test-cases.json');
   result.artifacts.riskRegisterLog = path.join(outputDir, 'risk-register.json');
   result.artifacts.riskAcceptanceLog = path.join(outputDir, 'risk-acceptance.json');
   result.artifacts.regressionPlanLog = path.join(outputDir, 'regression-plan.json');
@@ -62,6 +64,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     productContextConfig: string;
     qaPlanLog: string;
     qaCoverageLog: string;
+    testCasesLog: string;
     riskRegisterLog: string;
     riskAcceptanceLog: string;
     regressionPlanLog: string;
@@ -96,6 +99,8 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   await writeJson(artifacts.qaPlanLog, result.qaPlan);
   result.qaCoverage = buildQaCoverageMatrix(result);
   await writeJson(artifacts.qaCoverageLog, result.qaCoverage);
+  result.testCases = buildTestCaseMatrix(result);
+  await writeJson(artifacts.testCasesLog, result.testCases);
   result.riskRegister = buildRiskRegister(result);
   await writeJson(artifacts.riskRegisterLog, result.riskRegister);
   result.riskAcceptance = buildRiskAcceptance(result);

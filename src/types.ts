@@ -1602,6 +1602,65 @@ export interface QaCoverageMatrixResult {
   notes: string[];
 }
 
+export type TestCaseKind =
+  | 'requirement'
+  | 'journey'
+  | 'interaction'
+  | 'exception'
+  | 'accessibility'
+  | 'responsive'
+  | 'api-contract'
+  | 'performance'
+  | 'security'
+  | 'source-health'
+  | 'test-data'
+  | 'artifact'
+  | 'triage';
+
+export type TestCaseStatus = 'passed' | 'failed' | 'partial' | 'blocked' | 'skipped' | 'needs-input';
+export type TestCaseExecutionMode = 'runtime' | 'static' | 'hybrid' | 'manual-required';
+
+export interface TestCaseItem {
+  id: string;
+  kind: TestCaseKind;
+  title: string;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  status: TestCaseStatus;
+  confidence: 'high' | 'medium' | 'low';
+  executionMode: TestCaseExecutionMode;
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  preconditions: string[];
+  steps: string[];
+  expected: string[];
+  actual: string;
+  evidenceRefs: string[];
+  issueIds: string[];
+  requirementIds: string[];
+  journeyIds: string[];
+  nextSteps: string[];
+  notes: string[];
+}
+
+export interface TestCaseMatrixResult {
+  generatedAt: string;
+  status: 'passed' | 'failed' | 'partial' | 'blocked' | 'needs-input' | 'skipped';
+  confidence: 'high' | 'medium' | 'low';
+  summary: {
+    totalCount: number;
+    passedCount: number;
+    failedCount: number;
+    partialCount: number;
+    blockedCount: number;
+    skippedCount: number;
+    needsInputCount: number;
+    runtimeVerifiedCount: number;
+    manualRequiredCount: number;
+    highPriorityOpenCount: number;
+  };
+  items: TestCaseItem[];
+  notes: string[];
+}
+
 export type QaExecutionPlanStatus = 'ready' | 'needs-input' | 'blocked';
 export type QaExecutionPlanItemType =
   | 'rerun'
@@ -2184,6 +2243,8 @@ export interface ArtifactIndex {
   qaPlan?: string;
   /** Professional QA coverage matrix Markdown. */
   qaCoverage?: string;
+  /** Professional test case / execution matrix Markdown. */
+  testCases?: string;
   /** Release risk register Markdown. */
   riskRegister?: string;
   /** Risk acceptance / must-mitigate decision checklist Markdown. */
@@ -2212,6 +2273,7 @@ export interface ArtifactIndex {
   productContextLog?: string;
   qaPlanLog?: string;
   qaCoverageLog?: string;
+  testCasesLog?: string;
   riskRegisterLog?: string;
   riskAcceptanceLog?: string;
   regressionPlanLog?: string;
@@ -2374,6 +2436,7 @@ export interface QaResult {
   regressionPlan: RegressionPlanResult;
   qaPlan: QaExecutionPlanResult;
   qaCoverage: QaCoverageMatrixResult;
+  testCases: TestCaseMatrixResult;
   riskRegister: RiskRegisterResult;
   riskAcceptance: RiskAcceptanceResult;
   reportContentAudit: ReportContentAuditResult;

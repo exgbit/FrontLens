@@ -42,6 +42,7 @@ import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
+import { buildTestCaseMatrix } from './cases/testCases.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
@@ -900,6 +901,26 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     defectProof,
     qaSignoff
   });
+  const testCases = buildTestCaseMatrix({
+    summary,
+    requirementCoverage,
+    journeyTests,
+    journeyAssertionAudit,
+    interactionTests,
+    exceptionSimulations,
+    accessibilityChecks,
+    responsiveChecks,
+    apiContract,
+    coverage,
+    p2,
+    security,
+    sourceHealth,
+    testData,
+    artifactIntegrity: initialArtifactIntegrity,
+    qaCoverage,
+    issueDisposition,
+    defectProof
+  });
   const riskRegister = buildRiskRegister({
     professionalSummary,
     qaSignoff,
@@ -965,6 +986,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     regressionPlan,
     qaPlan,
     qaCoverage,
+    testCases,
     riskRegister,
     riskAcceptance,
     reportContentAudit: createSkippedReportContentAudit(resultConfig.report.profile),

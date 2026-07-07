@@ -33,8 +33,9 @@ import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { analyzeSource, createEmptySourceAnalysis } from './source/sourceAnalyzer.js';
+import { buildSourceRuntimeCorrelation, createEmptySourceRuntimeCorrelation } from './source/sourceRuntimeCorrelation.js';
 import { sessionStorageSidecarPath } from './auth.js';
-import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult } from './types.js';
+import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult, SourceRuntimeCorrelationResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
 import { RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 import { redactText, redactUrl } from './utils/redact.js';
@@ -369,6 +370,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   let apiContract: ApiContractResult = emptyApiContract(config);
   let contractIssues: Issue[] = [];
   let sourceAnalysis: SourceAnalysisResult = createEmptySourceAnalysis(config, config.source.enabled ? 'skipped' : 'skipped', config.source.enabled ? 'Source analysis was not collected.' : 'Source analysis disabled.');
+  let sourceRuntimeCorrelation: SourceRuntimeCorrelationResult = createEmptySourceRuntimeCorrelation('skipped', config.source.enabled ? 'Source/runtime correlation was not collected.' : 'Source analysis disabled.');
   let sourceIssues: Issue[] = [];
   let realtime: RealtimeResult = createEmptyRealtimeResult(config);
   let p2: P2TestResult = createEmptyP2Result(config);
@@ -580,6 +582,17 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   const contractOutput = await safePhase('contract.analyze', phaseErrors, { result: emptyApiContract(config), issues: [] as Issue[] }, () => analyzeApiContract(config, networkCollector.list(), artifacts, { excludedNetworkRequestIds: syntheticNetworkRequestIds }));
   apiContract = contractOutput.result;
   contractIssues = contractOutput.issues;
+  sourceRuntimeCorrelation = await safePhase(
+    'source.runtime-correlate',
+    phaseErrors,
+    createEmptySourceRuntimeCorrelation('failed', 'Source/runtime correlation failed.'),
+    async () =>
+      buildSourceRuntimeCorrelation({
+        sourceAnalysis,
+        networkRecords: networkCollector.list().filter((record) => !syntheticNetworkRequestIds.includes(record.id)),
+        pageModel
+      })
+  );
   await writeJson(artifacts.realtimeLog as string, realtime);
   await writeJson(artifacts.apiContractLog as string, apiContract);
   await writeJson(artifacts.p2Log as string, p2);
@@ -605,6 +618,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     security,
     p2,
     sourceAnalysis,
+    sourceRuntimeCorrelation,
     analysisExclusions: {
       networkRequestIds: [...interactionRestoreNetworkRequestIds, ...securityNetworkRequestIds, ...p2NetworkRequestIds, ...exceptionPhaseNetworkRequestIds],
       consoleIds: [...interactionRestoreConsoleIds, ...exceptionPhaseConsoleIds],
@@ -706,6 +720,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     security,
     requirementCoverage,
     sourceAnalysis,
+    sourceRuntimeCorrelation,
     p2,
     artifactIntegrity: createEmptyArtifactIntegrity(),
     rootCauseGroups,

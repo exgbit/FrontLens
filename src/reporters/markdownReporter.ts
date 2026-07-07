@@ -247,6 +247,28 @@ ${apiRows.length ? ['| Method | Path | Client | Location |', '| --- | --- | --- 
 `;
 }
 
+function formatSourceRuntimeCorrelation(result: QaResult): string {
+  const correlation = result.sourceRuntimeCorrelation;
+  const rows = correlation.links.slice(0, 25).map((link) => {
+    const sourceMatches = link.sourceMatches.slice(0, 3).map((match) => `${match.file}:${match.line}${match.path ? ` ${match.path}` : ''}`).join('<br>');
+    const listHints = link.responseListHints.slice(0, 3).map((hint) => `${hint.path}(${hint.length})`).join('<br>');
+    return `| ${markdownEscape(link.id)} | ${markdownEscape(`${link.method} ${truncateMiddle(link.path, 70)}`)} | ${markdownEscape(String(link.status ?? '-'))} | ${markdownEscape(link.confidence)} | ${markdownEscape(sourceMatches || '-')} | ${markdownEscape(link.componentIds.slice(0, 5).join(', ') || '-')} | ${markdownEscape(listHints || '-')} |`;
+  });
+  return `## Source × Runtime Correlation / 源码×运行时绑定
+
+- Enabled：${correlation.enabled}
+- Status：${correlation.status}
+- Runtime API requests：${correlation.summary.networkRequestCount}
+- Linked / Strong / Unlinked：${correlation.summary.linkedRequestCount} / ${correlation.summary.strongLinkCount} / ${correlation.summary.unlinkedRequestCount}
+- Linked list-like responses：${correlation.summary.listResponseLinkCount}
+- Error：${markdownEscape(correlation.error ?? '-')}
+
+该节用于过滤“全局 Network 里某接口有数据，但页面为空”这类发散结论。只有运行时接口能绑定到源码 API 调用，并能找到 UI/状态/列表响应线索时，相关数据不一致问题才进入可执行缺陷候选。
+
+${rows.length ? ['| ID | Network | Status | Confidence | Source matches | Components | List hints |', '| --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '未建立运行时接口与源码/UI 的绑定。'}
+`;
+}
+
 function formatRootCauseGroups(result: QaResult): string {
   const groups = result.rootCauseGroups ?? [];
   const rows = groups.slice(0, 50).map((group) => {
@@ -741,6 +763,8 @@ ${formatIssueDisposition(result)}
 ${formatRequirementCoverage(result)}
 
 ${formatSourceAnalysis(result)}
+
+${formatSourceRuntimeCorrelation(result)}
 
 ## 核心可执行问题列表
 

@@ -29,7 +29,7 @@ import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 
-export const RESULT_SCHEMA_VERSION = '1.10.0';
+export const RESULT_SCHEMA_VERSION = '1.11.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -633,6 +633,62 @@ function normalizeSourceAnalysis(raw: unknown, config: FrontLensConfig): QaResul
   };
 }
 
+function normalizeSourceRuntimeCorrelation(raw: unknown): QaResult['sourceRuntimeCorrelation'] {
+  const empty: QaResult['sourceRuntimeCorrelation'] = {
+    enabled: false,
+    status: 'skipped',
+    checkedAt: new Date().toISOString(),
+    summary: {
+      networkRequestCount: 0,
+      linkedRequestCount: 0,
+      strongLinkCount: 0,
+      unlinkedRequestCount: 0,
+      listResponseLinkCount: 0
+    },
+    links: [],
+    gaps: ['Source/runtime correlation missing from report.']
+  };
+  if (!isRecord(raw)) return empty;
+  const summary = isRecord(raw.summary) ? raw.summary : {};
+  const links = asArray(raw.links).filter(isRecord).map((link) => {
+    const confidence: QaResult['sourceRuntimeCorrelation']['links'][number]['confidence'] =
+      link.confidence === 'high' || link.confidence === 'medium' || link.confidence === 'low' || link.confidence === 'none' ? link.confidence : 'none';
+    return {
+      id: asString(link.id),
+      networkRequestId: asString(link.networkRequestId),
+      method: asString(link.method),
+      url: asString(link.url),
+      path: asString(link.path),
+      status: optionalNumber(link.status),
+      sourceMatches: asArray<QaResult['sourceAnalysis']['apiCalls'][number]>(link.sourceMatches),
+      stateSignals: asArray<QaResult['sourceAnalysis']['stateSignals'][number]>(link.stateSignals),
+      componentIds: asArray<string>(link.componentIds).filter((item) => typeof item === 'string'),
+      responseListHints: asArray(link.responseListHints).filter(isRecord).map((hint) => ({
+        path: asString(hint.path),
+        length: asNumber(hint.length),
+        sampleKeys: asArray<string>(hint.sampleKeys).filter((item) => typeof item === 'string')
+      })),
+      confidence,
+      notes: asArray<string>(link.notes).filter((item) => typeof item === 'string')
+    };
+  });
+  return {
+    enabled: Boolean(raw.enabled),
+    status: raw.status === 'passed' || raw.status === 'failed' || raw.status === 'skipped' ? raw.status : empty.status,
+    checkedAt: asString(raw.checkedAt, empty.checkedAt),
+    summary: {
+      networkRequestCount: asNumber(summary.networkRequestCount, links.length),
+      linkedRequestCount: asNumber(summary.linkedRequestCount, links.filter((link) => link.confidence !== 'none').length),
+      strongLinkCount: asNumber(summary.strongLinkCount, links.filter((link) => link.confidence === 'high').length),
+      unlinkedRequestCount: asNumber(summary.unlinkedRequestCount, links.filter((link) => link.confidence === 'none').length),
+      listResponseLinkCount: asNumber(summary.listResponseLinkCount, links.filter((link) => link.responseListHints.length > 0 && (link.confidence === 'medium' || link.confidence === 'high')).length)
+    },
+    links,
+    gaps: asArray<string>(raw.gaps).filter((item) => typeof item === 'string'),
+    error: optionalString(raw.error)
+  };
+}
+
 export function normalizeResult(raw: unknown): QaResult {
   if (!isRecord(raw)) {
     throw new Error('Invalid FrontLens result: expected a JSON object.');
@@ -735,6 +791,7 @@ export function normalizeResult(raw: unknown): QaResult {
   });
   const artifactIntegrity = normalizeArtifactIntegrity(raw.artifactIntegrity);
   const sourceAnalysis = normalizeSourceAnalysis(raw.sourceAnalysis, metadataConfig);
+  const sourceRuntimeCorrelation = normalizeSourceRuntimeCorrelation(raw.sourceRuntimeCorrelation);
   const rootCauseGroups = buildRootCauseGroups(issues, metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
   const qualityGateFallback = buildQualityGate({
@@ -772,6 +829,7 @@ export function normalizeResult(raw: unknown): QaResult {
     security,
     requirementCoverage,
     sourceAnalysis,
+    sourceRuntimeCorrelation,
     p2: normalizeP2(raw.p2),
     artifactIntegrity,
     rootCauseGroups,

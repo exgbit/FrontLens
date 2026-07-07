@@ -802,6 +802,43 @@ export interface SourceAnalysisResult {
   }>;
 }
 
+export interface SourceRuntimeListHint {
+  path: string;
+  length: number;
+  sampleKeys: string[];
+}
+
+export interface SourceRuntimeLink {
+  id: string;
+  networkRequestId: string;
+  method: string;
+  url: string;
+  path: string;
+  status?: number;
+  sourceMatches: SourceApiRecord[];
+  stateSignals: SourceStateSignal[];
+  componentIds: string[];
+  responseListHints: SourceRuntimeListHint[];
+  confidence: 'high' | 'medium' | 'low' | 'none';
+  notes: string[];
+}
+
+export interface SourceRuntimeCorrelationResult {
+  enabled: boolean;
+  status: 'passed' | 'skipped' | 'failed';
+  checkedAt: string;
+  summary: {
+    networkRequestCount: number;
+    linkedRequestCount: number;
+    strongLinkCount: number;
+    unlinkedRequestCount: number;
+    listResponseLinkCount: number;
+  };
+  links: SourceRuntimeLink[];
+  gaps: string[];
+  error?: string;
+}
+
 export type SecurityCheckCategory =
   | 'headers'
   | 'cookies'
@@ -1163,6 +1200,7 @@ export interface ArtifactIndex {
   apiContractLog?: string;
   p2Log?: string;
   sourceAnalysisLog?: string;
+  sourceRuntimeLog?: string;
   pageModel?: string;
 }
 
@@ -1281,6 +1319,7 @@ export interface QaResult {
   security: SecurityScanResult;
   requirementCoverage: RequirementCoverageResult;
   sourceAnalysis: SourceAnalysisResult;
+  sourceRuntimeCorrelation: SourceRuntimeCorrelationResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];
@@ -1319,6 +1358,7 @@ export interface AnalyzerContext {
   security: SecurityScanResult;
   requirementCoverage?: RequirementCoverageResult;
   sourceAnalysis?: SourceAnalysisResult;
+  sourceRuntimeCorrelation?: SourceRuntimeCorrelationResult;
   p2: P2TestResult;
   artifactIntegrity?: ArtifactIntegrityResult;
   analysisExclusions?: {

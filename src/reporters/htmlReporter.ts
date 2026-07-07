@@ -225,6 +225,14 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
       return `<tr><td>${escapeHtml(finding.id)}</td><td>${escapeHtml(finding.kind)}</td><td>${issueBadge(finding.severity)}</td><td>${escapeHtml(finding.title)}</td><td>${escapeHtml(locations || '-')}</td></tr>`;
     })
     .join('\n');
+  const sourceRuntimeRows = result.sourceRuntimeCorrelation.links
+    .slice(0, 50)
+    .map((link) => {
+      const sourceMatches = link.sourceMatches.slice(0, 3).map((match) => `${match.file}:${match.line}${match.path ? ` ${match.path}` : ''}`).join('；') || '-';
+      const listHints = link.responseListHints.slice(0, 3).map((hint) => `${hint.path}(${hint.length})`).join('；') || '-';
+      return `<tr><td>${escapeHtml(link.id)}</td><td>${escapeHtml(`${link.method} ${truncateText(link.path, 90)}`)}</td><td>${escapeHtml(String(link.status ?? '-'))}</td><td>${escapeHtml(link.confidence)}</td><td>${escapeHtml(sourceMatches)}</td><td>${escapeHtml(link.componentIds.slice(0, 5).join(', ') || '-')}</td><td>${escapeHtml(listHints)}</td></tr>`;
+    })
+    .join('\n');
   const phaseErrorRows = result.metadata.phaseErrors
     .map((item) => `<tr><td>${escapeHtml(item.phase)}</td><td>${escapeHtml(item.message)}</td><td>${escapeHtml(item.timestamp)}</td></tr>`)
     .join('\n');
@@ -281,6 +289,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
+          <div class="metric"><span>Source × Runtime</span><strong>${escapeHtml(result.sourceRuntimeCorrelation.status)}</strong></div>
           <div class="metric"><span>Phase errors</span><strong>${result.metadata.phaseErrors.length}</strong></div>
         </div>
       </section>
@@ -364,6 +373,23 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <table>
           <thead><tr><th>ID</th><th>Kind</th><th>Severity</th><th>Title</th><th>Locations</th></tr></thead>
           <tbody>${sourceFindingRows || '<tr><td colspan="5">No source findings</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Source × Runtime Correlation / 源码×运行时绑定</h2>
+        <p>用于过滤“全局 Network 有数据但页面为空”一类发散结论；未绑定到源码 API/UI/状态信号的响应不会直接作为可执行前端缺陷。</p>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.sourceRuntimeCorrelation.status)}</strong></div>
+          <div class="metric"><span>Runtime API</span><strong>${result.sourceRuntimeCorrelation.summary.networkRequestCount}</strong></div>
+          <div class="metric"><span>Linked</span><strong>${result.sourceRuntimeCorrelation.summary.linkedRequestCount}</strong></div>
+          <div class="metric"><span>Strong</span><strong>${result.sourceRuntimeCorrelation.summary.strongLinkCount}</strong></div>
+          <div class="metric"><span>Unlinked</span><strong>${result.sourceRuntimeCorrelation.summary.unlinkedRequestCount}</strong></div>
+          <div class="metric"><span>List responses</span><strong>${result.sourceRuntimeCorrelation.summary.listResponseLinkCount}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Network</th><th>Status</th><th>Confidence</th><th>Source matches</th><th>Components</th><th>List hints</th></tr></thead>
+          <tbody>${sourceRuntimeRows || '<tr><td colspan="7">No source/runtime links</td></tr>'}</tbody>
         </table>
       </section>
 

@@ -18,6 +18,7 @@ const FILE_ARTIFACT_KEYS = [
   'apiContractLog',
   'p2Log',
   'sourceAnalysisLog',
+  'sourceRuntimeLog',
   'pageModel'
 ] as const;
 

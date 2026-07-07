@@ -409,6 +409,66 @@ test('integration mismatch can report strong list response bound to a list-like 
   assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), true);
 });
 
+test('integration mismatch suppresses unbound list responses when source-runtime correlation is available', () => {
+  const pageModel: PageModel = {
+    ...context().pageModel,
+    tables: [
+      {
+        id: 'TABLE-1',
+        type: 'table',
+        tagName: 'table',
+        visible: true,
+        attributes: {},
+        confidence: 0.95,
+        rowCount: 0,
+        headers: ['name'],
+        selector: 'table'
+      }
+    ],
+    components: []
+  };
+  const record = networkRecord({
+    id: 'REQ-list',
+    url: 'http://example.test/v1/users/list',
+    resourceType: 'fetch',
+    status: 200,
+    ok: true,
+    contentType: 'application/json',
+    responseBodyPreview: JSON.stringify({ code: 0, data: [{ name: 'A' }, { name: 'B' }], total: 2 })
+  });
+  const issues = analyzeIntegration(
+    context({
+      pageModel,
+      networkRecords: [record],
+      sourceRuntimeCorrelation: {
+        enabled: true,
+        status: 'passed',
+        checkedAt: '',
+        summary: { networkRequestCount: 1, linkedRequestCount: 0, strongLinkCount: 0, unlinkedRequestCount: 1, listResponseLinkCount: 0 },
+        links: [
+          {
+            id: 'SRC-LINK-001',
+            networkRequestId: record.id,
+            method: record.method,
+            url: record.url,
+            path: '/v1/users/list',
+            status: record.status,
+            sourceMatches: [],
+            stateSignals: [],
+            componentIds: [],
+            responseListHints: [{ path: '$.data', length: 2, sampleKeys: ['name'] }],
+            confidence: 'none',
+            notes: ['no source API call matched']
+          }
+        ],
+        gaps: ['REQ-list GET /v1/users/list 未匹配到源码 API 调用。']
+      }
+    }),
+    new IssueFactory()
+  );
+  assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), false);
+});
+
 
 
 test('redactUrl preserves ordinary business path words while redacting real secrets', () => {

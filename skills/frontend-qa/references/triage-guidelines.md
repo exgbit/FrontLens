@@ -19,6 +19,7 @@ Apply an **actionability gate** before presenting final findings:
 - Keep as **core fixes** only defects with direct user impact and evidence: runtime error, broken route, failed core journey, API failure with missing visible error state, a11y violation with selectors, confirmed data binding mismatch, or source-confirmed performance/bundle issue.
 - Move to **reference/product decision** instead of fixes: visual density, color/style preference, number of primary buttons, manual refresh/export/pagination expectations, optional SEO on admin pages, small tap targets on PC-first products, or any feature that depends on product requirements.
 - Suppress repeated detail: summarize reference items in one row/table and do not expand them into per-selector fix tasks unless the user explicitly asks for design/a11y polish.
+- For API/UI data-mismatch claims, require four aligned evidence layers before calling it a real frontend defect: exact `networkRequestId`, visible DOM/screenshot state, source API/state/rendering file:line, and product requirement that the UI should render that data. Missing any layer means **conditional / insufficient evidence**, not a fix.
 
 Also add a **root-cause grouping** before the final fix list:
 
@@ -59,7 +60,7 @@ If the project supplies `metadata.config.productContext`, use it as the source o
    - Do not require pagination, export, table empty states, or table row counts for card grids, master-detail layouts, kanban/cards, trees, dashboards, or credential/security pages.
    - If `pageModel.tables[]` points at a `div` with card/grid class and no real table headers/rows, treat table issues as false positives.
    - Export/download is product-specific and can be a security anti-pattern on sensitive pages.
-   - If a scanner says "API has data but table/page is empty", keep it only when the exact API response is a list-like object array (`records`/`rows`/`list`/`items`/`results`, or `data` from a list-like endpoint), the visible DOM is genuinely empty, and source code or E2E evidence binds that API to that UI. Otherwise classify as insufficient evidence or false positive.
+   - If a scanner says "API has data but table/page is empty", keep it only when the exact API response is a list-like object array (`records`/`rows`/`list`/`items`/`results`, or `data` from a list-like endpoint), the visible DOM is genuinely empty, and source code or E2E evidence binds that API to that UI. When `sourceRuntimeCorrelation.status=passed`, require the relevant link `confidence` to be `medium/high`; otherwise classify as insufficient evidence or false positive.
 
 4. **Sensitive data keyword matches**
    - URL paths like `/credentials`, `/auth`, or redacted path segments are not leaks by themselves.
@@ -96,6 +97,7 @@ When the repository or source files are available, verify high-impact findings a
 - Business requirement validation: distinguish runtime proof from source-only proof. Static source/chunk evidence can detect syntax errors, missing imports, missing columns, or unreachable code, but it cannot prove API data correctness, export file contents, permissions, or full business workflow success.
 - Accessibility: do icon-only buttons have `aria-label` or visible text? Are tap targets large enough on mobile?
 - API calls: is `load()` triggered once per mount, or repeated by watchers/effects? Are retries/debounces intentional?
+- API/UI binding: if `sourceRuntimeCorrelation.links[]` exists, cite the specific link id and confidence. Do not retain “接口有数据但页面空” when the link is missing or `confidence=none/low`.
 - Bundle size: check router lazy loading, route/component dynamic imports, UI library import style, and CSS theme inclusion before blaming one page. When raw dev-server performance issues are false, still retain source-confirmed eager routing or heavy feature import problems as source-discovered issues.
 - Exception simulations: are 401/403/404/500 request ids from `exceptionSimulations[]` rather than real backend behavior?
 - Native browser console entries: is the console error app-generated, or just Chromium logging a non-2xx resource?

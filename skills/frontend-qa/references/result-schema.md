@@ -8,13 +8,13 @@ Use this reference when consuming QA results from another skill.
 - Summary, page model, artifacts
 - Network, console, resources
 - Interactions, journeys, responsive, accessibility, permission, exceptions
-- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Artifact Integrity, Root Cause Groups, Issue Disposition, Fix Tasks, QA Gate, AI
+- API Contract, Realtime, Performance, Coverage, P2 tests, Security, Requirement Coverage, Source Analysis, Source Runtime Correlation, Artifact Integrity, Root Cause Groups, Issue Disposition, Fix Tasks, QA Gate, AI
 - Issues, categories, severity, consumption pattern
 - Plugin contracts
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose a safe default `artifactIntegrity` when older reports do not contain it.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata; reports before `1.9.0` may miss `productContext`-aware disposition; reports before `1.10.0` may miss `sourceAnalysis`; reports before `1.11.0` may miss `sourceRuntimeCorrelation`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose safe defaults for `artifactIntegrity` / source correlation when older reports do not contain them.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -39,6 +39,7 @@ interface QaResult {
   security: SecurityScanResult; // always present; skipped when disabled
   requirementCoverage: RequirementCoverageResult;
   sourceAnalysis: SourceAnalysisResult;
+  sourceRuntimeCorrelation: SourceRuntimeCorrelationResult;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];
@@ -347,9 +348,9 @@ interface ExceptionSimulationResult {
 }
 ```
 
-## API Contract, Realtime, Requirement Coverage, Product Context, Source Analysis, P2, Root Cause Groups, Issue Disposition, Fix Tasks, Diff
+## API Contract, Realtime, Requirement Coverage, Product Context, Source Analysis, Source Runtime Correlation, P2, Root Cause Groups, Issue Disposition, Fix Tasks, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements; `metadata.schemaVersion >= 1.9.0` lets `productContext` drive product/ADR disposition; `metadata.schemaVersion >= 1.10.0` includes static `sourceAnalysis` when `--source-root`/`source.root` is provided; `metadata.schemaVersion >= 1.11.0` includes `sourceRuntimeCorrelation`.
 
 ```ts
 interface ApiContractResult {
@@ -602,6 +603,40 @@ interface SourceAnalysisResult {
 
 Use `sourceAnalysis` before manual source grep: route/import findings explain code-splitting risks, API calls map endpoints to files, and state signals guide error/loading/empty-state validation. Static source findings are source evidence, not complete business validation by themselves.
 
+`sourceRuntimeCorrelation` binds runtime XHR/Fetch records to static source API calls, state signals, UI component hints, and list-like response paths. It is the primary guard against speculative “Network has data but page is empty” findings.
+
+```ts
+interface SourceRuntimeCorrelationResult {
+  enabled: boolean;
+  status: 'passed' | 'skipped' | 'failed';
+  summary: {
+    networkRequestCount: number;
+    linkedRequestCount: number;
+    strongLinkCount: number;
+    unlinkedRequestCount: number;
+    listResponseLinkCount: number;
+  };
+  links: Array<{
+    id: string;
+    networkRequestId: string;
+    method: string;
+    url: string;
+    path: string;
+    status?: number;
+    sourceMatches: SourceAnalysisResult['apiCalls'];
+    stateSignals: SourceAnalysisResult['stateSignals'];
+    componentIds: string[];
+    responseListHints: Array<{ path: string; length: number; sampleKeys: string[] }>;
+    confidence: 'high' | 'medium' | 'low' | 'none';
+    notes: string[];
+  }>;
+  gaps: string[];
+  error?: string;
+}
+```
+
+When `sourceRuntimeCorrelation.status=passed`, downstream triage should only treat API/UI data mismatch as a frontend defect when the relevant `networkRequestId` has `medium` or `high` correlation. `high` means source API + UI component + state/list evidence aligned; `medium` means direct source API plus at least one runtime/UI/list signal aligned; `low` means only weak token matching and is not enough for a data-mismatch defect; `none` means the runtime response is not proven to feed the current page.
+
 `qualityGate` is the machine-readable professional QA gate. Use it for release/sign-off conversations, but still inspect `issues[]` and evidence before deciding whether to ship:
 
 - `blocked`: target page was not reliably reached or evidence collection is too incomplete for QA.
@@ -831,7 +866,7 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Read `qualityGate`, `requirementCoverage`, `sourceAnalysis`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, requirement gaps, static source index, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
+3. Read `qualityGate`, `requirementCoverage`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, requirement gaps, static/runtime source binding, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
 4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.

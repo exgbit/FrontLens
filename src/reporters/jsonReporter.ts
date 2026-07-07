@@ -14,6 +14,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   result.artifacts.apiContractLog = path.join(outputDir, 'api-contract.json');
   result.artifacts.p2Log = path.join(outputDir, 'p2.json');
   result.artifacts.sourceAnalysisLog = path.join(outputDir, 'source-analysis.json');
+  result.artifacts.sourceRuntimeLog = path.join(outputDir, 'source-runtime-correlation.json');
 
   await writeJson(result.artifacts.pageModel, result.pageModel);
   await writeJson(result.artifacts.networkLog, result.network.requests);
@@ -24,5 +25,6 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   await writeJson(result.artifacts.apiContractLog, result.apiContract);
   await writeJson(result.artifacts.p2Log, result.p2);
   await writeJson(result.artifacts.sourceAnalysisLog, result.sourceAnalysis);
+  await writeJson(result.artifacts.sourceRuntimeLog, result.sourceRuntimeCorrelation);
   await writeJson(result.artifacts.jsonReport, result);
 }

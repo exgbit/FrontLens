@@ -129,34 +129,57 @@ export function analyzeIntegration(context: AnalyzerContext, factory: IssueFacto
 
     if (maxReturnedArrayLength > 0 && maxTableRows === 0) {
       const source = listCandidates.find((item) => item.length === maxReturnedArrayLength);
-      issues.push(
-        factory.create({
-          title: '接口返回疑似有列表数据，但页面表格为空',
-          category: 'integration-data-mismatch',
-          severity: 'medium',
-          confidence: 0.66,
-          description: `在疑似列表接口响应的 ${source?.path ?? '列表字段'} 中识别到 ${maxReturnedArrayLength} 条对象数组数据，但当前可见表格行数为 0。`,
-          evidence: {
-            screenshot: context.artifacts.screenshot,
-            networkRequestId: source?.record.id,
-            details: {
-              maxReturnedArrayLength,
-              maxTableRows,
-              responsePath: source?.path,
-              sampleKeys: source?.sampleKeys,
-              tableIds: tables.map((table) => table.id),
-              guard: 'Only object arrays under list-like keys (data/records/rows/list/items/results) from XHR/fetch responses are considered. This finding still requires source-code correlation before being treated as a confirmed frontend defect.'
+      const sourceRuntimeLink = source && context.sourceRuntimeCorrelation?.status === 'passed'
+        ? context.sourceRuntimeCorrelation.links.find((link) => link.networkRequestId === source.record.id)
+        : undefined;
+      const sourceRuntimeConfidence = context.sourceRuntimeCorrelation?.status === 'passed' ? (sourceRuntimeLink?.confidence ?? 'none') : 'unavailable';
+      const shouldSuppressUnboundListMismatch = context.sourceRuntimeCorrelation?.status === 'passed' && (sourceRuntimeConfidence === 'none' || sourceRuntimeConfidence === 'low');
+      if (!shouldSuppressUnboundListMismatch) {
+        issues.push(
+          factory.create({
+            title: '接口返回疑似有列表数据，但页面表格为空',
+            category: 'integration-data-mismatch',
+            severity: 'medium',
+            confidence: sourceRuntimeConfidence === 'high' ? 0.72 : 0.66,
+            description: `在疑似列表接口响应的 ${source?.path ?? '列表字段'} 中识别到 ${maxReturnedArrayLength} 条对象数组数据，但当前可见表格行数为 0。`,
+            evidence: {
+              screenshot: context.artifacts.screenshot,
+              networkRequestId: source?.record.id,
+              details: {
+                maxReturnedArrayLength,
+                maxTableRows,
+                responsePath: source?.path,
+                sampleKeys: source?.sampleKeys,
+                tableIds: tables.map((table) => table.id),
+                sourceRuntimeLinkId: sourceRuntimeLink?.id,
+                sourceRuntimeConfidence,
+                sourceApiMatches: sourceRuntimeLink?.sourceMatches.map((match) => ({
+                  file: match.file,
+                  line: match.line,
+                  method: match.method,
+                  path: match.path,
+                  expression: match.expression
+                })),
+                sourceStateSignals: sourceRuntimeLink?.stateSignals.map((signal) => ({
+                  file: signal.file,
+                  line: signal.line,
+                  kind: signal.kind,
+                  text: signal.text
+                })),
+                sourceComponentIds: sourceRuntimeLink?.componentIds,
+                guard: 'Only object arrays under list-like keys (data/records/rows/list/items/results) from XHR/fetch responses are considered. When sourceRuntimeCorrelation is available, unbound runtime responses are suppressed instead of reported.'
+              }
+            },
+            reproduceSteps: ['打开目标页面', '查看列表接口响应', '对比页面表格行数'],
+            reason: '该规则需要运行时响应、页面结构和源码 API/状态信号同时支撑；未能绑定到当前前端源码的数据响应会被过滤，避免把无关接口误判为页面空态缺陷。',
+            suggestion: {
+              frontend: '核对 sourceRuntimeLink 指向的源码 API 调用、状态写入和表格/列表渲染条件，再修复数据绑定、字段映射或空态判断。',
+              test: '补充绑定到具体接口、状态字段和 DOM 行数的 E2E 断言，避免仅凭全局 Network 数组推断。',
+              priority: 'P2'
             }
-          },
-          reproduceSteps: ['打开目标页面', '查看列表接口响应', '对比页面表格行数'],
-          reason: '该规则只说明运行时存在“疑似列表响应”和“可见表格为空”的矛盾信号；接口未必是该表格的数据源，最终结论必须结合源码数据绑定或人工复验确认。',
-          suggestion: {
-            frontend: '先核对源码中的表格数据源、字段映射和渲染条件；只有确认该接口绑定当前表格后再修复状态更新或字段映射。',
-            test: '补充绑定到具体接口和 DOM 行数的 E2E 断言，避免仅凭全局 Network 数组推断。',
-            priority: 'P2'
-          }
-        })
-      );
+          })
+        );
+      }
     }
 
     const hasPagination = context.pageModel.components.some((component) => component.type === 'pagination');

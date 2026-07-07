@@ -45,15 +45,17 @@ When the user provides `sourceRoot`, a professional QA pass should include sourc
 - commands run, pass/fail/skipped, and log excerpts
 - whether the tested URL appears to match the inspected source branch/build
 - `result.json.sourceAnalysis.status`, route/import findings, API call index, and loading/error/empty/retry state signals
+- `result.json.sourceRuntimeCorrelation.status`, `links[]`, link confidence, source matches, component ids, and list-response hints
 
 Do not mark business functionality as passed just because source-health commands pass. Treat them as one layer of evidence.
 
 Use `sourceAnalysis` before manual grep:
 
 1. If `sourceAnalysis.status=passed`, inspect `sourceAnalysis.findings[]` for route-level eager imports and heavy dependencies.
-2. Use `sourceAnalysis.apiCalls[]` to map network endpoints to source files before claiming API/UI binding issues.
-3. Use `sourceAnalysis.stateSignals[]` as a starting map for loading/error/empty/retry triage; still verify the actual rendered view before filing a bug.
-4. If `sourceAnalysis.status=skipped`, mention that no source root was provided or indexing was disabled.
+2. Use `sourceRuntimeCorrelation.links[]` first when available. For “接口有数据但页面为空/表格为空”类结论，只有相关 `networkRequestId` 的 `confidence` 达到 `medium/high` 才能保留为缺陷候选；`none` 代表全局 Network 响应没有证明绑定到当前页面源码/UI，`low` 代表弱关键词匹配，证据不足。
+3. Use `sourceAnalysis.apiCalls[]` to map network endpoints to source files before claiming API/UI binding issues.
+4. Use `sourceAnalysis.stateSignals[]` as a starting map for loading/error/empty/retry triage; still verify the actual rendered view before filing a bug.
+5. If `sourceAnalysis.status=skipped`, mention that no source root was provided or indexing was disabled.
 
 If an existing server is already healthy, do not restart it unless the user asked for a fresh deployment or assets are clearly stale versus the source under review.
 

@@ -104,7 +104,7 @@ Options:
   --json                      Print machine-readable JSON summary.
   --full                      For issues command, print full Issue objects.
   --gate-mode <mode>          CI gate mode: professional (default) | raw.
-  --fail-on <severity>        Exit non-zero if issues at severity or above exist. In professional mode, only actionable + defectProof proven/probable findings count.
+  --fail-on <severity>        Exit non-zero if issues at severity or above exist. In professional mode, only actionable + defectProof proven/probable findings count, and report/sign-off contract blockers also fail.
   --min-score <number>        Exit non-zero if score is lower. In professional mode, uses adjustedScore.
   --fail-on-browser-failure   Matrix: exit non-zero when any browser run fails.
   --timeout-ms <ms>           Journey record maximum wait time. Default: 300000.

@@ -16,6 +16,8 @@ export interface CiGateEvaluation {
   failOn?: Severity;
   failedByScore: boolean;
   failedBySeverity: boolean;
+  failedByProfessionalContract: boolean;
+  professionalContractFailures: string[];
   severityCounts: Record<Severity, number>;
   notes: string[];
 }
@@ -46,8 +48,37 @@ function hasSeverityAtOrAbove(counts: Record<Severity, number>, failOn: Severity
   return severities.some((severity) => severityRank[severity] <= severityRank[failOn] && counts[severity] > 0);
 }
 
+type ProfessionalContractInput = Partial<Pick<QaResult, 'artifactIntegrity' | 'claimGuard' | 'qaCoverage' | 'qaIntake' | 'qaSignoff' | 'qualityGate' | 'reportContentAudit'>>;
+
+function professionalContractFailures(result: ProfessionalContractInput): string[] {
+  const failures: string[] = [];
+  if (result.reportContentAudit?.status === 'failed') {
+    failures.push(`reportContentAudit failed (${result.reportContentAudit.summary.blockerCount} blocker(s)).`);
+  }
+  if (result.artifactIntegrity?.status === 'failed') {
+    failures.push(`artifactIntegrity failed (${result.artifactIntegrity.missingCount} missing artifact(s)).`);
+  }
+  if (result.qaSignoff?.status === 'fail' || result.qaSignoff?.status === 'blocked') {
+    failures.push(`qaSignoff is ${result.qaSignoff.status}.`);
+  }
+  if (result.qualityGate?.status === 'fail' || result.qualityGate?.status === 'blocked') {
+    failures.push(`qualityGate is ${result.qualityGate.status}.`);
+  }
+  if (result.claimGuard?.status === 'blocked') {
+    failures.push('claimGuard is blocked.');
+  }
+  if (result.qaIntake?.status === 'blocked') {
+    failures.push('qaIntake is blocked.');
+  }
+  const qaCoverage = result.qaCoverage;
+  if (qaCoverage && (qaCoverage.status === 'insufficient' || qaCoverage.summary.failedCount > 0 || qaCoverage.summary.blockerCount > 0)) {
+    failures.push(`qaCoverage is ${qaCoverage.status} (failed ${qaCoverage.summary.failedCount}, blockers ${qaCoverage.summary.blockerCount}).`);
+  }
+  return failures;
+}
+
 export function evaluateQaCiGate(input: {
-  result: Pick<QaResult, 'issues' | 'summary' | 'issueDisposition'> & Partial<Pick<QaResult, 'defectProof'>>;
+  result: Pick<QaResult, 'issues' | 'summary' | 'issueDisposition'> & Partial<Pick<QaResult, 'defectProof'>> & ProfessionalContractInput;
   failOn?: Severity;
   minScore?: number;
   mode?: CiGateMode;
@@ -57,18 +88,25 @@ export function evaluateQaCiGate(input: {
   const severityCounts = severityCountsForResult(input.result, mode);
   const failedByScore = input.minScore !== undefined ? score < input.minScore : false;
   const failedBySeverity = hasSeverityAtOrAbove(severityCounts, input.failOn);
+  const professionalFailures = mode === 'professional' ? professionalContractFailures(input.result) : [];
+  const failedByProfessionalContract = professionalFailures.length > 0;
   return {
     mode,
-    status: failedByScore || failedBySeverity ? 'failed' : 'passed',
+    status: failedByScore || failedBySeverity || failedByProfessionalContract ? 'failed' : 'passed',
     score,
     scoreField: mode === 'raw' ? 'summary.score' : 'summary.adjustedScore',
     minScore: input.minScore,
     failOn: input.failOn,
     failedByScore,
     failedBySeverity,
+    failedByProfessionalContract,
+    professionalContractFailures: professionalFailures,
     severityCounts,
     notes: mode === 'professional'
-      ? ['Professional gate uses adjustedScore and actionable+proof-ready findings only; raw deployment/product/tool/needs-evidence findings do not fail CI.']
+      ? [
+          'Professional gate uses adjustedScore and actionable+proof-ready findings only; raw deployment/product/tool/needs-evidence findings do not fail CI.',
+          'Professional gate also fails on report/sign-off contract blockers such as failed reportContentAudit, qaSignoff, qualityGate, artifactIntegrity, claimGuard, qaIntake, or failed/insufficient qaCoverage.'
+        ]
       : ['Raw gate uses raw score and all raw findings for backward-compatible scanner behavior.']
   };
 }
@@ -128,6 +166,8 @@ export function evaluateMatrixItemCiGate(input: {
     failOn: input.failOn,
     failedByScore,
     failedBySeverity,
+    failedByProfessionalContract: false,
+    professionalContractFailures: [],
     severityCounts,
     notes: mode === 'professional'
       ? ['Professional matrix gate uses adjustedScore and proof-ready actionable findings only.']

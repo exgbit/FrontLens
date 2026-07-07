@@ -146,6 +146,70 @@ test('professional CI gate fails on actionable high findings', () => {
   assert.equal(gate.severityCounts.high, 1);
 });
 
+test('professional CI gate fails on report/sign-off contract blockers while raw mode ignores them', () => {
+  const result = {
+    issues: [],
+    summary: summary({ score: 100, adjustedScore: 100, issueCount: 0, adjustedIssueCount: 0, highCount: 0 }),
+    issueDisposition: disposition([], {}),
+    reportContentAudit: {
+      status: 'failed' as const,
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      profile: 'professional' as const,
+      summary: { findingCount: 1, blockerCount: 1, warningCount: 0, infoCount: 0 },
+      findings: [],
+      notes: []
+    },
+    qaSignoff: {
+      status: 'blocked' as const,
+      confidence: 'low' as const,
+      businessValidationConfidence: 'not-verified' as const,
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      summary: 'Blocked by report contract.',
+      scope: {
+        targetUrl: 'https://example.com/admin',
+        requirementSource: 'none' as const,
+        providedRequirementCount: 0,
+        inferredRequirementCount: 0,
+        journeyCount: 0,
+        passedJourneyCount: 0,
+        failedJourneyCount: 0,
+        assertionStepCount: 0,
+        passedAssertionStepCount: 0,
+        passedJourneyWithAssertionCount: 0,
+        passedJourneyWithoutAssertionCount: 0,
+        interactionCount: 0,
+        passedInteractionCount: 0,
+        failedInteractionCount: 0,
+        exceptionCount: 0,
+        failedExceptionCount: 0,
+        authStateProvided: false,
+        destructiveActionsAllowed: false,
+        environmentKind: 'unknown' as const,
+        environmentConfidence: 'low' as const,
+        pageProfileStatus: 'needs-input' as const,
+        pageProfileType: 'unknown' as const,
+        sourceHealthStatus: 'skipped' as const,
+        artifactIntegrityStatus: 'passed' as const
+      },
+      blockers: ['Report contract blocker.'],
+      risks: [],
+      coverageGaps: [],
+      requiredFollowups: [],
+      evidence: []
+    }
+  };
+
+  const professionalGate = evaluateQaCiGate({ result, failOn: 'high', minScore: 80, mode: 'professional' });
+  const rawGate = evaluateQaCiGate({ result, failOn: 'high', minScore: 80, mode: 'raw' });
+
+  assert.equal(professionalGate.status, 'failed');
+  assert.equal(professionalGate.failedByProfessionalContract, true);
+  assert.equal(professionalGate.professionalContractFailures.some((item) => item.includes('reportContentAudit failed')), true);
+  assert.equal(professionalGate.professionalContractFailures.some((item) => item.includes('qaSignoff is blocked')), true);
+  assert.equal(rawGate.status, 'passed');
+  assert.equal(rawGate.failedByProfessionalContract, false);
+});
+
 test('matrix CI gate uses actionable counts and adjusted score by default', () => {
   const item = {
     success: true,

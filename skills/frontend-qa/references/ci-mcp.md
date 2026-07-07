@@ -12,7 +12,7 @@ Manual QA run:
 4. Optionally set `fail_on`, `min_score`, `storage_state`, and `session_storage_state`.
 5. Download the `frontlens-report` artifact.
 
-Pull request and push runs validate install/typecheck/build. Manual `workflow_dispatch` additionally installs the selected Playwright browser, runs QA, gates on `--fail-on` / `--min-score`, and uploads the report even when QA fails. The default gate mode is professional: `--min-score` uses `summary.adjustedScore`, and `--fail-on` counts only actionable and defectProof proven/probable findings, so deployment-only, product-decision, insufficient-evidence, and tool-limitation findings do not fail CI. Add `--gate-mode raw` only for legacy scanner-trend gates.
+Pull request and push runs validate install/typecheck/build. Manual `workflow_dispatch` additionally installs the selected Playwright browser, runs QA, gates on `--fail-on` / `--min-score`, and uploads the report even when QA fails. The default gate mode is professional: `--min-score` uses `summary.adjustedScore`, and `--fail-on` counts only actionable and defectProof proven/probable findings, so deployment-only, product-decision, insufficient-evidence, and tool-limitation findings do not fail CI. Professional mode also fails on report/sign-off contract blockers such as failed `reportContentAudit`, blocked/failing `qaSignoff` or `qualityGate`, failed `artifactIntegrity`, blocked `claimGuard`/`qaIntake`, or failed/insufficient `qaCoverage`. Add `--gate-mode raw` only for legacy scanner-trend gates.
 
 Local equivalent:
 

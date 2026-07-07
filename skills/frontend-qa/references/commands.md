@@ -171,7 +171,7 @@ node dist/cli.js qa \
   --min-score 80
 ```
 
-CI gate defaults to `--gate-mode professional`: `--min-score` uses proof-aware `summary.adjustedScore`, and `--fail-on` counts only findings linked to `issueDisposition.actionability=actionable` plus `defectProof=proven|probable`. Use `--gate-mode raw` only when you intentionally want legacy scanner behavior where deployment/product/tool/no-evidence findings can fail CI.
+CI gate defaults to `--gate-mode professional`: `--min-score` uses proof-aware `summary.adjustedScore`, and `--fail-on` counts only findings linked to `issueDisposition.actionability=actionable` plus `defectProof=proven|probable`. Professional mode also fails on report/sign-off contract blockers: `reportContentAudit=failed`, `qaSignoff=fail|blocked`, `qualityGate=fail|blocked`, `artifactIntegrity=failed`, `claimGuard=blocked`, `qaIntake=blocked`, or failed/insufficient `qaCoverage`. Use `--gate-mode raw` only when you intentionally want legacy scanner behavior where deployment/product/tool/no-evidence findings can fail CI and report-contract blockers do not apply.
 
 Use an explicit config:
 

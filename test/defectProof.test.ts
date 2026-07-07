@@ -193,3 +193,65 @@ test('normalizeResult can make runtime accessibility findings proof-ready when s
   assert.equal(result.defectProof.items[0].status === 'proven' || result.defectProof.items[0].status === 'probable', true);
   assert.equal(result.fixTasks.length, 1);
 });
+
+test('normalizeResult can make exception no-feedback findings proof-ready when source error-state gaps bind file lines', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/credentials', title: 'Credentials' },
+    pageModel: { url: 'https://example.com/credentials', title: 'Credentials', stats: { domNodes: 30, visibleTextLength: 120, bodyTextSample: 'Credentials 暂无匹配凭证' } },
+    sourceAnalysis: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '',
+      root: '/repo/frontend',
+      scannedFiles: 1,
+      scannedBytes: 100,
+      summary: {
+        routeFileCount: 0,
+        routeCount: 0,
+        eagerRouteImportCount: 0,
+        heavyImportCount: 0,
+        apiCallCount: 0,
+        errorStateSignalCount: 1,
+        emptyStateSignalCount: 1
+      },
+      routeFiles: [],
+      routes: [],
+      imports: [],
+      apiCalls: [],
+      stateSignals: [],
+      findings: [
+        {
+          id: 'SRC-001',
+          kind: 'error-state-gap',
+          severity: 'medium',
+          title: '源码发现错误状态可能被空态吞掉',
+          locations: [{ file: 'src/views/CredentialsView.vue', line: 55 }],
+          details: { rule: 'error-state-rendering', tokens: ['credentials'] }
+        }
+      ]
+    },
+    issues: [
+      {
+        id: 'ISSUE-ERR',
+        title: 'api-500 无错误反馈',
+        category: 'integration-no-feedback',
+        severity: 'high',
+        confidence: 0.92,
+        description: '接口失败时页面仍显示空态，没有错误提示和重试入口。',
+        evidence: {
+          networkRequestId: 'REQ-ERR',
+          screenshot: 'screen.png',
+          details: { kind: 'api-500', target: 'https://example.com/api/credentials' }
+        },
+        reproduceSteps: ['打开凭证页', '模拟 /api/credentials 返回 500', '观察页面显示空态而非错误态'],
+        reason: '用户无法区分真实无数据和加载失败。',
+        suggestion: { frontend: '消费 error 状态，渲染错误提示并提供重试。', priority: 'P1' }
+      }
+    ]
+  });
+
+  assert.deepEqual(result.rootCauseGroups[0].sourceLocations, [{ file: 'src/views/CredentialsView.vue', line: 55 }]);
+  assert.equal(result.defectProof.items[0].dimensions.sourceEvidence.strength, 'strong');
+  assert.equal(result.defectProof.items[0].status === 'proven' || result.defectProof.items[0].status === 'probable', true);
+  assert.equal(result.fixTasks.length, 1);
+});

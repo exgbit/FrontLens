@@ -53,11 +53,11 @@ Do not mark business functionality as passed just because source-health commands
 
 Use `sourceAnalysis` before manual grep:
 
-1. If `sourceAnalysis.status=passed`, inspect `sourceAnalysis.findings[]` for route-level eager imports and heavy dependencies.
+1. If `sourceAnalysis.status=passed`, inspect `sourceAnalysis.findings[]` for route-level eager imports, heavy dependencies, `ui-accessibility`, and `error-state-gap` evidence.
 2. Use `sourceRuntimeCorrelation.links[]` first when available. For “接口有数据但页面为空/表格为空”类结论，只有相关 `networkRequestId` 的 `confidence` 达到 `medium/high` 才能保留为缺陷候选；`none` 代表全局 Network 响应没有证明绑定到当前页面源码/UI，`low` 代表弱关键词匹配，证据不足。
 3. If `sourceHealth.status=failed`, inspect `sourceHealth.findings[]` and `sourceHealth.scriptChecks[]` first. Syntax errors and failed/timed-out typecheck/build/test script checks are source-confirmed blockers and may explain broken runtime routes; do not bury them under secondary UI symptoms.
 4. Use `sourceAnalysis.apiCalls[]` to map network endpoints to source files before claiming API/UI binding issues.
-5. Use `sourceAnalysis.stateSignals[]` as a starting map for loading/error/empty/retry triage; still verify the actual rendered view before filing a bug.
+5. Use `sourceAnalysis.stateSignals[]` as a starting map for loading/error/empty/retry triage; use `sourceAnalysis.findings[kind=error-state-gap]` to bind exception no-feedback issues to a concrete view only when runtime exception evidence also shows a false empty/no-feedback state.
 6. If `sourceAnalysis.status=skipped`, mention that no source root was provided or indexing was disabled.
 
 If an existing server is already healthy, do not restart it unless the user asked for a fresh deployment or assets are clearly stale versus the source under review.
@@ -97,7 +97,7 @@ When the reachable URL is a Vite dev server (`@vite/client`, `/src/*.vue`, `/nod
    - `synthetic-or-tool-limitation`
    - `insufficient-source-coverage`
    - `source-discovered`
-5. Retain a frontend issue only when browser evidence and source evidence agree, or when source evidence reveals the real bug behind a noisy raw finding. Do not require a surviving raw issue for source-confirmed problems. In FrontLens 1.34+, prefer `rootCauseGroups[].sourceLocations` for the normalized file:line fix surface, then drill into `sourceAnalysis`, `sourceRuntimeCorrelation`, or raw issue `evidence.details` only when the group lacks locations or needs deeper proof. In FrontLens 1.36+, medium/high `sourceRuntimeCorrelation.links[]` are rolled into `rootCauseGroups[].sourceLocations`; if sourceRoot is enabled and a frontend root cause still has no strong source binding, keep it as `defectProof=needs-evidence`. In FrontLens 1.37+, `sourceAnalysis.findings[kind=ui-accessibility]` can bind runtime a11y button-name findings to component file:line; cite those locations before manually grepping.
+5. Retain a frontend issue only when browser evidence and source evidence agree, or when source evidence reveals the real bug behind a noisy raw finding. Do not require a surviving raw issue for source-confirmed problems. In FrontLens 1.34+, prefer `rootCauseGroups[].sourceLocations` for the normalized file:line fix surface, then drill into `sourceAnalysis`, `sourceRuntimeCorrelation`, or raw issue `evidence.details` only when the group lacks locations or needs deeper proof. In FrontLens 1.36+, medium/high `sourceRuntimeCorrelation.links[]` are rolled into `rootCauseGroups[].sourceLocations`; if sourceRoot is enabled and a frontend root cause still has no strong source binding, keep it as `defectProof=needs-evidence`. In FrontLens 1.37+, `sourceAnalysis.findings[kind=ui-accessibility]` can bind runtime a11y button-name findings to component file:line; in FrontLens 1.38+, `sourceAnalysis.findings[kind=error-state-gap]` can bind exception no-feedback findings to the view that tracks errors but only renders an empty state.
 6. Apply an actionability gate:
    - Core fix: route/runtime error, failed core journey, missing error/retry state for real API failures, hard a11y violation, confirmed data binding mismatch, source-confirmed bundle/performance issue.
    - Product/reference: style hierarchy, visual density, primary-button count, optional refresh/export/pagination, SEO for non-public admin pages, mobile tap target tradeoffs under PC-first ADR.

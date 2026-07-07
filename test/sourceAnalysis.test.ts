@@ -38,6 +38,21 @@ export const routes = [
     'utf8'
   );
   await writeFile(
+    path.join(dir, 'src/views/CredentialsView.vue'),
+    `<template>
+  <section>
+    <p v-if="items.length === 0">暂无匹配凭证</p>
+  </section>
+</template>
+<script setup lang="ts">
+const { items, error } = useCredentials();
+if (error.value) {
+  // the error state is tracked but not rendered in the template
+}
+</script>`,
+    'utf8'
+  );
+  await writeFile(
     path.join(dir, 'src/api/users.ts'),
     `
 export async function listUsers() {
@@ -69,6 +84,12 @@ export async function listUsers() {
   assert.equal(uiFinding?.details.rule, 'button-name');
   assert.equal(uiFinding?.locations.length, 1);
   assert.match(JSON.stringify(uiFinding?.details.samples), /el-button/);
+  const errorGapFinding = result.findings.find((finding) => finding.kind === 'error-state-gap');
+  assert.equal(Boolean(errorGapFinding), true);
+  assert.equal(errorGapFinding?.details.rule, 'error-state-rendering');
+  assert.deepEqual(errorGapFinding?.details.tokens, ['credentials']);
+  assert.equal(errorGapFinding?.locations.some((location) => location.file === 'src/views/CredentialsView.vue' && location.line === 7), true);
+  assert.match(JSON.stringify(errorGapFinding?.details.samples), /暂无匹配凭证/);
   assert.equal(issues.length, 1);
   assert.equal(issues[0].category, 'frontend-performance');
 });

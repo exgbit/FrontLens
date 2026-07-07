@@ -233,3 +233,62 @@ test('buildRootCauseGroups enriches runtime accessibility issues with source ui-
     { file: 'src/components/RuleActions.vue', line: 15 }
   ]);
 });
+
+test('buildRootCauseGroups enriches exception feedback issues with source error-state-gap findings', () => {
+  const config = createDefaultConfig('https://example.com/credentials');
+  const sourceAnalysis: SourceAnalysisResult = {
+    enabled: true,
+    status: 'passed',
+    checkedAt: '',
+    root: '/repo',
+    scannedFiles: 1,
+    scannedBytes: 100,
+    summary: {
+      routeFileCount: 0,
+      routeCount: 0,
+      eagerRouteImportCount: 0,
+      heavyImportCount: 0,
+      apiCallCount: 0,
+      errorStateSignalCount: 1,
+      emptyStateSignalCount: 1
+    },
+    routeFiles: [],
+    routes: [],
+    imports: [],
+    apiCalls: [],
+    stateSignals: [],
+    findings: [
+      {
+        id: 'SRC-001',
+        kind: 'error-state-gap',
+        severity: 'medium',
+        title: '源码发现错误状态可能被空态吞掉',
+        locations: [
+          { file: 'src/views/CredentialsView.vue', line: 55 },
+          { file: 'src/views/CredentialsView.vue', line: 88 }
+        ],
+        details: { rule: 'error-state-rendering', tokens: ['credentials'] }
+      }
+    ]
+  };
+
+  const groups = buildRootCauseGroups([
+    issue({
+      id: 'ISSUE-001',
+      title: 'api-500 无错误反馈',
+      category: 'integration-no-feedback',
+      severity: 'high',
+      evidence: {
+        networkRequestId: 'REQ-001',
+        details: { kind: 'api-500', target: 'https://example.com/api/credentials' }
+      },
+      suggestion: { frontend: '渲染错误态并提供重试。', priority: 'P1' }
+    })
+  ], config, undefined, sourceAnalysis);
+
+  assert.equal(groups.length, 1);
+  assert.deepEqual(groups[0].sourceLocations, [
+    { file: 'src/views/CredentialsView.vue', line: 55 },
+    { file: 'src/views/CredentialsView.vue', line: 88 }
+  ]);
+});

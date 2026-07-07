@@ -252,6 +252,78 @@ function parseUiAccessibilityFindings(rel: string, lines: string[]): SourceAnaly
   }];
 }
 
+function splitIdentifierTokens(value: string): string[] {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[^A-Za-z0-9\u4e00-\u9fff]+/)
+    .map((item) => item.toLowerCase().trim())
+    .filter((item) => item.length >= 3 && !/^(src|views?|pages?|components?|index|view|page|api|data|list|item|state|vue|svelte|astro|tsx?|jsx?|mjs|cjs)$/.test(item))
+    .slice(0, 12);
+}
+
+function stripTemplate(content: string): string {
+  return content.replace(/<template[\s\S]*?<\/template>/gi, '');
+}
+
+function extractTemplate(content: string): string {
+  return /<template[^>]*>([\s\S]*?)<\/template>/i.exec(content)?.[1] ?? '';
+}
+
+function firstLineMatching(lines: string[], pattern: RegExp, startIndex = 0, endIndex = lines.length): SourceLocation | undefined {
+  const index = lines.findIndex((line, currentIndex) => currentIndex >= startIndex && currentIndex < endIndex && pattern.test(line));
+  return index >= 0 ? { file: '', line: index + 1 } : undefined;
+}
+
+function templateLineRange(lines: string[]): { start: number; end: number } {
+  const start = lines.findIndex((line) => /<template/i.test(line));
+  if (start < 0) return { start: 0, end: lines.length };
+  const end = lines.findIndex((line, index) => index >= start && /<\/template>/i.test(line));
+  return { start, end: end >= 0 ? end + 1 : lines.length };
+}
+
+function firstLineMatchingOutsideRange(lines: string[], pattern: RegExp, range: { start: number; end: number }): SourceLocation | undefined {
+  const index = lines.findIndex((line, currentIndex) => (currentIndex < range.start || currentIndex >= range.end) && pattern.test(line));
+  return index >= 0 ? { file: '', line: index + 1 } : undefined;
+}
+
+function parseErrorStateGapFindings(rel: string, content: string, lines: string[]): SourceAnalysisResult['findings'] {
+  if (!/\.vue$/i.test(rel) || !/<template/i.test(content)) return [];
+  const template = extractTemplate(content);
+  const script = stripTemplate(content);
+  const range = templateLineRange(lines);
+  const hasSourceErrorHandling = /\b(error|err|catch|onError|ApiError|异常|错误|失败)\b/i.test(script);
+  const hasErrorLikeState = /\b(error|err|hasError|loadError|apiError)\b/i.test(script);
+  const hasVisibleEmptyState = /暂无|无数据|没有数据|empty|no data|not found|未找到/i.test(template);
+  const hasTemplateErrorFeedback = /\b(error|err|hasError|loadError|apiError|retry|reload|refresh)\b|错误|失败|异常|出错|重试|重新加载|刷新|无权限|未登录|网络/i.test(template);
+  if (!hasSourceErrorHandling || !hasErrorLikeState || !hasVisibleEmptyState || hasTemplateErrorFeedback) return [];
+
+  const scriptErrorLine = firstLineMatchingOutsideRange(lines, /\b(error|err|catch|onError|ApiError|异常|错误|失败)\b/i, range);
+  const templateEmptyLine = firstLineMatching(lines, /暂无|无数据|没有数据|empty|no data|not found|未找到/i, range.start, range.end);
+  const locations: SourceLocation[] = [];
+  if (scriptErrorLine) locations.push({ file: rel, line: scriptErrorLine.line });
+  if (templateEmptyLine) locations.push({ file: rel, line: templateEmptyLine.line });
+  if (locations.length === 0) locations.push({ file: rel, line: 1 });
+
+  return [{
+    id: '',
+    kind: 'error-state-gap',
+    severity: 'medium',
+    title: '源码发现错误状态可能被空态吞掉',
+    locations,
+    details: {
+      rule: 'error-state-rendering',
+      tokens: splitIdentifierTokens(rel),
+      hasSourceErrorHandling,
+      hasVisibleEmptyState,
+      hasTemplateErrorFeedback,
+      samples: {
+        errorLine: scriptErrorLine ? redactText(lines[scriptErrorLine.line - 1]?.trim() ?? '').slice(0, 240) : undefined,
+        emptyLine: templateEmptyLine ? redactText(lines[templateEmptyLine.line - 1]?.trim() ?? '').slice(0, 240) : undefined
+      }
+    }
+  }];
+}
+
 function makeFinding(id: number, input: SourceAnalysisResult['findings'][number]): SourceAnalysisResult['findings'][number] {
   return {
     ...input,
@@ -326,6 +398,7 @@ export async function analyzeSource(config: FrontLensConfig): Promise<{ result: 
     result.apiCalls.push(...parseApiCalls(rel, lines));
     result.stateSignals.push(...parseStateSignals(rel, lines));
     result.findings.push(...parseUiAccessibilityFindings(rel, lines));
+    result.findings.push(...parseErrorStateGapFindings(rel, content, lines));
     if (isRouteFile(rel, content)) {
       routeFileSet.add(rel);
       result.routes.push(...parseRoutes(rel, lines));

@@ -141,6 +141,40 @@ function locationsFromArray(value: unknown): SourceLocation[] {
   return Array.isArray(value) ? value.map(maybeLocation).filter((item): item is SourceLocation => Boolean(item)) : [];
 }
 
+function tokenSet(value: string): Set<string> {
+  return new Set(
+    value
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .split(/[^A-Za-z0-9\u4e00-\u9fff]+/)
+      .map((item) => item.toLowerCase().trim())
+      .filter((item) => item.length >= 3 && !/^(api|src|view|page|list|data|item|error|state|http|https|example|frontlens|local)$/.test(item))
+  );
+}
+
+function issueTokens(issue: Issue): Set<string> {
+  const details = detailsOf(issue);
+  return tokenSet([
+    issue.title,
+    issue.affectedUrl ?? '',
+    issue.evidence.resourceUrl ?? '',
+    String(details.target ?? ''),
+    String(details.kind ?? '')
+  ].join(' '));
+}
+
+function findingMatchesIssueTokens(issue: Issue, finding: SourceAnalysisResult['findings'][number]): boolean {
+  const tokens = issueTokens(issue);
+  if (tokens.size === 0) return false;
+  const detailsTokens = Array.isArray(finding.details?.tokens) ? finding.details.tokens.filter((item): item is string => typeof item === 'string') : [];
+  const findingText = [
+    finding.title,
+    ...finding.locations.map((location) => location.file),
+    ...detailsTokens
+  ].join(' ');
+  const findingTokens = tokenSet(findingText);
+  return [...tokens].some((token) => findingTokens.has(token));
+}
+
 function issueTargetEndpoint(issue: Issue): string | undefined {
   const details = detailsOf(issue);
   return comparableEndpoint(details.target) ?? comparableEndpoint(issue.affectedUrl) ?? comparableEndpoint(issue.evidence.resourceUrl);
@@ -162,6 +196,11 @@ function sourceFindingsForIssue(issue: Issue, sourceAnalysis?: SourceAnalysisRes
   if (issue.category === 'frontend-accessibility' && rule) {
     return sourceAnalysis.findings
       .filter((finding) => finding.kind === 'ui-accessibility' && String(finding.details?.rule ?? '') === rule)
+      .flatMap((finding) => finding.locations);
+  }
+  if (issue.category === 'integration-no-feedback') {
+    return sourceAnalysis.findings
+      .filter((finding) => finding.kind === 'error-state-gap' && findingMatchesIssueTokens(issue, finding))
       .flatMap((finding) => finding.locations);
   }
   return [];

@@ -31,7 +31,7 @@ import { buildRequirementCoverage } from './requirements/requirementCoverage.js'
 import { deepMerge } from './utils/deepMerge.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
-import { buildIssueDisposition } from './disposition/issueDisposition.js';
+import { buildIssueDisposition, filterActionableIssues } from './disposition/issueDisposition.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { createEmptyEnvironmentAssessment } from './environment/environmentAssessment.js';
 import { buildPageProfileAssessment, createEmptyPageProfileAssessment } from './product/pageProfile.js';
@@ -39,7 +39,7 @@ import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 
-export const RESULT_SCHEMA_VERSION = '1.23.0';
+export const RESULT_SCHEMA_VERSION = '1.25.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1056,7 +1056,6 @@ export function normalizeResult(raw: unknown): QaResult {
   const metadataConfig = isRecord(metadataRaw.config)
     ? (deepMerge(createDefaultConfig(url) as unknown as Record<string, unknown>, metadataRaw.config) as unknown as FrontLensConfig)
     : createDefaultConfig(url);
-  const fixTasks = asArray(raw.fixTasks).length > 0 ? normalizeFixTasks(raw.fixTasks) : generateFixTasks(issues, metadataConfig);
   const pageModel = normalizePageModel(raw.pageModel, url);
   const coverage = normalizeCoverage(raw.coverage, browser);
   const security = normalizeSecurity(raw.security);
@@ -1081,8 +1080,10 @@ export function normalizeResult(raw: unknown): QaResult {
   const environment = normalizeEnvironment(raw.environment, metadataConfig.target.url);
   const pageProfile = normalizePageProfile(raw.pageProfile, buildPageProfileAssessment({ config: metadataConfig, pageModel }));
   const testData = normalizeTestDataAssessment(raw.testData, buildTestDataAssessment(metadataConfig, requirementCoverage));
-  const rootCauseGroups = buildRootCauseGroups(issues, metadataConfig);
+  const preliminaryDisposition = buildIssueDisposition(issues, metadataConfig);
+  const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
+  const fixTasks = generateFixTasks(issues, metadataConfig, rootCauseGroups);
   const qualityGateFallback = buildQualityGate({
     issues,
     pageModel,

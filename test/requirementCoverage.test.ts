@@ -97,6 +97,7 @@ test('explicit requirement assertions synthesize safe journeys and link coverage
       priority: 'P1',
       selectors: ['body'],
       expectedTexts: ['Users'],
+      apiPatterns: ['/api/users'],
       journeySteps: [{ action: 'waitForLoad', description: 'wait for users' }]
     }
   ];
@@ -110,6 +111,7 @@ test('explicit requirement assertions synthesize safe journeys and link coverage
   assert.equal(config.journeys.maxJourneys >= config.journeys.journeys.length, true);
   assert.equal(generated[0].steps.some((step) => step.action === 'expectVisible' && step.target === 'body'), true);
   assert.equal(generated[0].steps.some((step) => step.action === 'expectText' && step.value === 'Users'), true);
+  assert.equal(generated[0].steps.some((step) => step.action === 'expectRequest' && step.target === '/api/users' && step.value === '2xx'), true);
 
   const coverage = buildRequirementCoverage({
     config,
@@ -129,7 +131,8 @@ test('explicit requirement assertions synthesize safe journeys and link coverage
         startUrl: 'https://example.com/users',
         steps: [
           { index: 0, action: 'expectVisible', target: 'body', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 },
-          { index: 1, action: 'expectText', target: 'body', value: 'Users', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 }
+          { index: 1, action: 'expectText', target: 'body', value: 'Users', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 },
+          { index: 2, action: 'expectRequest', target: '/api/users', value: '2xx', status: 'passed', startedAt: '', endedAt: '', durationMs: 1, networkRequestIds: ['REQ-001'] }
         ]
       }
     ],

@@ -828,7 +828,8 @@ ${rows.length ? ['| 类型 | Total | Unused | Unused% | URL |', '| --- | --- | -
 }
 
 function formatOptimizationSummary(result: QaResult): string {
-  const actionableIssues = result.issues.filter(isActionableIssue);
+  const dispositionByIssue = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
+  const actionableIssues = result.issues.filter((issue) => dispositionByIssue.get(issue.id)?.actionability === 'actionable' || (!dispositionByIssue.has(issue.id) && isActionableIssue(issue)));
   const frontend = actionableIssues.filter((issue) => issue.suggestion.frontend).slice(0, 12);
   const backend = actionableIssues.filter((issue) => issue.suggestion.backend).slice(0, 12);
   const test = actionableIssues.filter((issue) => issue.suggestion.test).slice(0, 12);

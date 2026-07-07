@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { BrowserContext, Locator, Page } from 'playwright';
-import type { ArtifactIndex, ConsoleRecord, FrontLensConfig, JourneyStepConfig, JourneyStepResult, JourneyTestResult, PageErrorRecord } from '../types.js';
+import type { ArtifactIndex, ConsoleRecord, FrontLensConfig, JourneyStepConfig, JourneyStepResult, JourneyTestResult, NetworkRecord, PageErrorRecord } from '../types.js';
 import { createId } from '../utils/id.js';
 import { redactText, redactUrl } from '../utils/redact.js';
 import { isActionableConsoleError } from '../utils/console.js';
@@ -9,7 +9,7 @@ import { saveDownloadArtifact } from '../downloads/downloadArtifact.js';
 interface JourneyTesterDeps {
   config: FrontLensConfig;
   artifacts: ArtifactIndex;
-  getNetworkRecords: () => Array<{ id: string; startedAt: string }>;
+  getNetworkRecords: () => NetworkRecord[];
   getConsoleRecords: () => ConsoleRecord[];
   getPageErrors: () => PageErrorRecord[];
 }
@@ -22,6 +22,11 @@ function now(): string {
 
 function idsAfter<T extends { id: string }>(items: T[], before: Set<string>): string[] {
   return items.map((item) => item.id).filter((id) => !before.has(id));
+}
+
+interface StepRunOutput {
+  networkRequestIds?: string[];
+  details?: unknown;
 }
 
 function isUnsafeStep(step: JourneyStepConfig): boolean {
@@ -56,7 +61,83 @@ async function targetLocator(page: Page, target?: string): Promise<Locator> {
   return page.getByText(target, { exact: false }).first();
 }
 
-async function runStep(page: Page, step: JourneyStepConfig, config: FrontLensConfig): Promise<void> {
+function patternMatches(pattern: string, value: string): boolean {
+  if (!pattern) return true;
+  if (pattern.startsWith('url=')) return value.includes(pattern.slice(4));
+  if (pattern.startsWith('regex=')) {
+    try {
+      return new RegExp(pattern.slice(6), 'i').test(value);
+    } catch {
+      return false;
+    }
+  }
+  return value.includes(pattern);
+}
+
+function statusMatches(record: NetworkRecord, expectation = '2xx'): boolean {
+  if (record.failed) return false;
+  const status = record.status;
+  const expected = expectation.trim().toLowerCase();
+  if (!expected || expected === '2xx') return status !== undefined && status >= 200 && status < 300;
+  if (expected === 'ok') return Boolean(record.ok) || (status !== undefined && status >= 200 && status < 400);
+  if (expected === '3xx') return status !== undefined && status >= 300 && status < 400;
+  if (expected === '4xx') return status !== undefined && status >= 400 && status < 500;
+  if (expected === '5xx') return status !== undefined && status >= 500 && status < 600;
+  if (/^\d{3}(,\d{3})*$/.test(expected)) return status !== undefined && expected.split(',').map(Number).includes(status);
+  const comparison = /^(?:status)?\s*(<=|>=|<|>|=)\s*(\d{3})$/.exec(expected);
+  if (comparison && status !== undefined) {
+    const [, operator, rawCode] = comparison;
+    const code = Number(rawCode);
+    if (operator === '<') return status < code;
+    if (operator === '<=') return status <= code;
+    if (operator === '>') return status > code;
+    if (operator === '>=') return status >= code;
+    return status === code;
+  }
+  return false;
+}
+
+export function findExpectedRequest(records: NetworkRecord[], pattern: string, statusExpectation = '2xx', since?: string): { matched: NetworkRecord[]; passed: NetworkRecord[] } {
+  const sinceMs = since ? new Date(since).getTime() : Number.NEGATIVE_INFINITY;
+  const matched = records.filter((record) => new Date(record.startedAt).getTime() >= sinceMs && patternMatches(pattern, record.url));
+  return {
+    matched,
+    passed: matched.filter((record) => statusMatches(record, statusExpectation))
+  };
+}
+
+async function expectRequest(page: Page, step: JourneyStepConfig, config: FrontLensConfig, getNetworkRecords: () => NetworkRecord[], journeyStartedAt: string): Promise<StepRunOutput> {
+  const pattern = step.target ?? step.value;
+  if (!pattern) throw new Error('expectRequest step.target or step.value is required.');
+  const statusExpectation = step.value && step.target ? step.value : '2xx';
+  const timeout = step.timeoutMs ?? Math.min(config.browser.timeoutMs, 10_000);
+  const deadline = Date.now() + timeout;
+  let latestMatches: NetworkRecord[] = [];
+  while (Date.now() <= deadline) {
+    const matched = findExpectedRequest(getNetworkRecords(), pattern, statusExpectation, journeyStartedAt);
+    latestMatches = matched.matched;
+    const passed = matched.passed;
+    if (passed.length > 0) {
+      return {
+        networkRequestIds: passed.map((record) => record.id),
+        details: {
+          pattern,
+          statusExpectation,
+          matchedCount: latestMatches.length,
+          passedCount: passed.length,
+          matchedRequests: passed.slice(0, 5).map((record) => ({ id: record.id, method: record.method, status: record.status, failed: record.failed, url: redactUrl(record.url) }))
+        }
+      };
+    }
+    await page.waitForTimeout(100);
+  }
+  const mismatchSummary = latestMatches.slice(0, 5).map((record) => `${record.id}:${record.method}:${record.status ?? record.failureText ?? 'pending'}:${redactUrl(record.url)}`).join('; ');
+  throw new Error(latestMatches.length > 0
+    ? `expectRequest matched ${latestMatches.length} request(s) for ${pattern}, but none satisfied status ${statusExpectation}. ${mismatchSummary}`
+    : `expectRequest found no request matching ${pattern} within ${timeout}ms.`);
+}
+
+async function runStep(page: Page, step: JourneyStepConfig, config: FrontLensConfig, getNetworkRecords: () => NetworkRecord[], journeyStartedAt: string): Promise<StepRunOutput | undefined> {
   const timeout = step.timeoutMs ?? Math.min(config.browser.timeoutMs, 10_000);
   if (isUnsafeStep(step) && config.safety.blockMutatingRequests) {
     throw new Error(`Unsafe journey step skipped by default safety policy: ${step.action} ${step.target ?? ''}`);
@@ -101,6 +182,8 @@ async function runStep(page: Page, step: JourneyStepConfig, config: FrontLensCon
       if (pattern && !new RegExp(pattern).test(page.url())) throw new Error(`URL ${page.url()} does not match ${pattern}`);
       return;
     }
+    case 'expectRequest':
+      return expectRequest(page, step, config, getNetworkRecords, journeyStartedAt);
     case 'waitForLoad':
       await page.waitForLoadState('networkidle', { timeout }).catch(() => page.waitForLoadState('domcontentloaded', { timeout }));
       return;
@@ -137,9 +220,9 @@ export class JourneyTester {
           try {
             const expectDownload = isDownloadStep(step) && config.safety.allowDownload;
             const downloadPromise = expectDownload ? page.waitForEvent('download', { timeout: 4_000 }).catch(() => null) : undefined;
-            await runStep(page, step, config);
+            const stepOutput = await runStep(page, step, config, this.deps.getNetworkRecords, startedAt);
             const download = downloadPromise ? await downloadPromise : null;
-            const networkRequestIds = idsAfter(this.deps.getNetworkRecords(), beforeNetwork);
+            const networkRequestIds = [...new Set([...idsAfter(this.deps.getNetworkRecords(), beforeNetwork), ...(stepOutput?.networkRequestIds ?? [])])];
             const consoleIds = this.deps.getConsoleRecords().filter((record) => !beforeConsole.has(record.id) && isActionableConsoleError(record)).map((record) => record.id);
             const pageErrorIds = idsAfter(this.deps.getPageErrors(), beforeErrors);
             const downloadFailure = download ? await download.failure().catch(() => null) : null;
@@ -181,7 +264,8 @@ export class JourneyTester {
               downloadSizeBytes: savedDownload && 'path' in savedDownload ? savedDownload.sizeBytes : undefined,
               downloadSha256: savedDownload && 'path' in savedDownload ? savedDownload.sha256 : undefined,
               downloadContent: savedDownload && 'path' in savedDownload ? savedDownload.content : undefined,
-              downloadFailure
+              downloadFailure,
+              details: stepOutput?.details
             });
           } catch (error) {
             const message = redactText(error instanceof Error ? error.message : String(error));

@@ -27,7 +27,7 @@ For every target-page QA run:
 10. When product scope, ADRs, supported devices, or “this is designed this way” feedback is available, encode it in `productContext` before rerunning or triaging. Use `deviceScope`, `requiredFeatures`, `optionalFeatures`, `outOfScopeFeatures`, `decisions[]`, and `adrRefs[]` so style, export, pagination, refresh, and touch-target findings are classified by product scope rather than guesswork.
 11. When multiple login roles/storage states are provided, or when the page has permission-sensitive actions, run `frontlens role-matrix` after the baseline QA. Treat role differences as permission-review evidence; only call them defects when they violate explicit requirements, expected allowed/forbidden text contracts, or source/runtime permission guards.
 12. When requirements or journeys include create/edit/delete/upload/import/submit flows, require `testData` context before claiming business validation: isolated records, setup steps, cleanup/rollback steps, environment, and production-write authorization. Missing cleanup or production mutation risk must be reported as QA sign-off risk/blocker.
-13. When the user asks for business-flow validation but no executable journey/requirements exist, offer `frontlens journey record` as the first way to capture the real manual path. Recorded journeys are replay scaffolds: require explicit `expectVisible`/`expectText`/`expectUrl`, role state, and test-data lifecycle before claiming runtime-verified business pass.
+13. When the user asks for business-flow validation but no executable journey/requirements exist, offer `frontlens journey record` as the first way to capture the real manual path. Recorded journeys are replay scaffolds: require explicit `expectVisible`/`expectText`/`expectUrl`/`expectRequest`, role state, and test-data lifecycle before claiming runtime-verified business pass.
 
 Recommended checklist to show the user:
 
@@ -84,12 +84,13 @@ If the user selects "all/default", run the full default QA command. If the user 
        "priority": "P1",
        "selectors": ["body"],
        "expectedTexts": ["列表"],
+       "apiPatterns": ["/api/list"],
        "journeySteps": [{ "action": "waitForLoad" }]
      }
    ]
    ```
 
-   Use `selectors`/`expectedTexts` for read-only assertions and `journeySteps` for explicit safe flows. Do not translate vague product wishes into clicks or defects unless the requirement says so.
+   Use `selectors`/`expectedTexts` for read-only UI assertions, `apiPatterns` for `expectRequest` API assertions, and `journeySteps` for explicit safe flows. Do not translate vague product wishes into clicks or defects unless the requirement says so.
 
    Product/ADR context can be added in the same config to avoid reporting deliberate design choices as bugs:
 
@@ -239,7 +240,7 @@ node dist/cli.js journey record \
   --name "Users smoke"
 ```
 
-Then edit the generated JSON to add `expectVisible`/`expectText`/`expectUrl` assertions and run it with QA:
+Then edit the generated JSON to add `expectVisible`/`expectText`/`expectUrl`/`expectRequest` assertions and run it with QA:
 
 ```bash
 node dist/cli.js qa \
@@ -251,7 +252,7 @@ node dist/cli.js qa \
   --json
 ```
 
-Do not treat a recorded click/fill path alone as business validation. It is runtime-partial until success assertions, role/auth state, and test data setup/cleanup are present. FrontLens 1.23+ exposes `qaSignoff.scope.passedAssertionStepCount` / `assertionStepCount` to enforce this.
+Do not treat a recorded click/fill path alone as business validation. It is runtime-partial until success assertions, role/auth state, and test data setup/cleanup are present. FrontLens 1.24+ exposes `qaSignoff.scope.passedAssertionStepCount` / `assertionStepCount` to enforce this.
 
 Run headed for debugging:
 

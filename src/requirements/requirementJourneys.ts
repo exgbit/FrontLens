@@ -39,16 +39,28 @@ function makeTextSteps(item: RequirementConfigItem): JourneyStepConfig[] {
     }));
 }
 
+function makeApiSteps(item: RequirementConfigItem): JourneyStepConfig[] {
+  return (item.apiPatterns ?? [])
+    .filter(Boolean)
+    .map((pattern) => ({
+      action: 'expectRequest' as const,
+      target: pattern,
+      value: '2xx',
+      description: `验收断言：需求关联接口 ${pattern} 被调用且返回 2xx`
+    }));
+}
+
 function makeRequirementSteps(item: RequirementConfigItem): JourneyStepConfig[] {
   const steps: JourneyStepConfig[] = [{ action: 'waitForLoad', description: '等待页面完成基础加载' }];
   steps.push(...(item.journeySteps ?? []));
   steps.push(...makeSelectorSteps(item));
   steps.push(...makeTextSteps(item));
+  steps.push(...makeApiSteps(item));
   return steps;
 }
 
 function hasRunnableAssertion(item: RequirementConfigItem): boolean {
-  return Boolean((item.journeySteps?.length ?? 0) > 0 || (item.selectors?.length ?? 0) > 0 || (item.expectedTexts?.length ?? 0) > 0);
+  return Boolean((item.journeySteps?.length ?? 0) > 0 || (item.selectors?.length ?? 0) > 0 || (item.expectedTexts?.length ?? 0) > 0 || (item.apiPatterns?.length ?? 0) > 0);
 }
 
 function hasExistingJourneyLink(item: RequirementConfigItem, existingNames: Set<string>): boolean {
@@ -59,7 +71,7 @@ function hasExistingJourneyLink(item: RequirementConfigItem, existingNames: Set<
  * Convert explicit PRD/acceptance criteria into safe Playwright journey config.
  *
  * Design constraints:
- * - Generate only from explicit requirement fields (`journeySteps`, `selectors`, `expectedTexts`).
+ * - Generate only from explicit requirement fields (`journeySteps`, `selectors`, `expectedTexts`, `apiPatterns`).
  *   Free-text PRD is not guessed into clicks, so reports do not overclaim business validation.
  * - Keep normal journey safety enforcement. Mutating clicks/submits remain blocked unless the
  *   caller explicitly marks a step as allowed and disables request blocking.

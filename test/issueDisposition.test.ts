@@ -103,6 +103,8 @@ test('quality gate uses disposition so speculative high findings become pass-wit
 
   assert.equal(result.issueDisposition.items[0].status, 'needs-source-confirmation');
   assert.equal(result.issueDisposition.items[0].actionability, 'conditional');
+  assert.equal(result.rootCauseGroups.length, 0);
+  assert.equal(result.fixTasks.length, 0);
   assert.equal(result.qualityGate.status, 'pass-with-risks');
   assert.equal(result.qualityGate.blockingIssueCount, 0);
   assert.equal(result.qualityGate.coverageGaps.some((gap) => gap.includes('Raw finding')), true);

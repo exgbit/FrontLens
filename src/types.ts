@@ -81,7 +81,7 @@ export interface SecurityConfig {
   activeProbing: boolean;
 }
 
-export type JourneyStepAction = 'goto' | 'click' | 'fill' | 'press' | 'select' | 'check' | 'uncheck' | 'expectVisible' | 'expectText' | 'expectUrl' | 'waitForLoad' | 'waitMs';
+export type JourneyStepAction = 'goto' | 'click' | 'fill' | 'press' | 'select' | 'check' | 'uncheck' | 'expectVisible' | 'expectText' | 'expectUrl' | 'expectRequest' | 'waitForLoad' | 'waitMs';
 
 export interface JourneyStepConfig {
   action: JourneyStepAction;
@@ -744,6 +744,7 @@ export interface JourneyStepResult {
   downloadSha256?: string;
   downloadContent?: DownloadContentSummary;
   downloadFailure?: string | null;
+  details?: unknown;
 }
 
 export interface JourneyTestResult {

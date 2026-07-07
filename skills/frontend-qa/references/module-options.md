@@ -74,7 +74,7 @@ node dist/cli.js journey record --url "<URL>" --output "<OUTPUT_DIR>/recorded-jo
 node dist/cli.js qa --url "<URL>" --config "<OUTPUT_DIR>/recorded-journey.json" --journeys --output "<OUTPUT_DIR>-recorded" --no-trace --json
 ```
 
-Recorded steps are not enough for business sign-off. Add explicit `expectVisible` / `expectText` / `expectUrl`, role/auth state, and testData lifecycle before calling a business flow runtime-verified; FrontLens 1.23+ downgrades passed journeys without successful assertions to runtime-partial. Sensitive values are emitted as `<REDACTED>` and dangerous clicks are safe-blocked unless reviewed.
+Recorded steps are not enough for business sign-off. Add explicit `expectVisible` / `expectText` / `expectUrl` / `expectRequest`, role/auth state, and testData lifecycle before calling a business flow runtime-verified; FrontLens 1.24+ downgrades passed journeys without successful assertions to runtime-partial. Sensitive values are emitted as `<REDACTED>` and dangerous clicks are safe-blocked unless reviewed.
 
 
 ## Module-to-config mapping

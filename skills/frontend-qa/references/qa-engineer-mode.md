@@ -93,7 +93,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No export/download pass unless the saved file artifact exists, is non-empty, and has a usable content summary; a network request alone is runtime-partial.
 - No permission defect from role differences alone; require role requirements, expected allowed/forbidden contracts, or source/runtime confirmation.
 - No destructive-flow business pass without isolated test data and cleanup/rollback evidence; production writes without explicit authorization are release blockers.
-- No business pass from a recorded journey that only contains `click`/`fill`/`press`; add `expectVisible`/`expectText`/`expectUrl` or requirement evidence first.
+- No business pass from a recorded journey that only contains `click`/`fill`/`press`; add `expectVisible`/`expectText`/`expectUrl`/`expectRequest` or requirement evidence first.
 - No release sign-off solely from `summary.score`; use `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
 
 ## Output template

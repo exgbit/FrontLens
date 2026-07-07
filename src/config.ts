@@ -89,6 +89,7 @@ const journeyStepActions = new Set([
   'expectVisible',
   'expectText',
   'expectUrl',
+  'expectRequest',
   'waitForLoad',
   'waitMs'
 ]);

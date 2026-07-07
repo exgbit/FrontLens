@@ -68,7 +68,11 @@ function isSafetyBlockedMutation(context: AnalyzerContext, record: NetworkRecord
 }
 
 function isReliableDataTable(table: AnalyzerContext['pageModel']['tables'][number]): boolean {
-  return table.visible && (table.tagName === 'table' || table.role === 'grid' || (table.rowCount ?? 0) > 0 || (table.headers?.length ?? 0) > 0 || table.confidence >= 0.8);
+  const semanticTable = table.tagName === 'table' || table.role === 'table' || table.role === 'grid' || table.role === 'treegrid';
+  const className = table.attributes?.class ?? '';
+  const uiLibraryTable = /(^|\s|[-_])(data[-_]?grid|ag-grid|table|data-table|el-table|ant-table|n-data-table|v-data-table|MuiDataGrid)(\s|[-_]|$)/i.test(className);
+  const structuralEvidence = (table.rowCount ?? 0) > 0 || (table.columnCount ?? 0) > 0 || (table.headers?.length ?? 0) > 0;
+  return table.visible && (semanticTable || (uiLibraryTable && structuralEvidence));
 }
 
 export function analyzeIntegration(context: AnalyzerContext, factory: IssueFactory): Issue[] {

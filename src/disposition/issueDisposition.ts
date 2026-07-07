@@ -284,7 +284,11 @@ function classifyException(issue: Issue, rootCauseGroupId?: string): IssueDispos
 function classifyProductOrSpec(issue: Issue, config: FrontLensConfig, rootCauseGroupId?: string): IssueDispositionItem | undefined {
   const text = textOf(issue);
   const contextDecision = productDecisionForIssue(issue, config);
+  const errorStateLike = hasFeature(['error-state'], issueFeatureCandidates(issue)) || /错误态|error state|异常反馈|失败反馈|no feedback|error ref/.test(text);
   const productLike = /触控目标|tap target|smalltap|按钮层级|视觉密度|style|seo|导出|下载|刷新|分页控件|未发现分页参数|empty state|空状态/.test(text);
+  if (errorStateLike && contextDecision.state === 'none') {
+    return undefined;
+  }
   if (productLike && contextDecision.state === 'out-of-scope') {
     return makeItem(issue, {
       status: 'product-decision',
@@ -570,4 +574,9 @@ export function buildIssueDisposition(issues: Issue[], config: FrontLensConfig, 
     summary: summarize(items),
     items
   };
+}
+
+export function filterActionableIssues(issues: Issue[], disposition: IssueDispositionResult): Issue[] {
+  const actionableIds = new Set(disposition.items.filter((item) => item.actionability === 'actionable').map((item) => item.issueId));
+  return issues.filter((issue) => actionableIds.has(issue.id));
 }

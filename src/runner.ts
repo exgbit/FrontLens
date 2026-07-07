@@ -37,7 +37,7 @@ import { buildProfessionalSummary } from './summary/professionalSummary.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
-import { buildIssueDisposition } from './disposition/issueDisposition.js';
+import { buildIssueDisposition, filterActionableIssues } from './disposition/issueDisposition.js';
 import { analyzeSource, createEmptySourceAnalysis } from './source/sourceAnalyzer.js';
 import { buildSourceRuntimeCorrelation, createEmptySourceRuntimeCorrelation } from './source/sourceRuntimeCorrelation.js';
 import { analyzeSourceHealth, createEmptySourceHealth } from './source/sourceHealth.js';
@@ -681,7 +681,6 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     interactionTests,
     accessibilityChecks
   });
-  const fixTasks: FixTask[] = generateFixTasks(issues, config);
   const resultConfig: FrontLensConfig = {
     ...config,
     target: {
@@ -699,8 +698,10 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     config,
     pageModel
   });
-  const rootCauseGroups = buildRootCauseGroups(issues, resultConfig);
+  const preliminaryDisposition = buildIssueDisposition(issues, resultConfig);
+  const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), resultConfig);
   const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
+  const fixTasks: FixTask[] = generateFixTasks(issues, resultConfig, rootCauseGroups);
   const initialArtifactIntegrity = createEmptyArtifactIntegrity();
   const qualityGate = buildQualityGate({
     issues,

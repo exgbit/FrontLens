@@ -76,7 +76,7 @@ function statusFromTests(tests: Array<{ status: string }>): RequirementCoverageS
   return 'partial';
 }
 
-const journeyAssertionActions = new Set<JourneyStepAction>(['expectVisible', 'expectText', 'expectUrl']);
+const journeyAssertionActions = new Set<JourneyStepAction>(['expectVisible', 'expectText', 'expectUrl', 'expectRequest']);
 
 function hasPassedJourneyAssertion(journey: JourneyTestResult): boolean {
   return journey.steps.some((step) => journeyAssertionActions.has(step.action) && step.status === 'passed');
@@ -163,7 +163,7 @@ function buildItemFromConfig(
     if (journeyStatus === 'passed' && interactionStatus !== 'passed' && !hasPassedAssertion) {
       status = 'partial';
       confidence = 'medium';
-      gaps.push('关联 journey 已通过但缺少 expectVisible/expectText/expectUrl 成功断言，只能证明路径未崩溃，不能证明业务结果正确。');
+      gaps.push('关联 journey 已通过但缺少 expectVisible/expectText/expectUrl/expectRequest 成功断言，只能证明路径未崩溃，不能证明业务结果正确。');
     } else {
       status = 'passed';
       confidence = 'high';

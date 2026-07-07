@@ -12,7 +12,7 @@ function allSkipped(items: Array<{ status: string }>): boolean {
   return items.length > 0 && items.every((item) => item.status === 'skipped');
 }
 
-const assertionActions = new Set<JourneyStepAction>(['expectVisible', 'expectText', 'expectUrl']);
+const assertionActions = new Set<JourneyStepAction>(['expectVisible', 'expectText', 'expectUrl', 'expectRequest']);
 
 function isAssertionAction(action: string): boolean {
   return assertionActions.has(action as JourneyStepAction);
@@ -154,8 +154,8 @@ export function buildQaSignoff(input: {
     gaps.push('核心用户旅程没有形成 passed 的运行时证据。');
     followups.push('补充覆盖核心业务流的非破坏 journey；涉及写操作时明确授权测试环境。');
   } else if (journeyAssertions.passedJourneyWithAssertionCount === 0) {
-    gaps.push('已通过的用户旅程缺少 expectVisible/expectText/expectUrl 成功断言；只能证明路径未崩溃，不能证明业务结果正确。');
-    followups.push('为录制/配置的 journey 补充 expectVisible、expectText 或 expectUrl 成功断言，再复测需求覆盖。');
+    gaps.push('已通过的用户旅程缺少 expectVisible/expectText/expectUrl/expectRequest 成功断言；只能证明路径未崩溃，不能证明业务结果正确。');
+    followups.push('为录制/配置的 journey 补充 expectVisible、expectText、expectUrl 或 expectRequest 成功断言，再复测需求覆盖。');
   }
   if (input.interactionTests.length === 0 || allSkipped(input.interactionTests)) {
     gaps.push('安全交互探索未覆盖或全部 skipped，搜索/表单/弹窗/表格等交互结论低置信。');

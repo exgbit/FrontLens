@@ -97,4 +97,4 @@ Read `references/result-schema.md` before consuming `result.json`, filtering iss
 
 ## Reporting Back
 
-Return the path, key findings, explicit false-positive/downgrade decisions, and next verification steps; do not paste the whole Markdown report unless the user asks. Use `references/reporting.md` for the complete summary checklist.
+Return the path, key findings, explicit false-positive/downgrade decisions, and next verification steps; do not paste the whole Markdown report unless the user asks. Default to an executive QA answer: proof-ready fixes first, bucket/count product or style observations instead of listing selector-level polish, and keep unsupported API/UI or business claims conditional. Use `references/reporting.md` for the complete summary checklist.

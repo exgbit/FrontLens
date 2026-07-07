@@ -8,6 +8,8 @@ Use this reference when preparing the final user-facing summary after a `fronten
 
 ## Reporting Back
 
+Default to a concise, decision-oriented answer. The normal user-facing summary should lead with proof-ready fixes and QA sign-off, then bucket non-defects/coverage gaps. Do not enumerate every style/touch-target/optional-feature selector unless the user asks for exhaustive polish detail.
+
 Summarize:
 
 - professionalSummary headline/status and must-fix/non-defect counts;
@@ -36,4 +38,4 @@ Summarize:
 - skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;
 - for each retained critical/high issue: issue id, severity, category, evidence reference, reproduction step summary, and suggested owner/fix.
 
-Do not paste the whole Markdown report unless the user asks; provide the path, key findings, and explicit false-positive/downgrade decisions.
+Do not paste the whole Markdown report unless the user asks; provide the path, key findings, and explicit false-positive/downgrade decisions. If a claim depends on missing PRD, product scope, role, test data, artifact, or source/runtime binding, phrase it as "needs evidence / scope decision" instead of a bug.

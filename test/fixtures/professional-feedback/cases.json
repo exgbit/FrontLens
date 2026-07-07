@@ -1,0 +1,250 @@
+[
+  {
+    "id": "dev-server-resource-noise-not-a-defect",
+    "description": "Vite dev module graph and /src resources must not become production performance/security defects.",
+    "url": "http://127.0.0.1:5173/credentials",
+    "environment": {
+      "kind": "local-dev",
+      "confidence": "high",
+      "isLocalOrPrivate": true,
+      "isHttps": false,
+      "isViteDevServer": true,
+      "hasHmr": true,
+      "sameOriginRequestCount": 610,
+      "devModuleRequestCount": 585,
+      "hashedAssetCount": 0,
+      "trust": { "functional": "high", "performance": "low", "security": "low", "businessSignoff": "medium" },
+      "evidence": ["devModules:http://127.0.0.1:5173/src/App.vue", "hmr:true"],
+      "warnings": ["Vite/dev-source mode detected; production conclusions are limited."],
+      "recommendations": ["Run build + preview before production performance/security sign-off."]
+    },
+    "issues": [
+      {
+        "id": "ISSUE-DEV-RESOURCE",
+        "title": "未使用JS资源偏多：http://127.0.0.1:5173/src/App.vue",
+        "category": "resource-performance",
+        "severity": "high",
+        "confidence": 0.72,
+        "description": "Vite dev server exposes source modules and coverage reports unused source bytes.",
+        "evidence": {
+          "resourceUrl": "http://127.0.0.1:5173/src/App.vue",
+          "details": { "coverageEntry": { "url": "http://127.0.0.1:5173/src/App.vue" } }
+        },
+        "reproduceSteps": ["Open page on Vite dev server", "Inspect coverage resource URL"],
+        "reason": "Dev module graph noise.",
+        "suggestion": { "frontend": "Do code splitting for this script.", "priority": "P1" }
+      }
+    ],
+    "expect": {
+      "dispositions": {
+        "ISSUE-DEV-RESOURCE": { "status": "tool-limitation", "actionability": "non-actionable", "bucket": "tool-limitation", "owner": "test" }
+      },
+      "proofReadyRootCauseCount": 0,
+      "mustFixIssueIds": [],
+      "shouldFixIssueIds": [],
+      "adjustedIssueCount": 0,
+      "claimGuardItems": { "production-performance": "limited", "production-security": "limited" },
+      "forbiddenClaimsIncludes": ["Vite dev server 结果代表生产性能", "localhost/dev server 安全头结果等同生产安全结论"]
+    }
+  },
+  {
+    "id": "product-scope-touch-and-style-not-must-fix",
+    "description": "PC-first touch targets and visual style preferences are product/design decisions unless explicit scope makes them required.",
+    "url": "https://example.com/admin/dashboard",
+    "productContext": {
+      "enabled": true,
+      "pageType": "admin-list",
+      "deviceScope": "desktop-first",
+      "accessibilityTarget": "basic",
+      "requiredFeatures": [],
+      "optionalFeatures": ["mobile-touch-target", "visual-design"],
+      "outOfScopeFeatures": [],
+      "decisions": [
+        { "id": "ADR-PC-FIRST", "title": "PC first; mobile is adaptive downgrade", "appliesTo": ["mobile-touch-target", "visual-design"] }
+      ],
+      "adrRefs": ["docs/adr/pc-first.md"]
+    },
+    "scopeReview": { "status": "configured" },
+    "issues": [
+      {
+        "id": "ISSUE-TOUCH",
+        "title": "触控目标尺寸偏小：mobile 390x844",
+        "category": "frontend-accessibility",
+        "severity": "low",
+        "confidence": 0.83,
+        "description": "11 icon buttons are below the mobile tap target threshold.",
+        "evidence": { "selector": ".toolbar .act-icon", "details": { "rule": "tap-target", "smallTapTargetCount": 11 } },
+        "reproduceSteps": ["Open mobile viewport", "Measure icon action target"],
+        "reason": "Mobile touch area is small.",
+        "suggestion": { "frontend": "Increase target size on small screens.", "product": "Confirm mobile support scope.", "priority": "P3" }
+      },
+      {
+        "id": "ISSUE-STYLE",
+        "title": "视觉密度偏高，按钮层级可能需要优化",
+        "category": "frontend-ui",
+        "severity": "low",
+        "confidence": 0.7,
+        "description": "Heuristic design suggestion about button hierarchy.",
+        "evidence": { "selector": ".page-actions", "details": { "rule": "visual-density" } },
+        "reproduceSteps": ["Open page", "Review toolbar visual density"],
+        "reason": "Subjective visual style signal.",
+        "suggestion": { "product": "Confirm visual hierarchy requirements.", "priority": "P3" }
+      }
+    ],
+    "expect": {
+      "dispositions": {
+        "ISSUE-TOUCH": { "status": "product-decision", "actionability": "conditional", "bucket": "product-decision", "owner": "product" },
+        "ISSUE-STYLE": { "status": "product-decision", "actionability": "conditional", "bucket": "product-decision", "owner": "product" }
+      },
+      "proofReadyRootCauseCount": 0,
+      "mustFixIssueIds": [],
+      "shouldFixIssueIds": [],
+      "adjustedIssueCount": 0
+    }
+  },
+  {
+    "id": "api-ui-list-empty-without-binding-needs-evidence",
+    "description": "A global list-like network response plus empty DOM is not enough to claim API data failed to render.",
+    "url": "https://example.com/admin/orders",
+    "sourceRuntimeCorrelation": {
+      "enabled": true,
+      "status": "passed",
+      "checkedAt": "2026-07-07T00:00:00.000Z",
+      "summary": { "networkRequestCount": 1, "linkedRequestCount": 0, "strongLinkCount": 0, "unlinkedRequestCount": 1, "listResponseLinkCount": 0 },
+      "links": [
+        {
+          "id": "SRC-LINK-NONE",
+          "networkRequestId": "REQ-LIST",
+          "method": "GET",
+          "url": "https://example.com/api/orders/list",
+          "path": "/api/orders/list",
+          "status": 200,
+          "sourceMatches": [],
+          "stateSignals": [],
+          "componentIds": [],
+          "responseListHints": [{ "path": "$.data", "length": 2, "sampleKeys": ["id", "name"] }],
+          "confidence": "none",
+          "notes": ["No source API call or rendering component matched this request."]
+        }
+      ],
+      "gaps": ["REQ-LIST GET /api/orders/list was not bound to a source API call or visible UI region."]
+    },
+    "issues": [
+      {
+        "id": "ISSUE-LIST-EMPTY",
+        "title": "接口返回疑似有列表数据，但页面表格为空",
+        "category": "integration-data-mismatch",
+        "severity": "high",
+        "confidence": 0.66,
+        "description": "Network contains a list-like response while a detected table has zero rows.",
+        "evidence": { "networkRequestId": "REQ-LIST", "screenshot": "screenshots/orders-empty.png", "details": { "responsePath": "$.data", "rowCount": 0 } },
+        "reproduceSteps": ["Open page", "Inspect REQ-LIST and visible list region"],
+        "reason": "Heuristic mismatch without source/runtime binding.",
+        "suggestion": { "frontend": "Verify API to UI binding before changing rendering code.", "priority": "P2" }
+      }
+    ],
+    "expect": {
+      "dispositions": {
+        "ISSUE-LIST-EMPTY": { "status": "needs-source-confirmation", "actionability": "conditional", "bucket": "coverage-gap", "owner": "frontend" }
+      },
+      "proofReadyRootCauseCount": 0,
+      "mustFixIssueIds": [],
+      "shouldFixIssueIds": [],
+      "adjustedIssueCount": 0,
+      "claimGuardItems": { "api-ui-data-binding": "limited" },
+      "forbiddenClaimsIncludes": ["接口有数据但页面空", "全局 network 响应可直接证明某 UI 缺陷"]
+    }
+  },
+  {
+    "id": "download-export-without-artifact-not-verified",
+    "description": "Download/export cannot be called runtime-verified without a saved non-empty file, hash, content summary, and artifact integrity.",
+    "url": "https://example.com/admin/reports",
+    "interactionTests": [
+      {
+        "id": "IT-DOWNLOAD",
+        "kind": "download",
+        "target": "导出",
+        "status": "warning",
+        "startedAt": "2026-07-07T00:00:00.000Z",
+        "endedAt": "2026-07-07T00:00:01.000Z",
+        "durationMs": 1000,
+        "actions": ["Click export"],
+        "observations": { "networkRequestIds": ["REQ-EXPORT"], "downloaded": false },
+        "issue": "No download artifact was saved."
+      }
+    ],
+    "artifacts": { "downloadedFiles": [] },
+    "expect": {
+      "dispositions": {},
+      "proofReadyRootCauseCount": 0,
+      "mustFixIssueIds": [],
+      "shouldFixIssueIds": [],
+      "claimGuardItems": { "download-export": "limited" },
+      "forbiddenClaimsIncludes": ["仅有网络请求就算导出成功", "未保存文件也算下载内容验证通过"]
+    }
+  },
+  {
+    "id": "source-bound-error-state-gap-stays-core-defect",
+    "description": "Filters must not hide a real exception-feedback defect when runtime failure, source API/state, and view error-state gap are bound.",
+    "url": "https://example.com/credentials",
+    "sourceRuntimeCorrelation": {
+      "enabled": true,
+      "status": "passed",
+      "checkedAt": "2026-07-07T00:00:00.000Z",
+      "summary": { "networkRequestCount": 1, "linkedRequestCount": 1, "strongLinkCount": 1, "unlinkedRequestCount": 0, "listResponseLinkCount": 0 },
+      "links": [
+        {
+          "id": "SRC-LINK-ERROR",
+          "networkRequestId": "REQ-500",
+          "method": "GET",
+          "url": "https://example.com/api/credentials",
+          "path": "/api/credentials",
+          "status": 500,
+          "sourceMatches": [{ "file": "src/api/credentials.ts", "line": 8, "method": "GET", "path": "/api/credentials", "client": "http", "expression": "http.get('/api/credentials')" }],
+          "stateSignals": [{ "file": "src/views/CredentialsView.vue", "line": 55, "kind": "error", "text": "catch (err) { error.value = err }" }],
+          "componentIds": ["CMP-CREDENTIALS"],
+          "responseListHints": [],
+          "confidence": "high",
+          "notes": []
+        }
+      ],
+      "gaps": []
+    },
+    "exceptionSimulations": [
+      {
+        "id": "EX-500",
+        "kind": "api-500",
+        "target": "https://example.com/api/credentials",
+        "status": "failed",
+        "startedAt": "2026-07-07T00:00:00.000Z",
+        "endedAt": "2026-07-07T00:00:01.000Z",
+        "durationMs": 1000,
+        "observations": { "networkRequestIds": ["REQ-500"] },
+        "issue": "Simulated API 500 rendered an empty state with no retry."
+      }
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-ERROR-STATE",
+        "title": "异常场景测试失败：api-500 后无错误态和重试入口",
+        "category": "integration-no-feedback",
+        "severity": "high",
+        "confidence": 0.9,
+        "description": "The page renders an empty state after API 500, so users cannot distinguish failed loading from real no-data.",
+        "evidence": { "networkRequestId": "REQ-500", "screenshot": "screenshots/api-500-empty.png", "details": { "exceptionSimulationId": "EX-500", "kind": "api-500", "target": "https://example.com/api/credentials" } },
+        "reproduceSteps": ["Run exception simulation api-500", "Observe empty state without error or retry"],
+        "reason": "The view does not render the captured error state.",
+        "suggestion": { "frontend": "Render error state and retry button; keep empty state separate.", "test": "Add exception-feedback regression for 500/401/403/404/timeout.", "priority": "P1" }
+      }
+    ],
+    "expect": {
+      "dispositions": {
+        "ISSUE-ERROR-STATE": { "status": "confirmed", "actionability": "actionable", "bucket": "real-frontend-fix", "owner": "frontend" }
+      },
+      "proofReadyRootCauseCount": 1,
+      "mustFixIssueIds": ["ISSUE-ERROR-STATE"],
+      "defectProofStatuses": ["proven", "probable"],
+      "claimGuardItems": { "frontend-defect": "allowed" }
+    }
+  }
+]

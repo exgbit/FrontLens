@@ -25,6 +25,7 @@ If missing, continue with best effort but mark coverage gaps:
 - PRD / user stories / acceptance criteria. If available, encode them as `--requirements requirements.json` so FrontLens can produce machine-readable `requirementCoverage`.
 - If PRD/user stories are only Markdown or natural language, run `node dist/cli.js requirements synthesize --input <prd.md> --output <output>/requirements.json` first, review the generated `.md` questions, and keep `needsReview` or low-confidence items as coverage gaps rather than confirmed requirements.
 - For each acceptance criterion, prefer explicit runtime assertions: `selectors`, `expectedTexts`, and safe `journeySteps`. These generate `journeyTests[].source = requirement-generated` and allow high-confidence coverage. Criteria that are only free text remain coverage gaps unless other runtime evidence proves them.
+- If no executable business flow exists, record the real manual path with `node dist/cli.js journey record --url <url> --output <journey.json> --name <flow>` and then review the generated `.md`. Treat the raw recording as a scaffold; add success assertions and test data before sign-off.
 - Product scope/ADR context. Inspect `pageProfile`; if it is inferred, use its questions to ask for scope confirmation. Encode supported devices, page type, required/optional/out-of-scope features, and ADR references as `productContext` so intentional design choices do not become defects.
 - Login state and role matrix, including admin/normal/readonly/unauthorized when relevant.
 - When multiple storage states are available, run `node dist/cli.js role-matrix --url <url> --roles roles.json --output <output>-roles` and include the generated `role-matrix.md` in the evidence set.
@@ -41,6 +42,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Navigation and route health**: direct URL load, refresh, login redirects, empty/error/loading states.
 - **Source health**: package scripts, syntax parse errors, optional controlled `typecheck/lint` script checks, build/typecheck/lint availability. Syntax errors and failed/timed-out typecheck/build/test checks are source-confirmed blockers; passing source health is not business validation.
 - **Core business flows**: search/filter/sort/pagination/detail/modal/export/import/create/edit/delete only when present and safe/authorized.
+- **Recorded journeys**: convert human-executed business paths into reusable journey configs; require explicit assertions because click/fill replay alone only proves the path did not crash.
 - **Export/download evidence**: when export/download is in scope, require `safety.allowDownload=true`, `interactionTests[].observations.downloadPath` or `journeyTests[].steps[].downloadPath`, non-zero `downloadSizeBytes`, `downloadSha256`, `downloadContent` parse summary, and `artifactIntegrity` coverage before marking it runtime-verified.
 - **Test data lifecycle**: for create/edit/delete/upload/import/submit flows, verify `testData.records`, setup, cleanup, and environment authorization before claiming runtime-verified business validation.
 - **Data correctness**: bind one exact API response to one exact UI region; verify totals, rows/cards, field formatting, permissions, and stale refresh behavior. Prefer `sourceRuntimeCorrelation.links[]` as the API↔source↔UI binding evidence when available.
@@ -91,6 +93,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No export/download pass unless the saved file artifact exists, is non-empty, and has a usable content summary; a network request alone is runtime-partial.
 - No permission defect from role differences alone; require role requirements, expected allowed/forbidden contracts, or source/runtime confirmation.
 - No destructive-flow business pass without isolated test data and cleanup/rollback evidence; production writes without explicit authorization are release blockers.
+- No business pass from a recorded journey that only contains `click`/`fill`/`press`; add `expectVisible`/`expectText`/`expectUrl` or requirement evidence first.
 - No release sign-off solely from `summary.score`; use `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
 
 ## Output template

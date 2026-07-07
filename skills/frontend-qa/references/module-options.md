@@ -19,7 +19,7 @@ Show this checklist in Chinese unless the user requested another language:
 2. Security 被动安全扫描
 3. Performance / Coverage / P2 视觉+预算+弱网
 4. Accessibility / Responsive / SEO
-5. User journeys 用户旅程 / requirements 需求覆盖
+5. User journeys 用户旅程 / requirements 需求覆盖 / 录制业务流
 6. Exception simulation 异常模拟
 7. Realtime GraphQL / WebSocket / SSE
 8. AI 综合分析
@@ -67,6 +67,16 @@ node dist/cli.js role-matrix --url "<URL>" --roles "roles.json" --output "<OUTPU
 
 Role matrix differences are review evidence. Promote to defects only when `expectedForbiddenTexts` / `expectedAllowedTexts`, PRD permission rules, or source/runtime guards prove the difference is wrong.
 
+Use `journey record` when the user asks to validate real business flows but no executable journey or requirement steps exist. It opens a headed browser for manual operation and writes a config fragment that can be passed to QA:
+
+```bash
+node dist/cli.js journey record --url "<URL>" --output "<OUTPUT_DIR>/recorded-journey.json" --name "<FLOW_NAME>"
+node dist/cli.js qa --url "<URL>" --config "<OUTPUT_DIR>/recorded-journey.json" --journeys --output "<OUTPUT_DIR>-recorded" --no-trace --json
+```
+
+Recorded steps are not enough for business sign-off. Add explicit `expectVisible` / `expectText` / `expectUrl`, role/auth state, and testData lifecycle before calling a business flow runtime-verified. Sensitive values are emitted as `<REDACTED>` and dangerous clicks are safe-blocked unless reviewed.
+
+
 ## Module-to-config mapping
 
 Start from the default config and disable only unselected modules.
@@ -77,7 +87,7 @@ Start from the default config and disable only unselected modules.
 | Security passive scan | `security.enabled=true` | `--no-security` or config `security.enabled=false` |
 | Performance / Coverage / P2 | `analysis.performance=true`, `analysis.resource=true`, `analysis.coverage=true`, `p2.enabled=true` | `--no-coverage --no-p2` and config `analysis.performance=false`, `analysis.resource=false` |
 | Accessibility / Responsive / SEO | `analysis.accessibility=true`, `analysis.responsive=true`, optional `analysis.seo=true` | config booleans false; keep `analysis.seo=false` unless selected |
-| User journeys / requirements | `journeys.enabled=true` safe smoke journey, `requirements.enabled=true`, `requirements.inferFromPage=true` | `--no-journeys` disables journeys; config `requirements.enabled=false` disables coverage matrix |
+| User journeys / requirements / recording | `journeys.enabled=true` safe smoke journey, `requirements.enabled=true`, `requirements.inferFromPage=true`; `journey record` creates reusable journeys | `--no-journeys` disables replay; config `requirements.enabled=false` disables coverage matrix |
 | Exception simulation | `exception.enabled=true` | `--no-exceptions` or config `exception.enabled=false` |
 | Realtime | `realtime.enabled=true` | `--no-realtime` or config `realtime.enabled=false` |
 | AI comprehensive analysis | `analysis.ai=true` | `--no-ai` or config `analysis.ai=false` |
@@ -147,6 +157,7 @@ Use a fresh worker prompt like:
 保持默认非破坏安全策略，不开启新增/编辑/删除/上传/真实提交，不使用 --allow-mutating-requests。
 如果提供了源码路径或存在已知项目映射，必须读取 skills/frontend-qa/references/source-code-correlation.md，并做源码关联复核。
 如果用户要求“替代专业测试工程师 / 完整验收 / 业务功能验证 / release sign-off / 复盘 skill 能力”，必须读取 skills/frontend-qa/references/qa-engineer-mode.md，并按其中的 QA sign-off、需求覆盖矩阵、核心缺陷根因表、非缺陷观察项输出。
+如果用户要求验证具体业务路径但没有 requirements/journeys，优先建议或执行 `node dist/cli.js journey record` 生成可回放 journey；录制后必须人工/源码补成功断言，不能仅凭点击/填写步骤声明业务通过。
 如果需要部署/刷新本地页面：先在源码目录检查 package.json；页面不可达或用户要求部署时，按 source-code-correlation.md 自动安装缺失依赖、构建、启动 Vite dev/preview 服务；服务可达后再运行 FrontLens。不要修改业务代码。
 先运行 npm run build，再按模块选择生成配置并执行 QA 命令；若是专业 QA/sign-off 且提供了源码路径，在依赖已安装且脚本存在时追加 `--source-run-scripts --source-scripts "typecheck,lint"`，把 typecheck/lint 的真实通过/失败写入 `sourceHealth.scriptChecks`。
 如果 Chromium 或私网访问被沙箱限制，使用 escalated 执行；仍失败则输出诊断。

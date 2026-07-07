@@ -8,12 +8,13 @@ import { startMcpServer } from './mcpServer.js';
 import { runEnvironmentComparison } from './compare/environmentComparison.js';
 import { synthesizeRequirements } from './requirements/requirementWizard.js';
 import { loadRoleMatrixRoles, parseRoleSpec, runRoleMatrix } from './roles/roleMatrix.js';
+import { recordJourney } from './journeys/journeyRecorder.js';
 import type { BrowserName, Issue, QaResult, QaRunInput, RoleMatrixRoleConfig, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -22,6 +23,7 @@ Usage:
   frontlens qa --url <url> [options]
   frontlens --url <url> [options]
   frontlens auth save --url <login-url> --output <storage-state-path>
+  frontlens journey record --url <url> --output <journey-config.json>
   frontlens requirements synthesize --input <prd.md> --output <requirements.json>
   frontlens matrix --url <url> --browsers chromium,firefox,webkit
   frontlens role-matrix --url <url> --role admin=.auth/admin.json --role viewer=.auth/viewer.json
@@ -52,6 +54,7 @@ Options:
   --source-script-timeout-ms <ms>
                               Timeout per source script. Default: 120000.
   --output <dir>              Output report directory.
+  --name <name>               Journey name for journey record.
   --browser <name>            chromium | firefox | webkit. Default: chromium.
   --headed                    Run headed browser.
   --headless                  Run headless browser.
@@ -91,6 +94,9 @@ Options:
   --fail-on <severity>        Exit non-zero if issues at severity or above exist.
   --min-score <number>        Exit non-zero if final score is lower than this number.
   --fail-on-browser-failure   Matrix: exit non-zero when any browser run fails.
+  --timeout-ms <ms>           Journey record maximum wait time. Default: 300000.
+  --max-steps <n>             Journey record maximum generated steps. Default: 80.
+  --allow-mutating-steps      Journey record: mark dangerous recorded steps allowMutating=true.
   -h, --help                  Show help.
 
 Auth options:
@@ -101,6 +107,7 @@ Examples:
   frontlens qa --url https://example.com/admin --headed --output reports/admin
   frontlens qa --url https://example.com/admin --storage-state .frontlens/auth/admin.json
   frontlens auth save --url https://example.com/login --output .frontlens/auth/admin.json
+  frontlens journey record --url https://example.com/admin/users --output journeys/users-smoke.json --name "Users smoke"
   frontlens requirements synthesize --input docs/prd.md --output requirements.json
   frontlens matrix --url https://example.com --browsers chromium,firefox,webkit --output reports/compat
   frontlens role-matrix --url https://example.com/admin --role admin=.frontlens/auth/admin.json --role viewer=.frontlens/auth/viewer.json --output reports/roles
@@ -500,6 +507,68 @@ async function main(): Promise<void> {
 
   if (argv[0] === 'auth') {
     throw new Error(`Unsupported auth command: ${argv[1] ?? '(missing)'}. Expected: frontlens auth save --url <login-url> --output <storage-state-path>.`);
+  }
+
+  if (argv[0] === 'journey') {
+    const subcommand = argv[1];
+    if (subcommand !== 'record') {
+      printHelp();
+      throw new Error(`Unsupported journey command: ${subcommand ?? '(missing)'}. Expected: frontlens journey record --url <url> --output <journey-config.json>.`);
+    }
+    const parsed = parseArgs({
+      args: argv.slice(2),
+      allowPositionals: true,
+      options: {
+        url: { type: 'string' },
+        output: { type: 'string', short: 'o' },
+        name: { type: 'string' },
+        browser: { type: 'string' },
+        headed: { type: 'boolean' },
+        headless: { type: 'boolean' },
+        'storage-state': { type: 'string' },
+        'session-storage-state': { type: 'string' },
+        'timeout-ms': { type: 'string' },
+        'max-steps': { type: 'string' },
+        'allow-mutating-steps': { type: 'boolean' },
+        json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' }
+      }
+    });
+
+    if (parsed.values.help) {
+      printHelp();
+      return;
+    }
+
+    const url = parsed.values.url ?? parsed.positionals[0];
+    const outputPath = parsed.values.output ?? parsed.positionals[1];
+    if (!url || !outputPath) {
+      printHelp();
+      throw new Error('Missing required journey record --url <url> --output <journey-config.json>.');
+    }
+
+    const result = await recordJourney({
+      url,
+      outputPath,
+      name: parsed.values.name,
+      browser: normalizeBrowser(parsed.values.browser) ?? 'chromium',
+      headless: parsed.values.headless ? true : parsed.values.headed ? false : undefined,
+      storageState: parsed.values['storage-state'],
+      sessionStorageState: parsed.values['session-storage-state'],
+      timeoutMs: normalizePositiveNumber(parsed.values['timeout-ms'], '--timeout-ms'),
+      maxSteps: normalizePositiveNumber(parsed.values['max-steps'], '--max-steps'),
+      allowMutatingSteps: parsed.values['allow-mutating-steps']
+    });
+
+    if (parsed.values.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`Journey recorded: ${result.outputPath}`);
+      console.log(`Review: ${result.reviewPath}`);
+      console.log(`Events/steps: ${result.eventCount}/${result.stepCount}; dangerous ${result.dangerousStepCount}; redacted ${result.redactedValueCount}`);
+      console.log(`Replay: node dist/cli.js qa --url ${JSON.stringify(url)} --config ${JSON.stringify(result.outputPath)} --journeys --output "reports/frontlens/recorded-journey" --no-trace --json`);
+    }
+    return;
   }
 
   if (argv[0] === 'requirements') {

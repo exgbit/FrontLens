@@ -1,6 +1,6 @@
 ---
 name: frontend-qa
-description: Run FrontLens Playwright QA for live webpage testing/auditing and evidence-backed Markdown/JSON reports covering UI/interaction, user journeys, Console, Network/API, contract drift, realtime GraphQL/WebSocket/SSE, data mismatch, performance/P2, accessibility, permissions, passive security, root-cause grouping, raw-finding disposition/actionability, fix tasks, professional summary, regression plan, diff/baseline, download/export artifact content validation, artifact integrity, source-code correlation when a repo path is provided, optional local build/serve, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/professionalSummary/issueDisposition/rootCauseGroups/fixTasks/regressionPlan to drive fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
+description: Run FrontLens Playwright QA for live webpage testing/auditing and evidence-backed Markdown/JSON reports covering UI/interaction, user journeys, journey recording/replay, Console, Network/API, contract drift, realtime GraphQL/WebSocket/SSE, data mismatch, performance/P2, accessibility, permissions, passive security, root-cause grouping, raw-finding disposition/actionability, fix tasks, professional summary, regression plan, diff/baseline, download/export artifact content validation, artifact integrity, source-code correlation when a repo path is provided, optional local build/serve, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare runs, or generate frontend/UI/API/accessibility/performance/security findings for a URL, or when another skill needs FrontLens result.json/professionalSummary/issueDisposition/rootCauseGroups/fixTasks/regressionPlan to drive fixes. Do not use for generic URL summarization or browsing unless QA/testing is requested.
 ---
 
 # Frontend QA
@@ -27,6 +27,7 @@ For every target-page QA run:
 10. When product scope, ADRs, supported devices, or “this is designed this way” feedback is available, encode it in `productContext` before rerunning or triaging. Use `deviceScope`, `requiredFeatures`, `optionalFeatures`, `outOfScopeFeatures`, `decisions[]`, and `adrRefs[]` so style, export, pagination, refresh, and touch-target findings are classified by product scope rather than guesswork.
 11. When multiple login roles/storage states are provided, or when the page has permission-sensitive actions, run `frontlens role-matrix` after the baseline QA. Treat role differences as permission-review evidence; only call them defects when they violate explicit requirements, expected allowed/forbidden text contracts, or source/runtime permission guards.
 12. When requirements or journeys include create/edit/delete/upload/import/submit flows, require `testData` context before claiming business validation: isolated records, setup steps, cleanup/rollback steps, environment, and production-write authorization. Missing cleanup or production mutation risk must be reported as QA sign-off risk/blocker.
+13. When the user asks for business-flow validation but no executable journey/requirements exist, offer `frontlens journey record` as the first way to capture the real manual path. Recorded journeys are replay scaffolds: require explicit `expectVisible`/`expectText`/`expectUrl`, role state, and test-data lifecycle before claiming runtime-verified business pass.
 
 Recommended checklist to show the user:
 
@@ -34,7 +35,7 @@ Recommended checklist to show the user:
 - Security passive scan
 - Performance / Coverage / P2 visual pixel diff + budget + network profiles
 - Accessibility / Responsive / optional SEO
-- User journeys
+- User journeys / recorded business flows
 - Exception simulation
 - Realtime GraphQL / WebSocket / SSE
 - Heuristic AI comprehensive analysis
@@ -226,6 +227,31 @@ node dist/cli.js auth save \
   --url "https://example.com/login" \
   --output ".frontlens/auth/admin.json"
 ```
+
+Record a real manual business path into a replayable journey config:
+
+```bash
+node dist/cli.js journey record \
+  --url "https://example.com/admin/users" \
+  --storage-state ".frontlens/auth/admin.json" \
+  --session-storage-state ".frontlens/auth/admin.json.session-storage.json" \
+  --output "journeys/users-smoke.json" \
+  --name "Users smoke"
+```
+
+Then edit the generated JSON to add `expectVisible`/`expectText`/`expectUrl` assertions and run it with QA:
+
+```bash
+node dist/cli.js qa \
+  --url "https://example.com/admin/users" \
+  --config "journeys/users-smoke.json" \
+  --journeys \
+  --output "reports/frontlens/users-recorded" \
+  --no-trace \
+  --json
+```
+
+Do not treat a recorded click/fill path alone as business validation. It is runtime-partial until success assertions, role/auth state, and test data setup/cleanup are present.
 
 Run headed for debugging:
 
@@ -434,6 +460,7 @@ node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "repo
 node dist/cli.js env-compare --dev-url "http://127.0.0.1:5173/users" --preview-url "http://127.0.0.1:4173/users"
 node dist/cli.js requirements synthesize --input "docs/prd.md" --output "reports/frontlens/users/requirements.json"
 node dist/cli.js role-matrix --url "http://127.0.0.1:5173/users" --role admin=".frontlens/auth/admin.json" --role viewer=".frontlens/auth/viewer.json"
+node dist/cli.js journey record --url "http://127.0.0.1:5173/users" --output "journeys/users-smoke.json"
 node dist/cli.js suggestions --report "reports/frontlens/users/result.json"
 ```
 

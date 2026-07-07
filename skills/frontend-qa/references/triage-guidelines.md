@@ -21,6 +21,7 @@ Apply an **actionability gate** before presenting final findings:
 - Keep as **core fixes** only defects with direct user impact and evidence: runtime error, broken route, failed core journey, API failure with missing visible error state, a11y violation with selectors, confirmed data binding mismatch, or source-confirmed performance/bundle issue.
 - Move to **reference/product decision** instead of fixes: visual density, color/style preference, number of primary buttons, manual refresh/export/pagination expectations, optional SEO on admin pages, small tap targets on PC-first products, or any feature that depends on product requirements.
 - Suppress repeated detail: summarize reference items in one row/table and do not expand them into per-selector fix tasks unless the user explicitly asks for design/a11y polish.
+- Keep the final answer terse and decision-oriented: for style/product-scope observations, report the bucket and count, not every selector. Only expand selector-level evidence for retained core defects or when the user explicitly requests polish details.
 - For API/UI data-mismatch claims, require four aligned evidence layers before calling it a real frontend defect: exact `networkRequestId`, visible DOM/screenshot state, source API/state/rendering file:line, and product requirement that the UI should render that data. Missing any layer means **conditional / insufficient evidence**, not a fix.
 
 Also add a **root-cause grouping** before the final fix list:

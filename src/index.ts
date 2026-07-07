@@ -11,6 +11,7 @@ export { buildRequirementCoverage } from './requirements/requirementCoverage.js'
 export { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 export { buildTestDataAssessment, writeTestDataAssessment } from './testData/testDataAssessment.js';
 export { buildRegressionPlan } from './regression/regressionPlan.js';
+export { buildProfessionalSummary } from './summary/professionalSummary.js';
 export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 export { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 export { buildIssueDisposition } from './disposition/issueDisposition.js';

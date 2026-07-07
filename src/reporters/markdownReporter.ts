@@ -241,6 +241,31 @@ ${rows.length ? ['| 类型 | 说明 |', '| --- | --- |', ...rows, ''].join('\n')
 `;
 }
 
+function formatProfessionalSummary(result: QaResult): string {
+  const summary = result.professionalSummary;
+  const toRows = (items: typeof summary.mustFix) =>
+    items.map((item) => `| ${markdownEscape(item.id)} | ${item.priority} | ${item.kind} | ${item.owner} | ${markdownEscape(truncateMiddle(item.title, 100))} | ${markdownEscape(truncateMiddle(item.action, 150))} | ${markdownEscape(truncateMiddle(item.evidenceRefs.slice(0, 8).join(', ') || '-', 120))} |`);
+  const rows = [
+    ...toRows(summary.mustFix),
+    ...toRows(summary.shouldFix.slice(0, Math.max(0, 12 - summary.mustFix.length))),
+    ...toRows(summary.coverageGaps.slice(0, 8)),
+    ...toRows(summary.nonDefectObservations.slice(0, 8)),
+    ...toRows(summary.nextActions.slice(0, 8))
+  ].slice(0, 32);
+  return `## Professional Summary / 专业测试摘要
+
+- Status：**${summary.status}**
+- Confidence：**${summary.confidence}**
+- Business validation：**${summary.businessValidationConfidence}**
+- Headline：${markdownEscape(summary.headline)}
+- Must-fix / Should-fix：${summary.mustFix.length} / ${summary.shouldFix.length}
+- Non-defect observations / Coverage gaps / Release risks：${summary.nonDefectObservations.length} / ${summary.coverageGaps.length} / ${summary.releaseRisks.length}
+- Regression blocked / needs-input：${summary.counts.regressionBlockedCount} / ${summary.counts.regressionNeedsInputCount}
+
+${rows.length ? ['| ID | Priority | Kind | Owner | Title | Action | Evidence |', '| --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '当前没有需要展示的专业摘要项。'}
+`;
+}
+
 function formatEnvironmentAssessment(result: QaResult): string {
   const env = result.environment;
   const warningRows = env.warnings.map((item) => `| warning | ${markdownEscape(item)} |`);
@@ -902,6 +927,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Target：${markdownEscape(result.summary.url)}
 - Raw score：**${result.summary.score}/100**（只作排序参考，不等同业务通过率）
 - QA sign-off：**${result.qaSignoff.status}** / confidence **${result.qaSignoff.confidence}** / business **${result.qaSignoff.businessValidationConfidence}**
+- Professional summary：${markdownEscape(result.professionalSummary.headline)}
 - Quality gate：**${result.qualityGate.status}** / **${result.qualityGate.confidence}**
 - Actionable root causes：${actionableGroups.length}（P0/P1 ${blockerGroups.length}）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
@@ -979,6 +1005,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Root Causes：${result.rootCauseGroups.filter((group) => group.status === 'actionable').length} actionable / ${result.rootCauseGroups.length} total
 - Raw Finding Disposition：${result.issueDisposition.summary.actionableCount} actionable / ${result.issueDisposition.summary.conditionalCount} conditional / ${result.issueDisposition.summary.nonActionableCount} non-actionable
 - Fix Tasks：${result.fixTasks.length}
+- Professional Summary：${result.professionalSummary.status} / must-fix ${result.professionalSummary.mustFix.length} / non-defect ${result.professionalSummary.nonDefectObservations.length}
 - QA Sign-off：${result.qaSignoff.status} / ${result.qaSignoff.confidence} / ${result.qaSignoff.businessValidationConfidence}
 - Page Profile：${result.pageProfile.status} / ${result.pageProfile.pageType} / ${result.pageProfile.confidence}
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
@@ -993,6 +1020,8 @@ ${formatPhaseErrors(result)}
 ${formatQualityGate(result)}
 
 ${formatQaSignoff(result)}
+
+${formatProfessionalSummary(result)}
 
 ${formatEnvironmentAssessment(result)}
 

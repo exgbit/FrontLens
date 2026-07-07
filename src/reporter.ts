@@ -14,6 +14,7 @@ import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
+import { buildProfessionalSummary } from './summary/professionalSummary.js';
 
 async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.issues = result.issues.map((issue, index) =>
@@ -86,6 +87,14 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     qualityGate: result.qualityGate,
     qaSignoff: result.qaSignoff
   });
+  result.professionalSummary = buildProfessionalSummary({
+    rootCauseGroups: result.rootCauseGroups,
+    issueDisposition: result.issueDisposition,
+    requirementCoverage: result.requirementCoverage,
+    qualityGate: result.qualityGate,
+    qaSignoff: result.qaSignoff,
+    regressionPlan: result.regressionPlan
+  });
 }
 
 export async function writeReports(result: QaResult): Promise<QaResult> {
@@ -127,6 +136,14 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
       testData: result.testData,
       qualityGate: result.qualityGate,
       qaSignoff: result.qaSignoff
+    });
+    result.professionalSummary = buildProfessionalSummary({
+      rootCauseGroups: result.rootCauseGroups,
+      issueDisposition: result.issueDisposition,
+      requirementCoverage: result.requirementCoverage,
+      qualityGate: result.qualityGate,
+      qaSignoff: result.qaSignoff,
+      regressionPlan: result.regressionPlan
     });
     if (formats.has('markdown')) {
       await writeMarkdownReport(result);

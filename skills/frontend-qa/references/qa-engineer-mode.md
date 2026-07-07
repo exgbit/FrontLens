@@ -16,7 +16,7 @@ A professional-test-engineer answer must include:
 6. **Regression pack**: use `result.json.regressionPlan` first; include exact FrontLens rerun commands, blocked/needs-input items, journey/requirement/download/environment checks, and focused verification steps after fixes.
 7. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
-Use `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, or relevant journeys are missing.
+Use `result.json.professionalSummary` as the first human-facing triage summary and `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `regressionPlan`, `qualityGate`, `requirementCoverage`, `environment`, `pageProfile`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, or relevant journeys are missing.
 
 ## Inputs a human QA would ask for
 
@@ -105,6 +105,10 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 ## Requirement coverage matrix
 | Requirement / capability | Evidence | Confidence | Result | Gap/next step |
 | --- | --- | --- | --- | --- |
+
+## Professional summary
+- Headline: ...
+- Must-fix / should-fix / non-defect / coverage gaps: ...
 
 ## Core defects by root cause
 | Priority | Root cause | Evidence | Owner | Raw issues | Fix | Verify |

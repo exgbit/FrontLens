@@ -37,8 +37,9 @@ import { createEmptyEnvironmentAssessment } from './environment/environmentAsses
 import { buildPageProfileAssessment, createEmptyPageProfileAssessment } from './product/pageProfile.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
+import { buildProfessionalSummary } from './summary/professionalSummary.js';
 
-export const RESULT_SCHEMA_VERSION = '1.20.0';
+export const RESULT_SCHEMA_VERSION = '1.21.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1108,6 +1109,14 @@ export function normalizeResult(raw: unknown): QaResult {
     qualityGate,
     qaSignoff
   });
+  const professionalSummary = buildProfessionalSummary({
+    rootCauseGroups,
+    issueDisposition,
+    requirementCoverage,
+    qualityGate,
+    qaSignoff,
+    regressionPlan
+  });
 
   return {
     summary,
@@ -1140,6 +1149,7 @@ export function normalizeResult(raw: unknown): QaResult {
     issueDisposition,
     fixTasks,
     regressionPlan,
+    professionalSummary,
     qualityGate,
     qaSignoff,
     aiAnalysis,

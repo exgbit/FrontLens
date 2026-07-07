@@ -435,6 +435,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         },
         issueDisposition: result.issueDisposition.summary,
         fixTaskCount: result.fixTasks.length,
+        professionalSummary: {
+          status: result.professionalSummary.status,
+          headline: result.professionalSummary.headline,
+          counts: result.professionalSummary.counts
+        },
         qualityGate: result.qualityGate,
         qaSignoff: result.qaSignoff,
         regressionPlan: {
@@ -495,6 +500,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           reference: result.rootCauseGroups.filter((group) => group.status === 'reference').length
         },
         issueDisposition: result.issueDisposition.summary,
+        professionalSummary: result.professionalSummary,
         qualityGate: result.qualityGate,
         qaSignoff: result.qaSignoff,
         regressionPlan: result.regressionPlan

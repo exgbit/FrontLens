@@ -1,4 +1,4 @@
 interface:
   display_name: "Frontend QA"
-  short_description: "Playwright QA with source, PRD, roles, test data, downloads, QA gates, and regression plans"
-  default_prompt: "Use $frontend-qa to run evidence-backed frontend QA, correlate results with source code when available, validate requirement coverage, role/permission matrices, test data lifecycle, authorized download/export artifacts, product/ADR context, artifact integrity, then return triaged root-cause fixes with QA gate status and a regression rerun plan."
+  short_description: "Playwright QA with source, PRD, roles, test data, downloads, QA gates, professional summaries, and regression plans"
+  default_prompt: "Use $frontend-qa to run evidence-backed frontend QA, correlate results with source code when available, validate requirement coverage, role/permission matrices, test data lifecycle, authorized download/export artifacts, product/ADR context, artifact integrity, then return the professional summary, triaged root-cause fixes, QA gate status, and a regression rerun plan."

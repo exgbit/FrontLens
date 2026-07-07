@@ -1396,6 +1396,55 @@ export interface RegressionPlanResult {
   notes: string[];
 }
 
+export type ProfessionalSummaryItemKind =
+  | 'defect'
+  | 'coverage-gap'
+  | 'release-risk'
+  | 'non-defect'
+  | 'deployment'
+  | 'product-decision'
+  | 'tool-limitation'
+  | 'next-action';
+
+export interface ProfessionalSummaryItem {
+  id: string;
+  kind: ProfessionalSummaryItemKind;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  title: string;
+  rationale: string;
+  action: string;
+  evidenceRefs: string[];
+  issueIds?: string[];
+  requirementIds?: string[];
+  journeyIds?: string[];
+  rootCauseGroupId?: string;
+}
+
+export interface ProfessionalSummaryResult {
+  status: QaSignoffResult['status'];
+  confidence: QaSignoffResult['confidence'];
+  businessValidationConfidence: BusinessValidationConfidence;
+  generatedAt: string;
+  headline: string;
+  counts: {
+    actionableRootCauseCount: number;
+    p0p1DefectCount: number;
+    nonDefectFindingCount: number;
+    coverageGapCount: number;
+    releaseRiskCount: number;
+    regressionBlockedCount: number;
+    regressionNeedsInputCount: number;
+  };
+  mustFix: ProfessionalSummaryItem[];
+  shouldFix: ProfessionalSummaryItem[];
+  nonDefectObservations: ProfessionalSummaryItem[];
+  coverageGaps: ProfessionalSummaryItem[];
+  releaseRisks: ProfessionalSummaryItem[];
+  nextActions: ProfessionalSummaryItem[];
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -1610,6 +1659,7 @@ export interface ArtifactIndex {
   apiContractLog?: string;
   p2Log?: string;
   testDataLog?: string;
+  professionalSummaryLog?: string;
   regressionPlanLog?: string;
   downloadDir?: string;
   downloadedFiles?: string[];
@@ -1745,6 +1795,7 @@ export interface QaResult {
   issueDisposition: IssueDispositionResult;
   fixTasks: FixTask[];
   regressionPlan: RegressionPlanResult;
+  professionalSummary: ProfessionalSummaryResult;
   qualityGate: QaQualityGate;
   qaSignoff: QaSignoffResult;
   aiAnalysis: AiAnalysisResult;

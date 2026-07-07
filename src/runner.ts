@@ -33,6 +33,7 @@ import { buildPageProfileAssessment } from './product/pageProfile.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
+import { buildProfessionalSummary } from './summary/professionalSummary.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
@@ -744,6 +745,14 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     qualityGate,
     qaSignoff
   });
+  const professionalSummary = buildProfessionalSummary({
+    rootCauseGroups,
+    issueDisposition,
+    requirementCoverage,
+    qualityGate,
+    qaSignoff,
+    regressionPlan
+  });
 
   const result: QaResult = {
     summary: buildSummary({
@@ -800,6 +809,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     issueDisposition,
     fixTasks,
     regressionPlan,
+    professionalSummary,
     qualityGate,
     qaSignoff,
     aiAnalysis,

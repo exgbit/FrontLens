@@ -117,6 +117,17 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     .map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.priority)}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.owner)}</td><td>${escapeHtml(item.title)}</td></tr>`)
     .join('\n');
 
+  const professionalSummaryRows = [
+    ...result.professionalSummary.mustFix,
+    ...result.professionalSummary.shouldFix.slice(0, 20),
+    ...result.professionalSummary.coverageGaps.slice(0, 10),
+    ...result.professionalSummary.nonDefectObservations.slice(0, 10),
+    ...result.professionalSummary.nextActions.slice(0, 10)
+  ]
+    .slice(0, 60)
+    .map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.priority)}</td><td>${escapeHtml(item.kind)}</td><td>${escapeHtml(item.owner)}</td><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.action)}</td></tr>`)
+    .join('\n');
+
   const responsiveRows = result.responsiveChecks
     .map(
       (check) => `<tr>
@@ -326,6 +337,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Root Causes</span><strong>${result.rootCauseGroups.filter((group) => group.status === 'actionable').length}/${result.rootCauseGroups.length}</strong></div>
           <div class="metric"><span>Disposition</span><strong>${result.issueDisposition.summary.actionableCount}/${result.issueDisposition.summary.conditionalCount}/${result.issueDisposition.summary.nonActionableCount}</strong></div>
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
+          <div class="metric"><span>Professional</span><strong>${escapeHtml(result.professionalSummary.status)} / ${result.professionalSummary.mustFix.length}</strong></div>
           <div class="metric"><span>Regression</span><strong>${escapeHtml(result.regressionPlan.status)} / ${result.regressionPlan.summary.itemCount}</strong></div>
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
           <div class="metric"><span>QA Sign-off</span><strong>${escapeHtml(result.qaSignoff.status)}</strong></div>
@@ -672,6 +684,21 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <p><strong>${escapeHtml(result.aiAnalysis.status)}</strong> / ${escapeHtml(result.aiAnalysis.provider)}</p>
         <p>${escapeHtml(result.aiAnalysis.summary ?? result.aiAnalysis.error ?? 'AI analysis disabled.')}</p>
         <ul>${aiSuggestions || '<li>No AI suggestions</li>'}</ul>
+      </section>
+
+      <section>
+        <h2>Professional Summary / 专业测试摘要</h2>
+        <p>${escapeHtml(result.professionalSummary.headline)}</p>
+        <div class="grid">
+          <div class="metric"><span>Status</span><strong>${escapeHtml(result.professionalSummary.status)}</strong></div>
+          <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.professionalSummary.confidence)}</strong></div>
+          <div class="metric"><span>Must-fix</span><strong>${result.professionalSummary.mustFix.length}</strong></div>
+          <div class="metric"><span>Non-defect</span><strong>${result.professionalSummary.nonDefectObservations.length}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Priority</th><th>Kind</th><th>Owner</th><th>Title</th><th>Action</th></tr></thead>
+          <tbody>${professionalSummaryRows || '<tr><td colspan="6">No professional summary items</td></tr>'}</tbody>
+        </table>
       </section>
 
       <section>

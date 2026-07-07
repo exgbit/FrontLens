@@ -19,6 +19,7 @@ const FILE_ARTIFACT_KEYS = [
   'apiContractLog',
   'p2Log',
   'testDataLog',
+  'professionalSummaryLog',
   'regressionPlanLog',
   'sourceAnalysisLog',
   'sourceRuntimeLog',

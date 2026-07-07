@@ -978,11 +978,13 @@ export function formatProfessionalReview(result: QaResult): string {
   const disposition = result.issueDisposition.summary;
   const artifactPath = (value: string | undefined): string => value ? `\`${markdownEscape(reportPath(result, value) ?? value)}\`` : '-';
   const rootRows = actionableGroups.slice(0, 12).map((group) => {
+    const sourceLocations = group.sourceLocations?.map((location) => `${location.file}:${location.line}`).slice(0, 4) ?? [];
     const evidence = [
       group.issueIds.length ? `issues:${group.issueIds.join(',')}` : '',
       group.networkRequestIds.length ? `network:${group.networkRequestIds.slice(0, 5).join(',')}` : '',
       group.consoleIds.length ? `console:${group.consoleIds.slice(0, 5).join(',')}` : '',
       group.pageErrorIds.length ? `pageError:${group.pageErrorIds.slice(0, 5).join(',')}` : '',
+      sourceLocations.length ? `source:${sourceLocations.join(', ')}` : '',
       group.selectors.length ? `selector:${group.selectors.slice(0, 2).join(' / ')}` : ''
     ].filter(Boolean).join('；') || '-';
     return `| ${group.priority} | ${severityLabel[group.severity]} | ${group.owner} | ${markdownEscape(truncateMiddle(group.title, 90))} | ${group.issueCount} | ${markdownEscape(truncateMiddle(evidence, 140))} | ${markdownEscape(truncateMiddle(group.suggestedFix, 180))} |`;

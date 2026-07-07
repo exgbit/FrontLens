@@ -98,7 +98,7 @@ If `result.json.scopeReview.questions[]` contains relevant unanswered items, inc
 8. **Artifact links and copied reports**
    - Before citing a screenshot/video/trace path, verify that the file exists in the report directory.
    - Prefer paths relative to the report directory, for example `screenshots/page-full.png`, so reports remain usable after being copied between machines.
-   - If a referenced artifact is missing, mark it as a tool/reporting issue and do not use it as evidence.
+   - If a referenced artifact is missing, mark it as a tool/reporting issue and do not use it as evidence. In FrontLens 1.35+, prefer `result.json.artifactIntegrity` plus the rewritten `report.md`/`report.html`; if they disagree, trust result.json and report a reporter-staleness bug.
 
 ## Source-code cross-check pattern
 

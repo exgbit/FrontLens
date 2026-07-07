@@ -5,6 +5,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { normalizeResult } from '../src/resultNormalizer.ts';
 import { writeMarkdownReport } from '../src/reporters/markdownReporter.ts';
+import { writeReports } from '../src/reporter.ts';
 
 test('markdown reporter makes report.md decision-oriented and moves raw evidence to evidence-report.md', async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'frontlens-markdown-'));
@@ -68,4 +69,43 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(qaIntake, /Top questions/);
   assert.match(defectProof, /Defect Proof \/ 缺陷证明强度/);
   assert.match(defectProof, /Proof status/);
+});
+
+test('writeReports rewrites human reports after final artifact integrity is known', async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), 'frontlens-stable-reports-'));
+  const result = normalizeResult({
+    summary: {
+      url: 'https://example.com/users',
+      title: 'Users',
+      testedAt: '2026-07-07T00:00:00.000Z',
+      browser: 'chromium',
+      viewport: { width: 1440, height: 900 }
+    },
+    metadata: {
+      config: {
+        report: { formats: ['json', 'markdown', 'html'] }
+      }
+    },
+    artifacts: { outputDir },
+    pageModel: {
+      url: 'https://example.com/users',
+      title: 'Users',
+      stats: { domNodes: 10, visibleTextLength: 40, bodyTextSample: 'Users' }
+    }
+  });
+
+  await writeReports(result);
+
+  const report = await readFile(result.artifacts.markdownReport!, 'utf8');
+  const evidence = await readFile(result.artifacts.evidenceReport!, 'utf8');
+  const html = await readFile(result.artifacts.htmlReport!, 'utf8');
+
+  assert.equal(result.artifactIntegrity.status, 'passed');
+  assert.equal(result.artifactIntegrity.missingCount, 0);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.markdownReport' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.evidenceReport' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.htmlReport' && entry.exists), true);
+  assert.match(report, /Artifact integrity：passed（missing 0）/);
+  assert.match(evidence, /- Artifact Integrity：passed（missing 0）/);
+  assert.match(html, /<span>Artifacts<\/span><strong>passed<\/strong>/);
 });

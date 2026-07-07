@@ -120,23 +120,31 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.qaIntake = buildQaIntake(result);
 }
 
+async function writeHumanReportsWithStableIntegrity(result: QaResult, formats: Set<string>): Promise<void> {
+  const shouldWriteMarkdown = formats.has('markdown');
+  const shouldWriteHtml = formats.has('html');
+  if (!shouldWriteMarkdown && !shouldWriteHtml) return;
+
+  if (shouldWriteMarkdown) await writeMarkdownReport(result);
+  if (shouldWriteHtml) await writeHtmlReport(result);
+  await normalizeAndRebuildSummary(result);
+
+  // The first human-report write populates markdown/html artifact paths.
+  // Rebuild once, then rewrite so report.md / report.html describe the final
+  // artifactIntegrity state instead of a pre-human-artifact snapshot.
+  if (shouldWriteMarkdown) await writeMarkdownReport(result);
+  if (shouldWriteHtml) await writeHtmlReport(result);
+  await normalizeAndRebuildSummary(result);
+}
+
 export async function writeReports(result: QaResult): Promise<QaResult> {
   const formats = new Set(result.metadata.config.report.formats);
   assignJsonArtifactPaths(result);
   await normalizeAndRebuildSummary(result);
   await writeJsonReports(result);
   await normalizeAndRebuildSummary(result);
-  if (formats.has('markdown')) {
-    await writeMarkdownReport(result);
-    await normalizeAndRebuildSummary(result);
-    // Re-write result.json after markdown path is populated.
-    await writeJsonReports(result);
-  }
-  if (formats.has('html')) {
-    await writeHtmlReport(result);
-    await normalizeAndRebuildSummary(result);
-    await writeJsonReports(result);
-  }
+  await writeHumanReportsWithStableIntegrity(result, formats);
+  await writeJsonReports(result);
   const issueCountBeforePlugins = result.issues.length;
   await runReporterPlugins(result);
   if (result.metadata.config.plugins.reporters.length > 0 || result.issues.length !== issueCountBeforePlugins) {
@@ -170,14 +178,7 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
     });
     result.claimGuard = buildClaimGuard(result);
     result.qaIntake = buildQaIntake(result);
-    if (formats.has('markdown')) {
-      await writeMarkdownReport(result);
-      await normalizeAndRebuildSummary(result);
-    }
-    if (formats.has('html')) {
-      await writeHtmlReport(result);
-      await normalizeAndRebuildSummary(result);
-    }
+    await writeHumanReportsWithStableIntegrity(result, formats);
     await writeJsonReports(result);
   }
   return result;

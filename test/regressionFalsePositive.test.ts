@@ -5,6 +5,7 @@ import { IssueFactory } from '../src/analyzers/issueFactory.ts';
 import { analyzeNetwork } from '../src/analyzers/networkAnalyzer.ts';
 import { analyzeIntegration } from '../src/analyzers/integrationAnalyzer.ts';
 import { analyzeInteractions } from '../src/analyzers/interactionAnalyzer.ts';
+import { analyzeResponsive } from '../src/analyzers/responsiveAnalyzer.ts';
 import { analyzeCompleteness } from '../src/analyzers/completenessAnalyzer.ts';
 import { analyzePageQuality } from '../src/analyzers/pageAnalyzer.ts';
 import { analyzePermissions } from '../src/analyzers/permissionAnalyzer.ts';
@@ -76,6 +77,25 @@ function context(overrides: Partial<AnalyzerContext> = {}): AnalyzerContext {
     exceptionSimulations: [],
     security: { enabled: false, mode: 'passive', score: 100, status: 'skipped', checkedAt: '', summary: { checkCount: 0, failedCount: 0, warningCount: 0, passedCount: 0, skippedCount: 0, highCount: 0, mediumCount: 0, lowCount: 0, infoCount: 0 }, checks: [] },
     p2: { enabled: false, checkedAt: '', visual: { enabled: false, status: 'skipped' }, budgets: [], networkProfiles: [] },
+    ...overrides
+  };
+}
+
+function responsiveCheck(overrides: Partial<AnalyzerContext['responsiveChecks'][number]> = {}): AnalyzerContext['responsiveChecks'][number] {
+  return {
+    name: 'mobile',
+    width: 390,
+    height: 844,
+    checkedAt: '',
+    horizontalOverflow: false,
+    maxScrollWidth: 390,
+    viewportWidth: 390,
+    bodyScrollWidth: 390,
+    clippedInteractiveCount: 0,
+    smallTapTargetCount: 9,
+    fixedElementCount: 0,
+    tableOverflowCount: 0,
+    observations: ['9 个交互元素触控尺寸偏小。'],
     ...overrides
   };
 }
@@ -761,6 +781,45 @@ test('failed optional interactions still become raw issues', () => {
   const issues = analyzeInteractions(ctx, new IssueFactory());
   assert.equal(issues.length, 1);
   assert.equal(issues[0].severity, 'high');
+});
+
+test('small tap-target observations stay in responsive coverage by default', () => {
+  const ctx = context({
+    responsiveChecks: [responsiveCheck()]
+  });
+
+  const issues = analyzeResponsive(ctx, new IssueFactory());
+  assert.equal(issues.length, 0);
+});
+
+test('small tap-target observations become issues when mobile or strict a11y scope is explicit', () => {
+  const mobileCtx = context({
+    responsiveChecks: [responsiveCheck()]
+  });
+  mobileCtx.config.productContext.deviceScope = 'mobile-first';
+  const mobileIssues = analyzeResponsive(mobileCtx, new IssueFactory());
+  assert.equal(mobileIssues.length, 1);
+  assert.equal(mobileIssues[0].category, 'frontend-accessibility');
+
+  const requirementCtx = context({
+    responsiveChecks: [responsiveCheck({ name: 'tablet', width: 768, height: 1024 })]
+  });
+  requirementCtx.config.requirements.items = [
+    { id: 'REQ-MOBILE-A11Y', title: '移动端触控目标需满足 WCAG 点击区要求', source: 'provided', priority: 'P2' }
+  ];
+  const requirementIssues = analyzeResponsive(requirementCtx, new IssueFactory());
+  assert.equal(requirementIssues.length, 1);
+});
+
+test('small tap-target observations stay coverage-only when product scope marks touch as optional', () => {
+  const ctx = context({
+    responsiveChecks: [responsiveCheck()]
+  });
+  ctx.config.productContext.deviceScope = 'responsive';
+  ctx.config.productContext.optionalFeatures = ['mobile-touch-target'];
+
+  const issues = analyzeResponsive(ctx, new IssueFactory());
+  assert.equal(issues.length, 0);
 });
 
 

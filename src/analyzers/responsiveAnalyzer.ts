@@ -1,6 +1,45 @@
 import type { AnalyzerContext, Issue } from '../types.js';
 import { IssueFactory } from './issueFactory.js';
 
+function normalizeFeature(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^\w\u4e00-\u9fff-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function hasConfiguredFeature(configured: string[] | undefined, aliases: string[]): boolean {
+  if (!configured?.length) return false;
+  const expected = new Set(aliases.map(normalizeFeature));
+  return configured.some((feature) => expected.has(normalizeFeature(feature)));
+}
+
+function explicitRequirementRequiresTouchTarget(context: AnalyzerContext): boolean {
+  if (!context.config.requirements.enabled) return false;
+  return context.config.requirements.items.some((item) => {
+    if (item.source === 'inferred') return false;
+    const text = `${item.title} ${item.description ?? ''}`.toLowerCase();
+    return /触控目标|点击区|移动端|mobile|touch target|tap target|wcag|响应式|responsive/.test(text);
+  });
+}
+
+function shouldCreateSmallTapTargetIssue(context: AnalyzerContext): boolean {
+  const productContext = context.config.productContext;
+  const touchAliases = ['mobile-touch-target', 'touch-target', 'tap-target', '移动端点击区', '触控目标'];
+  const touchScopeAliases = [...touchAliases, 'mobile', 'responsive', 'accessibility', 'a11y'];
+  if (explicitRequirementRequiresTouchTarget(context)) return true;
+  if (!productContext.enabled) return false;
+  if (hasConfiguredFeature(productContext.outOfScopeFeatures, touchScopeAliases)) return false;
+  if (hasConfiguredFeature(productContext.optionalFeatures, touchScopeAliases)) return false;
+  if (hasConfiguredFeature(productContext.requiredFeatures, touchScopeAliases)) return true;
+  if (productContext.deviceScope === 'mobile-first' || productContext.deviceScope === 'responsive') return true;
+  if (productContext.accessibilityTarget === 'wcag-aa' || productContext.accessibilityTarget === 'wcag-aaa') return true;
+  return false;
+}
+
 export function analyzeResponsive(context: AnalyzerContext, factory: IssueFactory): Issue[] {
   const issues: Issue[] = [];
 
@@ -29,7 +68,7 @@ export function analyzeResponsive(context: AnalyzerContext, factory: IssueFactor
       continue;
     }
 
-    if (check.smallTapTargetCount >= 5 && (check.name === 'mobile' || check.name === 'tablet')) {
+    if (check.smallTapTargetCount >= 5 && (check.name === 'mobile' || check.name === 'tablet') && shouldCreateSmallTapTargetIssue(context)) {
       issues.push(
         factory.create({
           title: `触控目标尺寸偏小：${check.name} ${check.width}x${check.height}`,

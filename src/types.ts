@@ -1051,6 +1051,8 @@ export interface ProductContextSuggestionResult {
   notes: string[];
   usage: {
     configKey: 'productContext';
+    /** Direct FrontLens config file path written by QA runs, when available. */
+    configPath?: string;
     configSnippet: {
       productContext: ProductContextConfig;
     };
@@ -1828,6 +1830,8 @@ export interface ArtifactIndex {
   professionalAudit?: string;
   /** Reviewable productContext suggestion Markdown. */
   productContext?: string;
+  /** Direct FrontLens config JSON containing the suggested/reviewed productContext snippet. */
+  productContextConfig?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;

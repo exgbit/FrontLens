@@ -208,7 +208,11 @@ node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "repo
 node dist/cli.js env-compare --dev-url "http://127.0.0.1:5173/users" --preview-url "http://127.0.0.1:4173/users" --output "reports/frontlens/users-env"
 ```
 
-In schema 1.51+, normal `qa` runs also write `professional-audit.md` and `professional-audit.json`; use the `audit` command for older reports or for a fresh self-check after manual report edits. In schema 1.52+, normal `qa` runs also write `product-context.md` and `product-context.json`; use `product-context` for older reports or to copy a reviewed productContext config snippet into a rerun.
+In schema 1.51+, normal `qa` runs also write `professional-audit.md` and `professional-audit.json`; use the `audit` command for older reports or for a fresh self-check after manual report edits. In schema 1.52+, normal `qa` runs also write `product-context.md` and `product-context.json`; use `product-context` for older reports. In schema 1.53+, normal `qa` runs also write `product-context.config.json`, a direct `--config` file containing the suggested `productContext`; review/edit it with Product/QA, then rerun:
+
+```bash
+node dist/cli.js qa --url "https://example.com/admin/users" --config "reports/frontlens/users/product-context.config.json" --output "reports/frontlens/users-rerun" --no-trace --json
+```
 
 Enable upload testing only when explicitly allowed:
 

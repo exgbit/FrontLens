@@ -6,6 +6,10 @@ import { buildProductContextSuggestion, formatProductContextSuggestion } from '.
 test('product context suggestion turns inferred page profile into reviewable config snippet', () => {
   const result = normalizeResult({
     summary: { url: 'https://example.com/admin/credentials', title: 'Credentials', testedAt: '2026-07-07T00:00:00.000Z', browser: 'chromium' },
+    artifacts: {
+      outputDir: '/tmp/frontlens-product-context-test',
+      productContextConfig: '/tmp/frontlens-product-context-test/product-context.config.json'
+    },
     pageModel: {
       url: 'https://example.com/admin/credentials',
       title: 'Credentials',
@@ -25,7 +29,10 @@ test('product context suggestion turns inferred page profile into reviewable con
   assert.equal(suggestion.productContext.requiredFeatures.includes('secret-masking'), true);
   assert.equal(suggestion.productContext.optionalFeatures.includes('mobile-touch-target'), true);
   assert.equal(suggestion.usage.configSnippet.productContext.pageType, 'credential-security');
+  assert.equal(suggestion.usage.configPath, '/tmp/frontlens-product-context-test/product-context.config.json');
+  assert.match(suggestion.usage.rerunCommand, /product-context\.config\.json/);
   assert.match(markdown, /FrontLens Product Context Suggestion/);
+  assert.match(markdown, /Config artifact/);
   assert.match(markdown, /secret-masking/);
   assert.match(markdown, /Do not treat this suggestion as an automatic PRD decision/);
 });

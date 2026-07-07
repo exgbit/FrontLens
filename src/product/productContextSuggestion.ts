@@ -29,6 +29,10 @@ function questionRows(questions: ScopeReviewQuestion[]): string {
 
 export function buildProductContextSuggestion(result: QaResult): ProductContextSuggestionResult {
   const productContext = result.scopeReview.configSnippet.productContext;
+  const configPath = typeof result.artifacts.productContextConfig === 'string' && result.artifacts.productContextConfig.length > 0
+    ? result.artifacts.productContextConfig
+    : undefined;
+  const configArg = configPath ?? 'frontlens.config.json';
   return {
     generatedAt: new Date().toISOString(),
     status: result.scopeReview.status,
@@ -46,8 +50,9 @@ export function buildProductContextSuggestion(result: QaResult): ProductContextS
     ],
     usage: {
       configKey: 'productContext',
+      configPath,
       configSnippet: { productContext },
-      rerunCommand: `node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --config frontlens.config.json --output "reports/frontlens/with-product-context" --no-trace --json`
+      rerunCommand: `node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --config ${JSON.stringify(configArg)} --output "reports/frontlens/with-product-context" --no-trace --json`
     }
   };
 }
@@ -94,11 +99,13 @@ ${questionRows(suggestion.questions)}
 ${json}
 \`\`\`
 
+${suggestion.usage.configPath ? `Config artifact: \`${escapeMarkdown(suggestion.usage.configPath)}\`\n` : ''}
+
 ## How to use
 
 1. Review the questions above with Product/QA/Design.
-2. Copy the confirmed \`productContext\` into your FrontLens config.
-3. Rerun QA:
+2. If a \`product-context.config.json\` artifact exists, edit/approve it directly; otherwise copy the confirmed \`productContext\` into your FrontLens config.
+3. Rerun QA with the reviewed config:
 
 \`\`\`bash
 ${suggestion.usage.rerunCommand}

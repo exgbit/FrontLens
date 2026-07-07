@@ -1576,8 +1576,12 @@ export interface RoleMatrixRunItem {
   outputDir: string;
   storageStateProvided: boolean;
   sessionStorageStateProvided: boolean;
+  /** Raw score, kept for scanner trend comparison. */
   score?: number;
+  /** Professional/actionability-aware score. */
+  adjustedScore?: number;
   issueCount?: number;
+  adjustedIssueCount?: number;
   criticalCount?: number;
   highCount?: number;
   mediumCount?: number;

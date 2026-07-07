@@ -33,13 +33,22 @@ export interface CompatibilityRunItem {
   browser: BrowserName;
   success: boolean;
   outputDir: string;
+  /** Raw score, kept for scanner trend comparison. */
   score?: number;
+  /** Professional/actionability-aware score. */
+  adjustedScore?: number;
   issueCount?: number;
+  adjustedIssueCount?: number;
   criticalCount?: number;
   highCount?: number;
   mediumCount?: number;
   lowCount?: number;
   infoCount?: number;
+  actionableCriticalCount?: number;
+  actionableHighCount?: number;
+  actionableMediumCount?: number;
+  actionableLowCount?: number;
+  actionableInfoCount?: number;
   title?: string;
   componentCount?: number;
   screenshot?: string;
@@ -92,7 +101,7 @@ function buildDifferences(results: Array<{ browser: BrowserName; result?: QaResu
 }
 
 function markdown(result: CompatibilityResult): string {
-  const rows = result.browsers.map((item) => `| ${item.browser} | ${item.success ? 'success' : 'failed'} | ${item.score ?? '-'} | ${item.issueCount ?? '-'} | ${item.componentCount ?? '-'} | ${item.markdownReport ? `\`${markdownEscape(item.markdownReport)}\`` : '-'} | ${markdownEscape(item.error ?? '-')} |`);
+  const rows = result.browsers.map((item) => `| ${item.browser} | ${item.success ? 'success' : 'failed'} | ${item.adjustedScore ?? '-'} | ${item.score ?? '-'} | ${item.adjustedIssueCount ?? '-'} | ${item.issueCount ?? '-'} | ${item.componentCount ?? '-'} | ${item.markdownReport ? `\`${markdownEscape(item.markdownReport)}\`` : '-'} | ${markdownEscape(item.error ?? '-')} |`);
   const diffRows = Object.entries(result.differences.uniqueIssueTitlesByBrowser).flatMap(([browser, titles]) => titles.map((title) => `| ${markdownEscape(browser)} | ${markdownEscape(title)} |`));
   return `# FrontLens Compatibility Report
 
@@ -103,8 +112,8 @@ function markdown(result: CompatibilityResult): string {
 
 ## Browser Runs
 
-| Browser | Status | Score | Issues | Components | Report | Error |
-| --- | --- | --- | --- | --- | --- | --- |
+| Browser | Status | Adjusted score | Raw score | Actionable issues | Raw issues | Components | Report | Error |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 ${rows.join('\n')}
 
 ## Browser-specific Issues
@@ -146,17 +155,27 @@ export async function runCompatibility(input: CompatibilityRunInput): Promise<Co
         p2: input.p2
       });
       runResults.push({ browser, result });
+      const actionableIssueIds = new Set(result.issueDisposition.items.filter((item) => item.actionability === 'actionable').map((item) => item.issueId));
+      const actionableIssues = result.issues.filter((issue) => actionableIssueIds.has(issue.id));
+      const actionableCount = (severity: QaResult['issues'][number]['severity']) => actionableIssues.filter((issue) => issue.severity === severity).length;
       items.push({
         browser,
         success: true,
         outputDir: browserOutput,
         score: result.summary.score,
+        adjustedScore: result.summary.adjustedScore,
         issueCount: result.summary.issueCount,
+        adjustedIssueCount: result.summary.adjustedIssueCount,
         criticalCount: result.summary.criticalCount,
         highCount: result.summary.highCount,
         mediumCount: result.summary.mediumCount,
         lowCount: result.summary.lowCount,
         infoCount: result.summary.infoCount,
+        actionableCriticalCount: actionableCount('critical'),
+        actionableHighCount: actionableCount('high'),
+        actionableMediumCount: actionableCount('medium'),
+        actionableLowCount: actionableCount('low'),
+        actionableInfoCount: actionableCount('info'),
         title: result.summary.title,
         componentCount: result.pageModel.components.length,
         screenshot: result.artifacts.screenshot,

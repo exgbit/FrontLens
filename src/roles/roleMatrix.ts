@@ -135,7 +135,9 @@ function itemFromRun(run: RoleMatrixCollectedRun): RoleMatrixResult['roles'][num
     storageStateProvided: Boolean(role.storageState),
     sessionStorageStateProvided: Boolean(role.sessionStorageState),
     score: run.result.summary.score,
+    adjustedScore: run.result.summary.adjustedScore,
     issueCount: run.result.summary.issueCount,
+    adjustedIssueCount: run.result.summary.adjustedIssueCount,
     criticalCount: run.result.summary.criticalCount,
     highCount: run.result.summary.highCount,
     mediumCount: run.result.summary.mediumCount,
@@ -217,7 +219,7 @@ export function createRoleMatrixResult(runs: RoleMatrixCollectedRun[], url: stri
 }
 
 function markdown(result: RoleMatrixResult): string {
-  const roleRows = result.roles.map((role) => `| ${markdownEscape(role.role)} | ${role.success ? 'success' : 'failed'} | ${role.score ?? '-'} | ${role.issueCount ?? '-'} | ${role.qaSignoffStatus ?? '-'} | ${role.permissionIssueCount ?? '-'} | ${(role.dangerousActionLabels ?? []).map(markdownEscape).join(', ') || '-'} | ${role.markdownReport ? `\`${markdownEscape(role.markdownReport)}\`` : '-'} | ${markdownEscape(role.error ?? '-')} |`);
+  const roleRows = result.roles.map((role) => `| ${markdownEscape(role.role)} | ${role.success ? 'success' : 'failed'} | ${role.adjustedScore ?? '-'} | ${role.score ?? '-'} | ${role.adjustedIssueCount ?? '-'} | ${role.issueCount ?? '-'} | ${role.qaSignoffStatus ?? '-'} | ${role.permissionIssueCount ?? '-'} | ${(role.dangerousActionLabels ?? []).map(markdownEscape).join(', ') || '-'} | ${role.markdownReport ? `\`${markdownEscape(role.markdownReport)}\`` : '-'} | ${markdownEscape(role.error ?? '-')} |`);
   const actionRows = Object.entries(result.comparison.roleSpecificActionLabels).flatMap(([role, labels]) => labels.map((label) => `| ${markdownEscape(role)} | ${markdownEscape(label)} |`));
   const issueRows = Object.entries(result.comparison.roleSpecificIssueTitles).flatMap(([role, titles]) => titles.map((title) => `| ${markdownEscape(role)} | ${markdownEscape(title)} |`));
   const violationRows = [
@@ -240,8 +242,8 @@ ${result.recommendations.map((item) => `- ${markdownEscape(item)}`).join('\n')}
 
 ## Role Runs
 
-| Role | Status | Score | Issues | QA sign-off | Permission/Auth issues | Dangerous action labels | Report | Error |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Role | Status | Adjusted score | Raw score | Actionable issues | Raw issues | QA sign-off | Permission/Auth issues | Dangerous action labels | Report | Error |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 ${roleRows.join('\n')}
 
 ## Role-specific Actions

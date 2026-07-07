@@ -12,6 +12,7 @@ import { recordJourney } from './journeys/journeyRecorder.js';
 import type { BrowserName, Issue, QaResult, QaRunInput, RoleMatrixRoleConfig, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
+import { evaluateMatrixItemCiGate, evaluateQaCiGate, type CiGateMode } from './gates/ciGate.js';
 
 const CLI_VERSION = '0.1.0';
 const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
@@ -91,8 +92,9 @@ Options:
   --allow-mutating-requests   Do not abort mutating requests; report successful writes as suspicious instead.
   --json                      Print machine-readable JSON summary.
   --full                      For issues command, print full Issue objects.
-  --fail-on <severity>        Exit non-zero if issues at severity or above exist.
-  --min-score <number>        Exit non-zero if final score is lower than this number.
+  --gate-mode <mode>          CI gate mode: professional (default) | raw.
+  --fail-on <severity>        Exit non-zero if issues at severity or above exist. In professional mode, only actionable findings count.
+  --min-score <number>        Exit non-zero if score is lower. In professional mode, uses adjustedScore.
   --fail-on-browser-failure   Matrix: exit non-zero when any browser run fails.
   --timeout-ms <ms>           Journey record maximum wait time. Default: 300000.
   --max-steps <n>             Journey record maximum generated steps. Default: 80.
@@ -156,6 +158,12 @@ function requireSeverity(value: unknown, optionName: string): Severity | undefin
     throw new Error(`Invalid ${optionName}: ${String(value)}. Expected critical, high, medium, low, or info.`);
   }
   return severity;
+}
+
+function normalizeGateMode(value: unknown): CiGateMode {
+  if (value === undefined || value === 'professional') return 'professional';
+  if (value === 'raw') return 'raw';
+  throw new Error(`Invalid --gate-mode: ${String(value)}. Expected professional or raw.`);
 }
 
 function normalizeStringList(value: unknown): string[] | undefined {
@@ -848,6 +856,7 @@ async function main(): Promise<void> {
         'allow-mutating-requests': { type: 'boolean' },
         json: { type: 'boolean' },
         'fail-on-browser-failure': { type: 'boolean' },
+        'gate-mode': { type: 'string' },
         'fail-on': { type: 'string' },
         'min-score': { type: 'string' },
         help: { type: 'boolean', short: 'h' }
@@ -872,6 +881,7 @@ async function main(): Promise<void> {
       throw new Error('Invalid --browsers: expected at least one of chromium, firefox, webkit.');
     }
     const uniqueBrowsers = [...new Set(browsers)];
+    const matrixGateMode = normalizeGateMode(parsed.values['gate-mode']);
     const matrixFailOn = requireSeverity(parsed.values['fail-on'], '--fail-on');
     const matrixMinScore = parsed.values['min-score'] === undefined ? undefined : Number(parsed.values['min-score']);
     if (matrixMinScore !== undefined && (!Number.isFinite(matrixMinScore) || matrixMinScore < 0 || matrixMinScore > 100)) {
@@ -901,26 +911,27 @@ async function main(): Promise<void> {
       blockMutatingRequests: parsed.values['allow-mutating-requests'] ? false : parsed.values['block-mutating-requests']
     });
     const browserFailure = parsed.values['fail-on-browser-failure'] ? result.browsers.some((item) => !item.success) : result.browsers.every((item) => !item.success);
-    const scoreFailure = matrixMinScore !== undefined ? result.browsers.some((item) => item.success && (item.score ?? 0) < matrixMinScore) : false;
-    const severityFailure = matrixFailOn
-      ? result.browsers.some((item) => {
-          const counts: Record<Severity, number> = {
-            critical: item.criticalCount ?? 0,
-            high: item.highCount ?? 0,
-            medium: item.mediumCount ?? 0,
-            low: item.lowCount ?? 0,
-            info: item.infoCount ?? 0
-          };
-          return (Object.keys(counts) as Severity[]).some((severity) => severityRank(severity) <= severityRank(matrixFailOn) && counts[severity] > 0);
-        })
-      : false;
+    const matrixGateEvaluations = result.browsers.map((item) => ({ browser: item.browser, ...evaluateMatrixItemCiGate({ item, failOn: matrixFailOn, minScore: matrixMinScore, mode: matrixGateMode }) }));
+    const scoreFailure = matrixGateEvaluations.some((item) => item.failedByScore);
+    const severityFailure = matrixGateEvaluations.some((item) => item.failedBySeverity);
+    const matrixCiGate = {
+      mode: matrixGateMode,
+      status: browserFailure || scoreFailure || severityFailure ? 'failed' : 'passed',
+      failedByBrowser: browserFailure,
+      failedByScore: scoreFailure,
+      failedBySeverity: severityFailure,
+      failOn: matrixFailOn,
+      minScore: matrixMinScore,
+      browsers: matrixGateEvaluations
+    };
     if (parsed.values.json) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify({ ...result, ciGate: matrixCiGate }, null, 2));
     } else {
       console.log(`Compatibility QA completed: ${result.outputDir}`);
       for (const item of result.browsers) {
-        console.log(`${item.browser}: ${item.success ? `${item.score}/100, ${item.issueCount} issues` : `failed: ${item.error}`}`);
+        console.log(`${item.browser}: ${item.success ? `${item.adjustedScore ?? item.score}/100 adjusted, raw ${item.score}/100, ${item.issueCount} issues` : `failed: ${item.error}`}`);
       }
+      console.log(`Gate: ${matrixCiGate.status} (${matrixGateMode})`);
     }
     if (browserFailure || scoreFailure || severityFailure) {
       process.exitCode = 2;
@@ -971,6 +982,7 @@ async function main(): Promise<void> {
       'block-mutating-requests': { type: 'boolean' },
       'allow-mutating-requests': { type: 'boolean' },
       json: { type: 'boolean' },
+      'gate-mode': { type: 'string' },
       'fail-on': { type: 'string' },
       'min-score': { type: 'string' },
       help: { type: 'boolean', short: 'h' }
@@ -991,6 +1003,7 @@ async function main(): Promise<void> {
     printHelp();
     throw new Error('Missing required --url <url>.');
   }
+  const gateMode = normalizeGateMode(parsed.values['gate-mode']);
   const failOn = requireSeverity(parsed.values['fail-on'], '--fail-on');
   const minScore = parsed.values['min-score'] === undefined ? undefined : Number(parsed.values['min-score']);
   if (minScore !== undefined && (!Number.isFinite(minScore) || minScore < 0 || minScore > 100)) {
@@ -1025,9 +1038,8 @@ async function main(): Promise<void> {
   };
 
   const result = await runQa(input);
-  const failedBySeverity = failOn ? result.issues.some((issue) => severityRank(issue.severity) <= severityRank(failOn)) : false;
-  const failedByScore = minScore !== undefined ? result.summary.score < minScore : false;
-  const exitStatus = failedBySeverity || failedByScore ? 'failed' : 'passed';
+  const ciGate = evaluateQaCiGate({ result, failOn, minScore, mode: gateMode });
+  const exitStatus = ciGate.status;
   if (parsed.values.json) {
     console.log(
       JSON.stringify(
@@ -1087,7 +1099,9 @@ async function main(): Promise<void> {
           },
           qualityGate: result.qualityGate,
           qaSignoff: result.qaSignoff,
+          ciGate,
           exitStatus,
+          gateMode,
           failOn,
           minScore
         },
@@ -1099,6 +1113,7 @@ async function main(): Promise<void> {
     console.log(`\nFrontLens QA completed`);
     console.log(`Adjusted score: ${result.summary.adjustedScore}/100 (${result.summary.adjustedIssueCount} actionable findings)`);
     console.log(`Raw score: ${result.summary.score}/100 (${result.summary.issueCount} raw findings)`);
+    console.log(`CI Gate: ${ciGate.status} (${ciGate.mode}, score field ${ciGate.scoreField})`);
     console.log(`Security: ${result.security.status}, ${result.security.score}/100 (${result.security.summary.failedCount} failed, ${result.security.summary.warningCount} warnings)`);
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);

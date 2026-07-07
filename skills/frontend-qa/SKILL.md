@@ -325,6 +325,8 @@ node dist/cli.js qa \
   --min-score 80
 ```
 
+CI gate defaults to `--gate-mode professional`: `--min-score` uses `summary.adjustedScore`, and `--fail-on` counts only `issueDisposition.actionability=actionable` findings. Use `--gate-mode raw` only when you intentionally want legacy scanner behavior where deployment/product/tool-noise findings can fail CI.
+
 Use an explicit config:
 
 ```bash

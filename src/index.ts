@@ -20,4 +20,5 @@ export { buildDefectProof, createEmptyDefectProof } from './proof/defectProof.js
 export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 export { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 export { buildIssueDisposition } from './disposition/issueDisposition.js';
+export { formatProfessionalBrief } from './reporters/briefReporter.js';
 export type * from './types.js';

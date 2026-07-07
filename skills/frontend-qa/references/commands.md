@@ -198,6 +198,7 @@ node dist/cli.js security --report "reports/frontlens/users/result.json"
 Inspect machine-readable fix tasks or compare two reports:
 
 ```bash
+node dist/cli.js brief --report "reports/frontlens/users/result.json"
 node dist/cli.js disposition --report "reports/frontlens/users/result.json"
 node dist/cli.js root-causes --report "reports/frontlens/users/result.json"
 node dist/cli.js fix-tasks --report "reports/frontlens/users/result.json"
@@ -311,6 +312,7 @@ Stable result-consumption commands for other skills:
 
 ```bash
 node dist/cli.js inspect --report "reports/frontlens/users/result.json"
+node dist/cli.js brief --report "reports/frontlens/users/result.json"
 node dist/cli.js issues --report "reports/frontlens/users/result.json" --severity high
 node dist/cli.js issues --report "reports/frontlens/users/result.json" --severity high --full
 node dist/cli.js network --report "reports/frontlens/users/result.json"

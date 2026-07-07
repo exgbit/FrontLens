@@ -13,9 +13,10 @@ import type { BrowserName, Issue, QaResult, QaRunInput, RoleMatrixRoleConfig, Se
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 import { evaluateMatrixItemCiGate, evaluateQaCiGate, type CiGateMode } from './gates/ciGate.js';
+import { formatProfessionalBrief } from './reporters/briefReporter.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -30,6 +31,7 @@ Usage:
   frontlens role-matrix --url <url> --role admin=.auth/admin.json --role viewer=.auth/viewer.json
   frontlens env-compare --dev-url <vite-dev-url> --preview-url <build-preview-url>
   frontlens mcp
+  frontlens brief --report <result.json>
   frontlens inspect --report <result.json>
   frontlens issues --report <result.json> [--severity high]
   frontlens root-causes --report <result.json>
@@ -115,6 +117,7 @@ Examples:
   frontlens role-matrix --url https://example.com/admin --role admin=.frontlens/auth/admin.json --role viewer=.frontlens/auth/viewer.json --output reports/roles
   frontlens env-compare --dev-url http://127.0.0.1:5173/users --preview-url http://127.0.0.1:4173/users --output reports/env-users
   frontlens mcp
+  frontlens brief --report reports/frontlens/users/result.json
   frontlens issues --report reports/frontlens/users/result.json --severity high
   frontlens root-causes --report reports/frontlens/users/result.json
   frontlens disposition --report reports/frontlens/users/result.json
@@ -235,7 +238,7 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'brief' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
@@ -260,6 +263,28 @@ async function handleResultCommand(command: 'inspect' | 'issues' | 'root-causes'
 
   const requestedSeverity = requireSeverity(parsed.values.severity, '--severity');
   const result = await readResult(reportPath);
+  if (command === 'brief') {
+    if (parsed.values.json) {
+      console.log(
+        JSON.stringify(
+          {
+            summary: result.summary,
+            professionalSummary: result.professionalSummary,
+            qaSignoff: result.qaSignoff,
+            claimGuard: result.claimGuard,
+            defectProof: result.defectProof,
+            issueDisposition: result.issueDisposition.summary,
+            artifacts: result.artifacts
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.log(formatProfessionalBrief(result));
+    }
+    return;
+  }
   if (command === 'inspect') {
     console.log(
       JSON.stringify(
@@ -436,7 +461,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
+  if (argv[0] === 'brief' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
     await handleResultCommand(argv[0], argv.slice(1));
     return;
   }

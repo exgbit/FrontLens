@@ -466,12 +466,15 @@ node dist/cli.js root-causes --report "reports/frontlens/example/result.json"
 ### 查看已有结果
 
 ```bash
+node dist/cli.js brief --report "reports/frontlens/example/result.json"
 node dist/cli.js inspect --report "reports/frontlens/example/result.json"
 node dist/cli.js issues --report "reports/frontlens/example/result.json" --severity high
 node dist/cli.js security --report "reports/frontlens/example/result.json"
 node dist/cli.js coverage --report "reports/frontlens/example/result.json"
 node dist/cli.js fix-tasks --report "reports/frontlens/example/result.json"
 ```
+
+`brief` 会输出一页式专业 QA 摘要：签核状态、adjusted/raw score、proof-ready 根因、非缺陷分桶、待补证据和关键报告路径。它适合作为 LLM / skill 最终答复的默认骨架，避免把完整 raw report 当成用户结论。
 
 ### 对比两次结果
 

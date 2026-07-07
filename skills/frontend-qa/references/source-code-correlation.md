@@ -103,19 +103,19 @@ When the reachable URL is a Vite dev server (`@vite/client`, `/src/*.vue`, `/nod
    - Product/reference: style hierarchy, visual density, primary-button count, optional refresh/export/pagination, SEO for non-public admin pages, mobile tap target tradeoffs under PC-first ADR.
    - Insufficient evidence: any conclusion based on only one signal, such as a global Network array without DOM/source binding.
 
-Minimum files to inspect for `/credentials` in `sunrise-web`:
+Minimum source sweep for any page:
 
-- `src/router/index.ts`
-- `src/views/CredentialsView.vue`
-- `src/composables/useCredentials.ts`
-- `src/api/http.ts`
-- credential API module(s), commonly `src/api/credentials.ts`
-- credential components matching `src/components/**/Cred*.vue`
-- especially `CredRegionDetail.vue`, `CredAdsDetail.vue`, `CredShopDetail.vue`, `CredAdsCard.vue`, and `CredDetailMoreMenu.vue`
-- `vite.config.ts`
-- ADR/docs files when a finding depends on design tradeoffs, e.g. PC-first/mobile behavior or bundle strategy.
+- Route/page entry for the target URL (`src/router`, `src/routes`, `src/pages`, framework route files).
+- The matched view/page component plus directly rendered child components.
+- Composable/store/query files that load the page data and expose loading/error/empty/retry state.
+- API client/module and shared HTTP/error wrapper used by that page.
+- Shared layout/shell only when evidence comes from shell elements or eager imports.
+- Build/config files such as `vite.config.ts`, `webpack.config.*`, `next.config.*`, or framework equivalents for bundle/performance findings.
+- ADR/docs/PRD files when a finding depends on design tradeoffs, device scope, accessibility target, or feature requirements.
 
-## Calibration rules learned from credentials-page reviews
+For a credentials-like page, additionally inspect credential-specific files such as `src/views/CredentialsView.vue`, `src/composables/useCredentials.ts`, `src/api/credentials.ts`, and `src/components/**/Cred*.vue`. Treat these as examples only; derive the actual files from the target route and source index for other pages.
+
+## Calibration rules learned from recent QA reviews
 
 - **Synthetic exception traffic**: status codes injected by `exceptionSimulations[]` or request ids listed under EX-* are scanner traffic. Do not report them as backend contract violations.
 - **Native non-2xx console noise**: Chromium `Failed to load resource` for 401/403/404/500 is browser-native. Treat it as app-console noise only if app code logs it or the UI mishandles the error. Prefer fixing visible error state/retry.
@@ -123,7 +123,7 @@ Minimum files to inspect for `/credentials` in `sunrise-web`:
 - **Duplicate requests**: reloads from responsive, P2, journey, exception, and matrix phases are not duplicate-fetch bugs. Confirm a real duplicate only inside one page state or one user action, and verify watchers/effects in source.
 - **Card layouts are not tables**: do not require pagination/export/table row counts for master-detail cards, grids, dashboards, trees, or credential/security pages.
 - **API data but empty UI is high-risk for speculation**: retain only when one specific response body contains list-like object rows, the current visible UI is empty, and source/E2E proves that response feeds that UI. Generic `{ data: [...] }` from unrelated endpoints such as platform/options/menu dictionaries is not enough.
-- **Credential path is not a leak**: `/credentials` in a URL path is not sensitive-data exposure. Require real secrets in query/body/DOM/storage/logs.
+- **Business path words are not leaks**: `/credentials`, `/auth`, `/token`, `/secret` or similar words in a URL path/module name are not sensitive-data exposure by themselves. Require real secrets in query/body/DOM/storage/logs.
 - **Deployment security headers**: CSP, `nosniff`, clickjacking headers, Referrer-Policy, COOP/CORP, HSTS/HTTPS, and `Server` fingerprint are deployment/gateway work unless the repo owns deploy config.
 - **PC-first ADRs / productContext**: if `metadata.config.productContext.deviceScope` or an ADR declares PC-first with mobile as adaptive/degraded, small inline icon buttons can be downgraded to optional/mobile-breakpoint work unless they block core mobile use. If `productContext.requiredFeatures` includes `mobile-touch-target`, keep the same finding as a real fix candidate.
 - **Bundle bloat**: verify router/component lazy loading and large feature imports before blaming UI libraries. For Vue/Vite, static route imports can pull feature-only dependencies into the main chunk.

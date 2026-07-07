@@ -110,6 +110,42 @@ test('quality gate uses disposition so speculative high findings become pass-wit
   assert.equal(result.qualityGate.coverageGaps.some((gap) => gap.includes('Raw finding')), true);
 });
 
+test('exception no-feedback findings become proof-ready root-cause candidates when runtime evidence is reproducible', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/credentials', title: 'Credentials' },
+    pageModel: {
+      url: 'https://example.com/credentials',
+      title: 'Credentials',
+      stats: { domNodes: 40, visibleTextLength: 200, bodyTextSample: 'Credentials 暂无数据' }
+    },
+    interactionTests: [{ id: 'IT-001', kind: 'search', target: 'search', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, actions: [], observations: {} }],
+    journeyTests: [{ id: 'JOURNEY-001', name: 'smoke', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, startUrl: 'https://example.com/credentials', steps: [] }],
+    exceptionSimulations: [{ id: 'EX-001', kind: 'api-500', status: 'failed', target: 'https://example.com/api/credentials', startedAt: '', endedAt: '', durationMs: 0, observations: { networkRequestIds: ['REQ-500'] } }],
+    issues: [
+      {
+        id: 'ISSUE-EX',
+        title: '异常场景测试失败：api-500',
+        category: 'integration-no-feedback',
+        severity: 'high',
+        confidence: 0.86,
+        description: '模拟接口 500 后页面未发现明显错误反馈。',
+        evidence: { networkRequestId: 'REQ-500', details: { exceptionSimulationId: 'EX-001', kind: 'api-500', target: 'https://example.com/api/credentials' } },
+        reproduceSteps: ['开启异常模拟运行 FrontLens', '执行异常场景：api-500', '观察页面反馈、Network 和 Console'],
+        reason: '异常场景下页面没有明显反馈，用户难以判断失败原因或恢复方式。',
+        suggestion: { frontend: '增加错误状态和重试入口。', priority: 'P1' }
+      }
+    ]
+  });
+
+  assert.equal(result.issueDisposition.items[0].actionability, 'actionable');
+  assert.equal(result.rootCauseGroups.length, 1);
+  assert.equal(result.rootCauseGroups[0].networkRequestIds.includes('REQ-500'), true);
+  assert.equal(result.defectProof.items[0].status, 'probable');
+  assert.equal(result.fixTasks.length, 1);
+  assert.equal(result.professionalSummary.mustFix.length, 1);
+  assert.equal(result.professionalSummary.mustFix[0].rootCauseGroupId, result.rootCauseGroups[0].id);
+});
+
 test('adjusted score excludes deployment, product, and insufficient-evidence findings', () => {
   const result = normalizeResult({
     summary: { url: 'https://example.com/admin', title: 'Admin' },

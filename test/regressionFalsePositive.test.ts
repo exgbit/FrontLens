@@ -381,7 +381,10 @@ test('analysis excludes synthetic P2 and exception traffic from normal findings'
   }));
   assert.equal(result.network.failedRequests.some((record) => record.id === p2.id || record.id === exception.id), false);
   assert.equal(result.issues.some((issue) => issue.category === 'backend-api-status'), false);
-  assert.equal(result.issues.some((issue) => issue.category === 'integration-no-feedback'), true);
+  const exceptionIssue = result.issues.find((issue) => issue.category === 'integration-no-feedback');
+  assert.ok(exceptionIssue);
+  assert.equal(exceptionIssue.evidence.networkRequestId, exception.id);
+  assert.match(exceptionIssue.reason, /错误反馈|重试入口/);
 });
 
 test('integration analyzer ignores safety-blocked mutating requests', () => {

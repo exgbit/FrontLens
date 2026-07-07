@@ -268,13 +268,13 @@ function classifyException(issue: Issue, rootCauseGroupId?: string): IssueDispos
   }
   if (issue.category === 'integration-no-feedback') {
     return makeItem(issue, {
-      status: 'needs-source-confirmation',
+      status: 'confirmed',
       bucket: 'real-frontend-fix',
-      actionability: 'conditional',
+      actionability: 'actionable',
       owner: 'frontend',
-      evidenceStrength: 'medium',
-      reason: '异常模拟观察到无错误反馈，但是否为真实代码缺陷需要确认页面是否消费 error/ref、是否区分错误态和空态。',
-      nextStep: '结合源码核对 API 调用链、error state 渲染和 retry 入口；源码确认后合并为一个错误态根因修复。',
+      evidenceStrength: hasEvidence(issue) ? 'strong' : 'medium',
+      reason: '异常模拟复现接口失败/超时后页面缺少错误反馈，属于用户可感知的韧性缺陷候选；是否进入实现排期继续由 defectProof 校验源码、需求、产品范围和复现链路。',
+      nextStep: '结合源码核对 API 调用链、error state 渲染和 retry 入口；defectProof 为 proven/probable 后合并为一个错误态根因修复，否则保留为证据补充项。',
       rootCauseGroupId
     });
   }

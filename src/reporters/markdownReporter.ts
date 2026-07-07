@@ -466,11 +466,11 @@ function formatJourneySummary(result: QaResult): string {
 未配置用户旅程测试。可通过 \`journeys.enabled=true\` 和 \`journeys.journeys[]\` 开启。
 `;
   }
-  const rows = result.journeyTests.map((journey) => `| ${journey.id} | ${markdownEscape(journey.name)} | ${journey.status} | ${journey.steps.length} | ${markdownEscape(journey.finalUrl ?? '-')} | ${markdownEscape(journey.issue ?? '-')} |`);
+  const rows = result.journeyTests.map((journey) => `| ${journey.id} | ${markdownEscape(journey.name)} | ${journey.status} | ${markdownEscape(journey.source ?? 'configured')} | ${markdownEscape(journey.requirementIds?.join(',') || '-')} | ${journey.steps.length} | ${markdownEscape(journey.finalUrl ?? '-')} | ${markdownEscape(journey.issue ?? '-')} |`);
   return `## 八、用户旅程测试
 
-| ID | 名称 | 状态 | 步骤数 | 最终 URL | 问题 |
-| --- | --- | --- | --- | --- | --- |
+| ID | 名称 | 状态 | 来源 | 需求 | 步骤数 | 最终 URL | 问题 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 ${rows.join('\n')}
 `;
 }

@@ -22,6 +22,7 @@ For every target-page QA run:
 6. When the user provides a frontend source path, or when a known source mapping exists, source-aware triage is mandatory. Read `references/source-code-correlation.md`, pass the `sourceRoot` to the worker, and require file:line evidence for every retained frontend defect.
 7. When the target URL is local/private and the source path is available, the worker may build/start/refresh the local dev or preview server before running QA if the page is unreachable, stale, or the user asks to deploy first. Keep the server non-destructive and do not modify business code.
 8. When the user asks for professional-QA replacement, full acceptance, release sign-off, business validation, or skill quality review, read `references/qa-engineer-mode.md` and require a QA sign-off, requirement coverage matrix, defect root-cause table, non-defect observations, and regression commands. Never claim full business pass without requirements and runtime evidence.
+9. When PRD/acceptance criteria are provided, encode them as `requirements.items[]` with explicit `selectors`, `expectedTexts`, and/or safe `journeySteps` whenever possible. FrontLens turns those fields into generated requirement journeys and links runtime evidence back to `requirementCoverage`; free-text requirements without explicit assertions remain coverage gaps, not inferred passes.
 
 Recommended checklist to show the user:
 
@@ -56,6 +57,23 @@ If the user selects "all/default", run the full default QA command. If the user 
    # When PRD/acceptance criteria exist, put them in a JSON file and add:
    # --requirements "path/to/requirements.json"
    ```
+
+   Requirements JSON supports executable assertions:
+
+   ```json
+   [
+     {
+       "id": "REQ-LIST-VISIBLE",
+       "title": "列表页展示主体内容",
+       "priority": "P1",
+       "selectors": ["body"],
+       "expectedTexts": ["列表"],
+       "journeySteps": [{ "action": "waitForLoad" }]
+     }
+   ]
+   ```
+
+   Use `selectors`/`expectedTexts` for read-only assertions and `journeySteps` for explicit safe flows. Do not translate vague product wishes into clicks or defects unless the requirement says so.
 
    Default config blocks mutating `POST` / `PUT` / `PATCH` / `DELETE` requests unless the matching `allow*` safety switch is enabled. Read-only GraphQL `query` / `subscription` POSTs are allowed so contract/realtime capture remains useful; GraphQL `mutation` is still blocked by default. Use `--allow-mutating-requests` only for authorized integration tests.
    Passive security scanning, API contract inference, GraphQL/WebSocket/SSE capture, stable fingerprints, fix task generation, default safe smoke journey, P2 visual capture/budget/network checks, exception simulation, and heuristic AI analysis are enabled by default. Use `--no-security`, `--no-contract`, `--no-realtime`, `--no-p2`, `--no-journeys`, `--no-exceptions`, or `--no-ai` only when explicitly speed-testing.

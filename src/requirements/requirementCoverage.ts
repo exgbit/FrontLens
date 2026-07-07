@@ -114,7 +114,10 @@ function buildItemFromConfig(
   const id = item.id?.trim() || `${source === 'provided' ? 'REQ' : 'INF'}-${String(index + 1).padStart(3, '0')}`;
   const selectors = (item.selectors ?? []).filter(Boolean);
   const matchedComponents = selectors.length > 0 ? input.pageModel.components.filter((component) => selectors.some((selector) => selectorMatches(selector, component))) : [];
-  const journeyTests = (item.journeyNames ?? []).flatMap((name) => input.journeyTests.filter((journey) => journey.name === name || journey.name.toLowerCase().includes(name.toLowerCase())));
+  const journeyTests = [
+    ...(item.journeyNames ?? []).flatMap((name) => input.journeyTests.filter((journey) => journey.name === name || journey.name.toLowerCase().includes(name.toLowerCase()))),
+    ...input.journeyTests.filter((journey) => journey.requirementIds?.includes(id))
+  ].filter((journey, journeyIndex, journeys) => journeys.findIndex((candidate) => candidate.id === journey.id) === journeyIndex);
   const interactionTests = (item.interactionKinds ?? []).flatMap((kind) => input.interactionTests.filter((test) => test.kind === kind));
   const networkRecords = (item.apiPatterns ?? []).flatMap((pattern) => input.networkRecords.filter((record) => patternMatches(pattern, record.url)));
   const networkRequestIds = [...new Set(networkRecords.map((record) => record.id))];

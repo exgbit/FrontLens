@@ -29,7 +29,7 @@ import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 
-export const RESULT_SCHEMA_VERSION = '1.7.0';
+export const RESULT_SCHEMA_VERSION = '1.8.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));

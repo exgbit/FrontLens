@@ -14,7 +14,7 @@ Use this reference when consuming QA results from another skill.
 
 ## Top-level shape and schema version
 
-`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose a safe default `artifactIntegrity` when older reports do not contain it.
+`metadata.schemaVersion` is the machine-readable result contract version. Reports before `1.2.0` may miss journey/API/realtime/P2/fixTasks fields; reports before `1.3.0` may miss `qualityGate`; reports before `1.4.0` may miss `requirementCoverage`; reports before `1.5.0` may miss `artifactIntegrity`; reports before `1.6.0` may miss `rootCauseGroups`; reports before `1.7.0` may miss `issueDisposition`; reports before `1.8.0` may miss generated requirement-journey metadata. CLI/MCP helper commands normalize common missing sections to safe defaults, synthesize `fixTasks[]`, `qualityGate`, `requirementCoverage`, `rootCauseGroups[]`, and `issueDisposition` from normalized evidence, and expose a safe default `artifactIntegrity` when older reports do not contain it.
 
 Default QA runs enable the safe smoke journey, requirement/ability coverage inference, passive security scan, API contract inference, realtime capture, Chromium Coverage, P2 visual capture/performance budgets/offline+slow-3g profiles, exception simulations, responsive checks, accessibility checks, and heuristic AI analysis. Sections may still be `skipped` only when the browser/platform cannot support a probe or the caller explicitly passes a `--no-*` flag / disabled config.
 
@@ -348,7 +348,7 @@ interface ExceptionSimulationResult {
 
 ## API Contract, Realtime, Requirement Coverage, P2, Root Cause Groups, Issue Disposition, Fix Tasks, Diff
 
-`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`.
+`metadata.schemaVersion >= 1.2.0` includes user journeys, API contract inference/OpenAPI checks, GraphQL/WebSocket/SSE capture, P2 visual/budget/network checks, and machine-executable fix tasks. `metadata.schemaVersion >= 1.3.0` includes `qualityGate`; `metadata.schemaVersion >= 1.4.0` includes `requirementCoverage`; `metadata.schemaVersion >= 1.5.0` includes `artifactIntegrity`; `metadata.schemaVersion >= 1.6.0` includes `rootCauseGroups`; `metadata.schemaVersion >= 1.7.0` includes `issueDisposition`; `metadata.schemaVersion >= 1.8.0` links generated journeys to provided requirements.
 
 ```ts
 interface ApiContractResult {
@@ -371,6 +371,8 @@ interface RealtimeResult {
 interface JourneyTestResult {
   id: string;
   name: string;
+  source?: 'configured' | 'requirement-generated' | 'inferred';
+  requirementIds?: string[];
   status: 'passed' | 'warning' | 'failed' | 'skipped';
   startedAt: string;
   endedAt: string;
@@ -546,6 +548,8 @@ interface QaQualityGate {
 `issueDisposition` is the raw-finding disposition layer. It labels every `issues[]` entry as confirmed, needs-source-confirmation, deployment-only, product-decision, tool-limitation, insufficient-evidence, or reference, and separates `actionable` from `conditional` and `non-actionable`. Use it to prevent style/product choices, dev-server artifacts, deployment headers, and speculative data-mismatch findings from failing QA as app-code bugs. `qualityGate` uses this disposition when available: confirmed actionable Critical/High issues can fail the gate; conditional findings become pass-with-risks/coverage gaps until source, PRD, role, or deployment ownership confirms them.
 
 `requirementCoverage` is the machine-readable requirement/ability coverage matrix. User-provided requirements come from config/`--requirements`; when none are provided, FrontLens only infers obvious page abilities and marks them as `source: inferred`. Inferred coverage is useful for gaps but must not be reported as 100% business validation. P0/P1 uncovered or failed requirements influence `qualityGate`.
+
+When a provided requirement contains `journeySteps`, `selectors`, or `expectedTexts`, FrontLens synthesizes a safe `journeyTests[]` item with `source: "requirement-generated"` and `requirementIds[]`. This makes PRD/acceptance criteria executable without guessing from free text. Free-text requirements without explicit selectors/assertions remain `not-covered` or `partial`; do not convert them into business pass claims.
 
 `qualityGate` is the machine-readable professional QA gate. Use it for release/sign-off conversations, but still inspect `issues[]` and evidence before deciding whether to ship:
 

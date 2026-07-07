@@ -91,11 +91,15 @@ export interface JourneyStepConfig {
   description?: string;
 }
 
+export type JourneySource = 'configured' | 'requirement-generated' | 'inferred';
+
 export interface JourneyConfig {
   name: string;
   startUrl?: string;
   steps: JourneyStepConfig[];
   enabled?: boolean;
+  source?: JourneySource;
+  requirementIds?: string[];
 }
 
 export interface JourneyTestConfig {
@@ -117,6 +121,9 @@ export interface RequirementConfigItem {
   source?: RequirementSource;
   selectors?: string[];
   journeyNames?: string[];
+  journeyStartUrl?: string;
+  journeySteps?: JourneyStepConfig[];
+  expectedTexts?: string[];
   interactionKinds?: InteractionTestKind[];
   apiPatterns?: string[];
 }
@@ -586,6 +593,8 @@ export interface JourneyStepResult {
 export interface JourneyTestResult {
   id: string;
   name: string;
+  source?: JourneySource;
+  requirementIds?: string[];
   status: InteractionTestStatus;
   startedAt: string;
   endedAt: string;

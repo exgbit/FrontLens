@@ -106,6 +106,16 @@ const interactionKinds = new Set([
   'form-validation'
 ]);
 
+function validateJourneyStep(step: unknown, stepPath: string): void {
+  assert(isRecord(step), `${stepPath} must be an object.`);
+  assert(typeof step.action === 'string' && journeyStepActions.has(step.action), `${stepPath}.action must be one of ${[...journeyStepActions].join(', ')}.`);
+  if (step.target !== undefined) assert(typeof step.target === 'string', `${stepPath}.target must be a string.`);
+  if (step.value !== undefined) assert(typeof step.value === 'string', `${stepPath}.value must be a string.`);
+  if (step.timeoutMs !== undefined) assertFiniteNumber(step.timeoutMs, `${stepPath}.timeoutMs`, 0);
+  if (step.allowMutating !== undefined) assertBoolean(step.allowMutating, `${stepPath}.allowMutating`);
+  if (step.description !== undefined) assert(typeof step.description === 'string', `${stepPath}.description must be a string.`);
+}
+
 function validateConfig(config: FrontLensConfig): FrontLensConfig {
   assert(isRecord(config.target), 'target must be an object.');
   assert(isRecord(config.browser), 'browser must be an object.');
@@ -157,17 +167,10 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
     assert(typeof journey.name === 'string' && journey.name.trim().length > 0, `${journeyPath}.name must be a non-empty string.`);
     if (journey.startUrl !== undefined) assert(typeof journey.startUrl === 'string', `${journeyPath}.startUrl must be a string.`);
     if (journey.enabled !== undefined) assertBoolean(journey.enabled, `${journeyPath}.enabled`);
+    if (journey.source !== undefined) assert(journey.source === 'configured' || journey.source === 'requirement-generated' || journey.source === 'inferred', `${journeyPath}.source must be configured, requirement-generated, or inferred.`);
+    if (journey.requirementIds !== undefined) assertStringArray(journey.requirementIds, `${journeyPath}.requirementIds`);
     assert(Array.isArray(journey.steps), `${journeyPath}.steps must be an array.`);
-    journey.steps.forEach((step, stepIndex) => {
-      const stepPath = `${journeyPath}.steps[${stepIndex}]`;
-      assert(isRecord(step), `${stepPath} must be an object.`);
-      assert(typeof step.action === 'string' && journeyStepActions.has(step.action), `${stepPath}.action must be one of ${[...journeyStepActions].join(', ')}.`);
-      if (step.target !== undefined) assert(typeof step.target === 'string', `${stepPath}.target must be a string.`);
-      if (step.value !== undefined) assert(typeof step.value === 'string', `${stepPath}.value must be a string.`);
-      if (step.timeoutMs !== undefined) assertFiniteNumber(step.timeoutMs, `${stepPath}.timeoutMs`, 0);
-      if (step.allowMutating !== undefined) assertBoolean(step.allowMutating, `${stepPath}.allowMutating`);
-      if (step.description !== undefined) assert(typeof step.description === 'string', `${stepPath}.description must be a string.`);
-    });
+    journey.steps.forEach((step, stepIndex) => validateJourneyStep(step, `${journeyPath}.steps[${stepIndex}]`));
   });
   assertBoolean(config.requirements.enabled, 'requirements.enabled');
   assertBoolean(config.requirements.inferFromPage, 'requirements.inferFromPage');
@@ -182,6 +185,12 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
     if (item.source !== undefined) assert(item.source === 'provided' || item.source === 'inferred', `${itemPath}.source must be provided or inferred.`);
     if (item.selectors !== undefined) assertStringArray(item.selectors, `${itemPath}.selectors`);
     if (item.journeyNames !== undefined) assertStringArray(item.journeyNames, `${itemPath}.journeyNames`);
+    if (item.journeyStartUrl !== undefined) assert(typeof item.journeyStartUrl === 'string', `${itemPath}.journeyStartUrl must be a string.`);
+    if (item.expectedTexts !== undefined) assertStringArray(item.expectedTexts, `${itemPath}.expectedTexts`);
+    if (item.journeySteps !== undefined) {
+      assert(Array.isArray(item.journeySteps), `${itemPath}.journeySteps must be an array.`);
+      item.journeySteps.forEach((step, stepIndex) => validateJourneyStep(step, `${itemPath}.journeySteps[${stepIndex}]`));
+    }
     if (item.apiPatterns !== undefined) assertStringArray(item.apiPatterns, `${itemPath}.apiPatterns`);
     if (item.interactionKinds !== undefined) {
       assert(Array.isArray(item.interactionKinds) && item.interactionKinds.every((kind) => typeof kind === 'string' && interactionKinds.has(kind)), `${itemPath}.interactionKinds must contain supported interaction kinds.`);

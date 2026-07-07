@@ -179,6 +179,8 @@ export class JourneyTester {
         results.push({
           id: createId('JOURNEY', index + 1),
           name: journey.name,
+          source: journey.source ?? 'configured',
+          requirementIds: journey.requirementIds,
           status,
           startedAt,
           endedAt: now(),

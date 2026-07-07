@@ -6,7 +6,28 @@ import { tmpdir } from 'node:os';
 import { createDefaultConfig } from '../src/defaultConfig.ts';
 import { loadConfig } from '../src/config.ts';
 import { buildRequirementCoverage } from '../src/requirements/requirementCoverage.ts';
+import { applyRequirementJourneySynthesis } from '../src/requirements/requirementJourneys.ts';
 import { normalizeResult } from '../src/resultNormalizer.ts';
+import type { PageModel } from '../src/types.ts';
+
+function pageModel(): PageModel {
+  return {
+    url: 'https://example.com/users',
+    title: 'Users',
+    meta: { h1: [], openGraph: {} },
+    breadcrumbs: [],
+    headings: [],
+    structureTree: 'body',
+    components: [],
+    forms: [],
+    tables: [],
+    buttons: [],
+    inputs: [],
+    images: [],
+    links: [],
+    stats: { domNodes: 10, visibleTextLength: 100, bodyTextSample: 'Users' }
+  };
+}
 
 test('requirements file loads acceptance criteria into config', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-req-'));
@@ -18,7 +39,10 @@ test('requirements file loads acceptance criteria into config', async () => {
         id: 'REQ-SEARCH',
         title: 'Search filters visible results',
         priority: 'P1',
-        interactionKinds: ['search']
+        interactionKinds: ['search'],
+        selectors: ['body'],
+        expectedTexts: ['Users'],
+        journeySteps: [{ action: 'waitForLoad', description: 'wait for async data' }]
       }
     ]),
     'utf8'
@@ -28,6 +52,9 @@ test('requirements file loads acceptance criteria into config', async () => {
   assert.equal(config.requirements.inferFromPage, false);
   assert.equal(config.requirements.items.length, 1);
   assert.equal(config.requirements.items[0].id, 'REQ-SEARCH');
+  assert.deepEqual(config.requirements.items[0].selectors, ['body']);
+  assert.deepEqual(config.requirements.items[0].expectedTexts, ['Users']);
+  assert.equal(config.requirements.items[0].journeySteps?.[0].action, 'waitForLoad');
 });
 
 test('requirement coverage marks explicit journey-backed requirement as passed', () => {
@@ -44,22 +71,7 @@ test('requirement coverage marks explicit journey-backed requirement as passed',
 
   const coverage = buildRequirementCoverage({
     config,
-    pageModel: {
-      url: 'https://example.com/users',
-      title: 'Users',
-      meta: { h1: [], openGraph: {} },
-      breadcrumbs: [],
-      headings: [],
-      structureTree: 'body',
-      components: [],
-      forms: [],
-      tables: [],
-      buttons: [],
-      inputs: [],
-      images: [],
-      links: [],
-      stats: { domNodes: 10, visibleTextLength: 100, bodyTextSample: 'Users' }
-    },
+    pageModel: pageModel(),
     networkRecords: [],
     issues: [],
     journeyTests: [{ id: 'JOURNEY-001', name: 'Users smoke', status: 'passed', startedAt: '', endedAt: '', durationMs: 1, startUrl: 'https://example.com/users', steps: [] }],
@@ -71,6 +83,59 @@ test('requirement coverage marks explicit journey-backed requirement as passed',
   assert.equal(coverage.items[0].status, 'passed');
   assert.equal(coverage.items[0].confidence, 'high');
   assert.equal(coverage.summary.highPriorityGapCount, 0);
+});
+
+test('explicit requirement assertions synthesize safe journeys and link coverage by requirement id', () => {
+  const config = createDefaultConfig('https://example.com/users');
+  config.journeys.maxJourneys = 1;
+  config.requirements.inferFromPage = false;
+  config.requirements.items = [
+    {
+      id: 'REQ-USERS-VISIBLE',
+      title: 'Users list is visible',
+      priority: 'P1',
+      selectors: ['body'],
+      expectedTexts: ['Users'],
+      journeySteps: [{ action: 'waitForLoad', description: 'wait for users' }]
+    }
+  ];
+
+  const generated = applyRequirementJourneySynthesis(config, pageModel());
+
+  assert.equal(generated.length, 1);
+  assert.equal(generated[0].source, 'requirement-generated');
+  assert.deepEqual(generated[0].requirementIds, ['REQ-USERS-VISIBLE']);
+  assert.equal(config.requirements.items[0].journeyNames?.includes(generated[0].name), true);
+  assert.equal(config.journeys.maxJourneys >= config.journeys.journeys.length, true);
+  assert.equal(generated[0].steps.some((step) => step.action === 'expectVisible' && step.target === 'body'), true);
+  assert.equal(generated[0].steps.some((step) => step.action === 'expectText' && step.value === 'Users'), true);
+
+  const coverage = buildRequirementCoverage({
+    config,
+    pageModel: pageModel(),
+    networkRecords: [],
+    issues: [],
+    journeyTests: [
+      {
+        id: 'JOURNEY-002',
+        name: generated[0].name,
+        source: 'requirement-generated',
+        requirementIds: ['REQ-USERS-VISIBLE'],
+        status: 'passed',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 1,
+        startUrl: 'https://example.com/users',
+        steps: []
+      }
+    ],
+    interactionTests: [],
+    accessibilityChecks: []
+  });
+
+  assert.equal(coverage.items[0].status, 'passed');
+  assert.equal(coverage.items[0].confidence, 'high');
+  assert.deepEqual(coverage.items[0].evidence.journeyIds, ['JOURNEY-002']);
 });
 
 test('uncovered P1 requirement fails the QA quality gate', () => {

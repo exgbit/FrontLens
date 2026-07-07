@@ -28,6 +28,7 @@ import { dedupeIssues } from './fix/issueDedupe.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
+import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
@@ -423,6 +424,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     const evidence = new EvidenceCollector(config, artifacts);
     await safePhase('evidence.prepare', phaseErrors, undefined, () => evidence.prepare());
     pageModel = await safePhase('page.explore', phaseErrors, emptyPageModel(redactUrl(activePage.url() ?? config.target.url)), () => new PageExplorer().explore(activePage));
+    applyRequirementJourneySynthesis(config, pageModel);
     performanceMetrics = config.analysis.performance ? await safePhase('performance.collect', phaseErrors, emptyPerformanceMetrics(), () => new PerformanceCollector().collect(activePage)) : emptyPerformanceMetrics();
     await safePhase('evidence.capture.initial', phaseErrors, undefined, () => evidence.capturePageArtifacts(activePage));
     if (config.analysis.resource) {

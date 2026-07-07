@@ -133,8 +133,26 @@
         "id": "REQ-SMOKE",
         "title": "目标页面可以打开并展示主体内容",
         "priority": "P1",
+        "selectors": [
+          "body"
+        ],
+        "expectedTexts": [],
         "journeyNames": [
           "Default page smoke journey"
+        ]
+      },
+      {
+        "id": "REQ-GENERATED-SMOKE",
+        "title": "示例：通过 requirement selectors 自动生成验收旅程",
+        "priority": "P2",
+        "selectors": [
+          "body"
+        ],
+        "journeySteps": [
+          {
+            "action": "waitForLoad",
+            "description": "等待异步内容加载"
+          }
         ]
       }
     ]

@@ -80,6 +80,8 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
         <td>${escapeHtml(journey.id)}</td>
         <td>${escapeHtml(journey.name)}</td>
         <td>${escapeHtml(journey.status)}</td>
+        <td>${escapeHtml(journey.source ?? 'configured')}</td>
+        <td>${escapeHtml(journey.requirementIds?.join(',') || '-')}</td>
         <td>${journey.steps.length}</td>
         <td>${escapeHtml(journey.finalUrl ?? '-')}</td>
         <td>${escapeHtml(journey.issue ?? '-')}</td>
@@ -374,8 +376,8 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
       <section>
         <h2>用户旅程测试</h2>
         <table>
-          <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Steps</th><th>Final URL</th><th>Issue</th></tr></thead>
-          <tbody>${journeyRows || '<tr><td colspan="6">No journey tests</td></tr>'}</tbody>
+          <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Source</th><th>Requirements</th><th>Steps</th><th>Final URL</th><th>Issue</th></tr></thead>
+          <tbody>${journeyRows || '<tr><td colspan="8">No journey tests</td></tr>'}</tbody>
         </table>
       </section>
 

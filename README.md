@@ -130,12 +130,19 @@ Skill 会自动执行：
     "id": "REQ-SEARCH",
     "title": "搜索可以筛选列表",
     "priority": "P1",
-    "interactionKinds": ["search"]
+    "interactionKinds": ["search"],
+    "selectors": ["css=[data-testid='search-input']"],
+    "expectedTexts": ["搜索"],
+    "journeySteps": [
+      { "action": "fill", "target": "css=[data-testid='search-input']", "value": "test" },
+      { "action": "press", "target": "css=[data-testid='search-input']", "value": "Enter" }
+    ]
   }
 ]
 ```
 
 保存为 `requirements.json` 后，可在手动 CLI 中追加 `--requirements requirements.json`；通过 skill 使用时，把该文件路径告诉 Codex。报告会生成 `requirementCoverage`，并让未覆盖/失败的 P0/P1 验收标准影响 `qualityGate`。
+其中 `selectors` / `expectedTexts` / `journeySteps` 会自动生成安全的验收用户旅程并回链到需求；只有自由文本、没有明确断言的需求不会被误判为“业务已通过”。
 
 ### 4. 要求先部署再分析
 
@@ -177,13 +184,13 @@ Skill 会按规则：
 - 证据路径
 - 复测命令
 
-从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`；从 `1.4.0` 开始包含 `requirementCoverage`；从 `1.5.0` 开始包含 `artifactIntegrity`；从 `1.6.0` 开始包含 `rootCauseGroups`；从 `1.7.0` 开始包含 `issueDisposition`：
+从 `result.json` 的 `metadata.schemaVersion >= 1.3.0` 开始，报告会额外包含 `qualityGate`；从 `1.4.0` 开始包含 `requirementCoverage`；从 `1.5.0` 开始包含 `artifactIntegrity`；从 `1.6.0` 开始包含 `rootCauseGroups`；从 `1.7.0` 开始包含 `issueDisposition`；从 `1.8.0` 开始包含验收标准生成旅程的来源/需求回链：
 
 - `status`: `pass` / `pass-with-risks` / `fail` / `blocked`
 - `confidence`: `high` / `medium` / `low`
 - `reasons` / `coverageGaps`: 为什么可以验收、为什么有风险、或为什么阻断
 
-`requirementCoverage` 会区分用户提供的验收标准和从页面推断的能力覆盖；推断项只能说明覆盖缺口，不能代表 100% 业务通过。`artifactIntegrity` 会检查报告引用的本地证据路径是否存在，缺失路径不能作为证据。`rootCauseGroups` 会把多个 raw issue 合并成实现层根因，避免把同一 bug 的 500/404/timeout/a11y 多条证据当作多份工作量。`issueDisposition` 会给每条 raw issue 标注 confirmed、needs-source-confirmation、deployment-only、product-decision、tool-limitation、insufficient-evidence 或 reference，并区分 actionable / conditional / non-actionable。CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate` + `requirementCoverage` + `artifactIntegrity` + `issueDisposition` + `rootCauseGroups`，再结合需求、源码和运行证据做最终验收判断。
+`requirementCoverage` 会区分用户提供的验收标准和从页面推断的能力覆盖；推断项只能说明覆盖缺口，不能代表 100% 业务通过。带 `selectors` / `expectedTexts` / `journeySteps` 的显式需求会生成 `journeyTests[].source = requirement-generated` 和 `requirementIds[]`，用于把运行时证据绑定到 PRD。`artifactIntegrity` 会检查报告引用的本地证据路径是否存在，缺失路径不能作为证据。`rootCauseGroups` 会把多个 raw issue 合并成实现层根因，避免把同一 bug 的 500/404/timeout/a11y 多条证据当作多份工作量。`issueDisposition` 会给每条 raw issue 标注 confirmed、needs-source-confirmation、deployment-only、product-decision、tool-limitation、insufficient-evidence 或 reference，并区分 actionable / conditional / non-actionable。CI、MCP、后续修复 Agent 和 LLM 复盘都应优先读取 `qualityGate` + `requirementCoverage` + `artifactIntegrity` + `issueDisposition` + `rootCauseGroups`，再结合需求、源码和运行证据做最终验收判断。
 
 ## 误报降噪原则
 

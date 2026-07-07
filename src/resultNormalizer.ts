@@ -47,7 +47,7 @@ import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 
-export const RESULT_SCHEMA_VERSION = '1.59.0';
+export const RESULT_SCHEMA_VERSION = '1.60.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));

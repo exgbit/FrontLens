@@ -71,6 +71,58 @@ test('professional audit surfaces qa coverage gaps and blocks acceptance wording
   assert.equal(signedAudit.findings.some((item) => item.category === 'coverage' && item.severity === 'blocker'), true);
 });
 
+
+test('professional audit blocks stale disposition that promotes weak or speculative findings', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/admin', title: 'Admin' },
+    pageModel: { url: 'https://example.com/admin', title: 'Admin', stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: '暂无数据' } },
+    issues: [
+      {
+        id: 'ISSUE-MISMATCH',
+        title: '接口有数据但页面显示空',
+        category: 'integration-data-mismatch',
+        severity: 'high',
+        confidence: 0.7,
+        description: 'A stale report promoted an API/UI mismatch guess.',
+        evidence: { networkRequestId: 'REQ-1' },
+        reproduceSteps: ['Open page'],
+        reason: 'Network has list-like data while DOM looks empty.',
+        suggestion: { frontend: 'Render returned data.', priority: 'P1' }
+      },
+      {
+        id: 'ISSUE-STYLE',
+        title: '触控目标过小，按钮视觉密度较高',
+        category: 'frontend-responsive',
+        severity: 'medium',
+        confidence: 0.8,
+        description: 'Style/mobile-scope sensitive finding.',
+        evidence: { selector: '.mini-action' },
+        reproduceSteps: ['Open mobile viewport'],
+        reason: 'Tap target is smaller than heuristic threshold.',
+        suggestion: { frontend: 'Increase button size.', priority: 'P2' }
+      }
+    ]
+  });
+
+  result.issueDisposition.items = result.issueDisposition.items.map((item) => ({
+    ...item,
+    status: 'confirmed' as const,
+    actionability: 'actionable' as const,
+    bucket: 'real-frontend-fix' as const,
+    owner: 'frontend' as const,
+    evidenceStrength: item.issueId === 'ISSUE-MISMATCH' ? 'weak' as const : 'medium' as const,
+    reason: item.issueId === 'ISSUE-STYLE' ? 'style/tap target promoted without productContext.' : item.reason,
+    nextStep: 'Stale report says fix now.'
+  }));
+
+  const audit = runProfessionalAudit(result);
+
+  assert.equal(audit.status, 'failed');
+  assert.equal(audit.findings.some((item) => item.category === 'disposition-quality' && /weak evidence/.test(item.title)), true);
+  assert.equal(audit.findings.some((item) => item.category === 'disposition-quality' && /data-mismatch/.test(item.title)), true);
+  assert.equal(audit.findings.some((item) => item.category === 'disposition-quality' && /Product\/style-sensitive/.test(item.title)), true);
+});
+
 test('professional audit warns when source-enabled proof-ready frontend group lacks file line', () => {
   const result = normalizeResult({
     summary: { url: 'https://example.com/app', title: 'App' },

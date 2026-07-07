@@ -12,6 +12,7 @@ export type ProfessionalAuditCategory =
   | 'overclaim'
   | 'coverage'
   | 'fix-queue'
+  | 'disposition-quality'
   | 'source-evidence'
   | 'scope'
   | 'environment'
@@ -114,6 +115,68 @@ function auditCoverageBoundary(result: QaResult, findings: ProfessionalAuditFind
       title: `QA coverage contains failed dimension(s) while QA sign-off is ${result.qaSignoff.status}.`,
       evidenceRefs: ['qaCoverage.items[failed]', 'qaSignoff.status', ...failedRows.slice(0, 6).map((item) => item.id)],
       recommendation: 'Align QA sign-off with failed coverage rows, or rerun/fix the failed dimension before presenting the report as professionally signable.'
+    });
+  }
+}
+
+
+const productScopeSensitivePattern = /触控目标|tap target|smalltap|按钮层级|视觉密度|style|seo|导出|下载|刷新|分页控件|未发现分页参数|empty state|空状态|颜色|contrast|视觉|样式/i;
+
+function auditDispositionQuality(result: QaResult, findings: ProfessionalAuditFinding[]): void {
+  const actionable = result.issueDisposition.items.filter((item) => item.actionability === 'actionable');
+  const weakHighEvidence = actionable.filter((item) => item.evidenceStrength === 'weak' && (item.severity === 'critical' || item.severity === 'high'));
+  if (weakHighEvidence.length > 0) {
+    add(findings, {
+      severity: 'blocker',
+      category: 'disposition-quality',
+      title: `Actionable high-severity finding(s) have weak evidence: ${weakHighEvidence.slice(0, 6).map((item) => item.issueId).join(', ')}.`,
+      evidenceRefs: ['issueDisposition', ...weakHighEvidence.slice(0, 6).map((item) => item.issueId)],
+      recommendation: 'Downgrade weak high/critical findings to conditional/needs-evidence, or attach deterministic runtime/source/artifact evidence before scheduling them.'
+    });
+  }
+
+  const contradictory = result.issueDisposition.items.filter((item) =>
+    item.actionability === 'actionable' && (item.status === 'needs-source-confirmation' || item.status === 'insufficient-evidence' || item.status === 'tool-limitation' || item.status === 'reference' || item.status === 'product-decision')
+  );
+  if (contradictory.length > 0) {
+    add(findings, {
+      severity: 'blocker',
+      category: 'disposition-quality',
+      title: `Issue disposition marks non-confirmed finding(s) as actionable: ${contradictory.slice(0, 6).map((item) => item.issueId).join(', ')}.`,
+      evidenceRefs: ['issueDisposition', ...contradictory.slice(0, 6).map((item) => item.issueId)],
+      recommendation: 'Keep product decisions, tool limitations, insufficient evidence, references, and source-confirmation gaps out of actionable/fix queues.'
+    });
+  }
+
+  const actionableDataMismatch = actionable.filter((item) => item.category === 'integration-data-mismatch');
+  if (actionableDataMismatch.length > 0) {
+    add(findings, {
+      severity: 'blocker',
+      category: 'disposition-quality',
+      title: `API/UI data-mismatch guess is actionable: ${actionableDataMismatch.slice(0, 6).map((item) => item.issueId).join(', ')}.`,
+      evidenceRefs: ['issueDisposition', 'sourceRuntimeCorrelation', ...actionableDataMismatch.slice(0, 6).map((item) => item.issueId)],
+      recommendation: 'Treat “API has data but UI is empty” as conditional until exact response, DOM/screenshot state, source data-flow binding, and requirement expectation are proven.'
+    });
+  }
+
+  const productContext = result.metadata.config.productContext;
+  const productScopeConfigured = result.scopeReview.status === 'configured' ||
+    productContext.decisions.length > 0 ||
+    productContext.requiredFeatures.length > 0 ||
+    productContext.optionalFeatures.length > 0 ||
+    productContext.outOfScopeFeatures.length > 0 ||
+    productContext.pageType !== 'unknown' ||
+    productContext.deviceScope !== 'unknown';
+  const actionableProductLike = actionable.filter((item) =>
+    item.owner !== 'security' && productScopeSensitivePattern.test(`${item.title} ${item.reason} ${item.nextStep}`) && !productScopeConfigured
+  );
+  if (actionableProductLike.length > 0) {
+    add(findings, {
+      severity: 'blocker',
+      category: 'disposition-quality',
+      title: `Product/style-sensitive finding(s) are actionable without confirmed productContext: ${actionableProductLike.slice(0, 6).map((item) => item.issueId).join(', ')}.`,
+      evidenceRefs: ['issueDisposition', 'scopeReview', 'productContext', ...actionableProductLike.slice(0, 6).map((item) => item.issueId)],
+      recommendation: 'Move style, touch-target, SEO, export/download, refresh, pagination, and empty-state preference findings to product-decision/conditional until PRD/ADR/productContext makes them required.'
     });
   }
 }
@@ -331,6 +394,7 @@ export function runProfessionalAudit(result: QaResult): ProfessionalAuditResult 
   auditCoverageBoundary(result, findings);
   auditOverclaims(result, findings);
   auditFixQueue(result, findings, proofReadyIssueIds);
+  auditDispositionQuality(result, findings);
   auditSourceEvidence(result, findings, proofReadyGroups);
   auditConsistency(result, findings, proofReadyGroups, proofReadyIssueIds);
 
@@ -352,7 +416,7 @@ export function runProfessionalAudit(result: QaResult): ProfessionalAuditResult 
     },
     findings,
     notes: [
-      'Professional audit validates the report contract itself: coverage boundaries, no overclaiming, no non-proof-ready fix queue items, artifact integrity, source evidence, and scope/claim guard alignment.',
+      'Professional audit validates the report contract itself: coverage boundaries, no overclaiming, no non-proof-ready fix queue items, no weak-evidence actionable findings, artifact integrity, source evidence, and scope/claim guard alignment.',
       'A warning result can still be useful for exploratory QA, but user-facing conclusions must include the listed limitations.'
     ]
   };

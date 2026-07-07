@@ -847,6 +847,31 @@ export interface SourceRuntimeCorrelationResult {
   error?: string;
 }
 
+export interface EnvironmentAssessment {
+  checkedAt: string;
+  targetUrl: string;
+  finalUrl?: string;
+  origin?: string;
+  kind: 'production-like' | 'local-dev' | 'local-preview' | 'staging-or-private' | 'file' | 'unknown';
+  confidence: 'high' | 'medium' | 'low';
+  isLocalOrPrivate: boolean;
+  isHttps: boolean;
+  isViteDevServer: boolean;
+  hasHmr: boolean;
+  sameOriginRequestCount: number;
+  devModuleRequestCount: number;
+  hashedAssetCount: number;
+  trust: {
+    functional: 'high' | 'medium' | 'low';
+    performance: 'high' | 'medium' | 'low';
+    security: 'high' | 'medium' | 'low';
+    businessSignoff: 'high' | 'medium' | 'low';
+  };
+  evidence: string[];
+  warnings: string[];
+  recommendations: string[];
+}
+
 export interface SourceHealthScript {
   name: string;
   command: string;
@@ -1220,6 +1245,8 @@ export interface QaSignoffResult {
     failedExceptionCount: number;
     authStateProvided: boolean;
     destructiveActionsAllowed: boolean;
+    environmentKind: EnvironmentAssessment['kind'];
+    environmentConfidence: EnvironmentAssessment['confidence'];
     sourceHealthStatus: SourceHealthResult['status'];
     artifactIntegrityStatus: ArtifactIntegrityResult['status'];
   };
@@ -1412,6 +1439,7 @@ export interface QaResult {
   sourceAnalysis: SourceAnalysisResult;
   sourceRuntimeCorrelation: SourceRuntimeCorrelationResult;
   sourceHealth: SourceHealthResult;
+  environment: EnvironmentAssessment;
   p2: P2TestResult;
   artifactIntegrity: ArtifactIntegrityResult;
   rootCauseGroups: RootCauseGroup[];

@@ -14,7 +14,7 @@ Create a concise triage table with these buckets:
 
 Report raw score separately from adjusted risk. If many findings are skipped, synthetic, or deployment-only, say the score is low-confidence and prioritize the triaged fix list instead of repeating every issue.
 
-Use `qaSignoff` before final sign-off wording. If `qaSignoff.businessValidationConfidence` is not `runtime-verified`, do not describe business validation as fully passed even when `qualityGate.status=pass`.
+Use `qaSignoff` and `environment` before final sign-off wording. If `qaSignoff.businessValidationConfidence` is not `runtime-verified`, or `environment.trust.performance/security` is not high for release claims, do not describe business validation or production readiness as fully passed even when `qualityGate.status=pass`.
 
 Apply an **actionability gate** before presenting final findings:
 

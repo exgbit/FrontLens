@@ -233,9 +233,28 @@ function formatQaSignoff(result: QaResult): string {
 - Interactions passed / total：${signoff.scope.passedInteractionCount} / ${signoff.scope.interactionCount}
 - Auth state provided：${signoff.scope.authStateProvided}
 - Destructive actions allowed：${signoff.scope.destructiveActionsAllowed}
+- Environment：${signoff.scope.environmentKind} / ${signoff.scope.environmentConfidence}
 - Source health / artifacts：${signoff.scope.sourceHealthStatus} / ${signoff.scope.artifactIntegrityStatus}
 
 ${rows.length ? ['| 类型 | 说明 |', '| --- | --- |', ...rows, ''].join('\n') : '未发现额外签核说明。'}
+`;
+}
+
+function formatEnvironmentAssessment(result: QaResult): string {
+  const env = result.environment;
+  const warningRows = env.warnings.map((item) => `| warning | ${markdownEscape(item)} |`);
+  const recommendationRows = env.recommendations.map((item) => `| recommendation | ${markdownEscape(item)} |`);
+  return `## Environment Assessment / 测试环境可信度
+
+- Kind：${env.kind}
+- Confidence：${env.confidence}
+- Target / Final：${markdownEscape(env.targetUrl)} / ${markdownEscape(env.finalUrl ?? '-')}
+- HTTPS / Local-private / Vite-dev / HMR：${env.isHttps} / ${env.isLocalOrPrivate} / ${env.isViteDevServer} / ${env.hasHmr}
+- Same-origin requests / Dev modules / Hashed assets：${env.sameOriginRequestCount} / ${env.devModuleRequestCount} / ${env.hashedAssetCount}
+- Trust（functional / performance / security / business）：${env.trust.functional} / ${env.trust.performance} / ${env.trust.security} / ${env.trust.businessSignoff}
+- Evidence：${env.evidence.length ? markdownEscape(env.evidence.join('；')) : '-'}
+
+${warningRows.length || recommendationRows.length ? ['| Type | Note |', '| --- | --- |', ...warningRows, ...recommendationRows, ''].join('\n') : '环境未发现额外降置信提示。'}
 `;
 }
 
@@ -824,6 +843,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Actionable root causes：${actionableGroups.length}（P0/P1 ${blockerGroups.length}）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
 - Requirement coverage：${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed；provided / inferred：${result.requirementCoverage.summary.providedCount}/${result.requirementCoverage.summary.inferredCount}
+- Environment：${result.environment.kind} / trust performance ${result.environment.trust.performance} / security ${result.environment.trust.security}
 - Source health：${result.sourceHealth.status}；syntax errors ${result.sourceHealth.syntaxErrorCount}；script checks ${result.sourceHealth.scriptChecks.length}（passed ${sourceScriptPassed} / failed-or-timeout ${sourceScriptFailed}）
 - Artifact integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 
@@ -904,6 +924,8 @@ ${formatPhaseErrors(result)}
 ${formatQualityGate(result)}
 
 ${formatQaSignoff(result)}
+
+${formatEnvironmentAssessment(result)}
 
 ${formatRootCauseGroups(result)}
 

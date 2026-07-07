@@ -197,6 +197,11 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
     ...result.qaSignoff.requiredFollowups.map((item) => `<tr><td>follow-up</td><td>${escapeHtml(item)}</td></tr>`),
     ...result.qaSignoff.evidence.map((item) => `<tr><td>evidence</td><td>${escapeHtml(item)}</td></tr>`)
   ].join('\n');
+  const environmentRows = [
+    ...result.environment.warnings.map((item) => `<tr><td>warning</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.environment.recommendations.map((item) => `<tr><td>recommendation</td><td>${escapeHtml(item)}</td></tr>`),
+    ...result.environment.evidence.map((item) => `<tr><td>evidence</td><td>${escapeHtml(item)}</td></tr>`)
+  ].join('\n');
   const rootCauseRows = result.rootCauseGroups
     .slice(0, 80)
     .map((group) => {
@@ -307,6 +312,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Fix Tasks</span><strong>${result.fixTasks.length}</strong></div>
           <div class="metric"><span>QA Gate</span><strong>${escapeHtml(result.qualityGate.status)}</strong></div>
           <div class="metric"><span>QA Sign-off</span><strong>${escapeHtml(result.qaSignoff.status)}</strong></div>
+          <div class="metric"><span>Environment</span><strong>${escapeHtml(result.environment.kind)}</strong></div>
           <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.qualityGate.confidence)}</strong></div>
           <div class="metric"><span>Artifacts</span><strong>${escapeHtml(result.artifactIntegrity.status)}</strong></div>
           <div class="metric"><span>Source</span><strong>${escapeHtml(result.sourceAnalysis.status)}</strong></div>
@@ -344,11 +350,30 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Journeys</span><strong>${result.qaSignoff.scope.passedJourneyCount}/${result.qaSignoff.scope.journeyCount}</strong></div>
           <div class="metric"><span>Interactions</span><strong>${result.qaSignoff.scope.passedInteractionCount}/${result.qaSignoff.scope.interactionCount}</strong></div>
           <div class="metric"><span>Auth</span><strong>${String(result.qaSignoff.scope.authStateProvided)}</strong></div>
+          <div class="metric"><span>Environment</span><strong>${escapeHtml(result.qaSignoff.scope.environmentKind)}</strong></div>
           <div class="metric"><span>Source health</span><strong>${escapeHtml(result.qaSignoff.scope.sourceHealthStatus)}</strong></div>
         </div>
         <table>
           <thead><tr><th>Type</th><th>Note</th></tr></thead>
           <tbody>${qaSignoffRows || '<tr><td colspan="2">No QA sign-off notes</td></tr>'}</tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Environment Assessment / 测试环境可信度</h2>
+        <div class="grid">
+          <div class="metric"><span>Kind</span><strong>${escapeHtml(result.environment.kind)}</strong></div>
+          <div class="metric"><span>Confidence</span><strong>${escapeHtml(result.environment.confidence)}</strong></div>
+          <div class="metric"><span>Functional trust</span><strong>${escapeHtml(result.environment.trust.functional)}</strong></div>
+          <div class="metric"><span>Performance trust</span><strong>${escapeHtml(result.environment.trust.performance)}</strong></div>
+          <div class="metric"><span>Security trust</span><strong>${escapeHtml(result.environment.trust.security)}</strong></div>
+          <div class="metric"><span>Vite dev</span><strong>${String(result.environment.isViteDevServer)}</strong></div>
+          <div class="metric"><span>Dev modules</span><strong>${result.environment.devModuleRequestCount}</strong></div>
+          <div class="metric"><span>Hashed assets</span><strong>${result.environment.hashedAssetCount}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>Type</th><th>Note</th></tr></thead>
+          <tbody>${environmentRows || '<tr><td colspan="2">No environment caveats</td></tr>'}</tbody>
         </table>
       </section>
 

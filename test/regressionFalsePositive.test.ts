@@ -22,6 +22,7 @@ import { redactText, redactUrl } from '../src/utils/redact.ts';
 import { isNativeResourceLoadConsole } from '../src/utils/console.ts';
 import { formatProfessionalReview, reportArtifactPath } from '../src/reporters/markdownReporter.ts';
 import { normalizeResult } from '../src/resultNormalizer.ts';
+import { buildEnvironmentAssessment } from '../src/environment/environmentAssessment.ts';
 import type { AnalyzerContext, Issue, NetworkRecord, PageModel } from '../src/types.ts';
 
 function networkRecord(input: Partial<NetworkRecord> & { id: string; url: string }): NetworkRecord {
@@ -151,6 +152,40 @@ test('dev server module graph does not become production request or transfer fin
   assert.equal(analyzeNetwork(ctx, factory).issues.some((issue) => /请求数量过多/.test(issue.title)), false);
   assert.equal(analyzeResources(ctx, factory).issues.some((issue) => /资源体积过大/.test(issue.title)), false);
   assert.equal(analyzePerformance(ctx, factory).some((issue) => /传输体积过大/.test(issue.title)), false);
+});
+
+test('environment assessment identifies Vite dev server and lowers production trust', () => {
+  const config = createDefaultConfig('http://127.0.0.1:5173/credentials');
+  const pageModel: PageModel = {
+    url: 'http://127.0.0.1:5173/credentials',
+    title: 'Credentials',
+    meta: { h1: [], openGraph: {} },
+    breadcrumbs: [],
+    headings: [],
+    structureTree: '',
+    components: [],
+    forms: [],
+    tables: [],
+    buttons: [],
+    inputs: [],
+    images: [],
+    links: [],
+    stats: { domNodes: 10, visibleTextLength: 100, bodyTextSample: 'ok' }
+  };
+  const env = buildEnvironmentAssessment({
+    config,
+    pageModel,
+    networkRecords: [
+      networkRecord({ id: 'REQ-VITE', url: 'http://127.0.0.1:5173/@vite/client', resourceType: 'script', status: 200, ok: true }),
+      networkRecord({ id: 'REQ-SRC', url: 'http://127.0.0.1:5173/src/App.vue', resourceType: 'script', status: 200, ok: true })
+    ]
+  });
+
+  assert.equal(env.kind, 'local-dev');
+  assert.equal(env.isViteDevServer, true);
+  assert.equal(env.trust.performance, 'low');
+  assert.equal(env.trust.security, 'low');
+  assert.equal(env.warnings.some((item) => /dev-source/.test(item)), true);
 });
 
 test('exception feedback heuristic rejects empty states and KPI labels as error feedback', () => {

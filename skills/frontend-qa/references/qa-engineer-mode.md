@@ -16,7 +16,7 @@ A professional-test-engineer answer must include:
 6. **Regression pack**: exact FrontLens rerun command, any journey config needed, and focused verification steps after fixes.
 7. **Sign-off status**: one of `pass`, `pass-with-risks`, `blocked`, or `fail`, with confidence (`high`, `medium`, `low`) and explicit blockers.
 
-Use `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `qualityGate`, `requirementCoverage`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, or relevant journeys are missing.
+Use `result.json.qaSignoff` as the first machine-readable professional sign-off, then inspect `qualityGate`, `requirementCoverage`, `environment`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups` for the supporting evidence. For example, a raw `qualityGate.pass` can still be `qaSignoff.pass-with-risks` when requirements, role, test data, non-production environment, or relevant journeys are missing.
 
 ## Inputs a human QA would ask for
 
@@ -43,6 +43,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Forms**: validation, required fields, boundary values, duplicate submit, success/failure feedback.
 - **Permissions**: visible/disabled dangerous actions, unauthorized API status, role-specific visibility.
 - **Accessibility**: accessible names, labels, keyboard/focus, contrast. Treat hard a11y evidence as real defects; treat touch-size tradeoffs as product/device scope unless mobile is in scope.
+- **Environment**: inspect `environment.kind` and `environment.trust`; use dev server only for function/source correlation, local/private preview for pre-production checks, and production-like HTTPS for release security/performance sign-off.
 - **Performance**: use production build/preview for bundle/security conclusions; use dev server only for function/source correlation.
 - **Security passive checks**: separate frontend code issues from deployment headers/TLS/gateway work.
 - **Regression stability**: compare against previous result fingerprints and flag added/resolved/persistent issues.

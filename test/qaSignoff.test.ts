@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDefaultConfig } from '../src/defaultConfig.ts';
 import { buildQaSignoff } from '../src/signoff/qaSignoff.ts';
-import type { ArtifactIntegrityResult, JourneyTestResult, QaQualityGate, RequirementCoverageResult, SourceHealthResult } from '../src/types.ts';
+import type { ArtifactIntegrityResult, EnvironmentAssessment, JourneyTestResult, QaQualityGate, RequirementCoverageResult, SourceHealthResult } from '../src/types.ts';
 
 function qualityGate(overrides: Partial<QaQualityGate> = {}): QaQualityGate {
   return {
@@ -71,6 +71,28 @@ function artifacts(overrides: Partial<ArtifactIntegrityResult> = {}): ArtifactIn
     entries: [],
     missing: [],
     summary: 'ok',
+    ...overrides
+  };
+}
+
+function environment(overrides: Partial<EnvironmentAssessment> = {}): EnvironmentAssessment {
+  return {
+    checkedAt: '',
+    targetUrl: 'http://127.0.0.1:5173',
+    finalUrl: 'http://127.0.0.1:5173',
+    kind: 'local-dev',
+    confidence: 'high',
+    isLocalOrPrivate: true,
+    isHttps: false,
+    isViteDevServer: true,
+    hasHmr: true,
+    sameOriginRequestCount: 3,
+    devModuleRequestCount: 2,
+    hashedAssetCount: 0,
+    trust: { functional: 'high', performance: 'low', security: 'low', businessSignoff: 'medium' },
+    evidence: ['hmr:true'],
+    warnings: ['dev'],
+    recommendations: ['preview'],
     ...overrides
   };
 }
@@ -200,4 +222,23 @@ test('qa signoff fails on explicitly executed source script blockers', () => {
   assert.equal(result.status, 'fail');
   assert.equal(result.blockers.some((item) => item.includes('sourceHealth script checks failed')), true);
   assert.equal(result.requiredFollowups.some((item) => item.includes('build/typecheck/lint')), false);
+});
+
+test('qa signoff records environment trust risks for dev server runs', () => {
+  const result = buildQaSignoff({
+    config: createDefaultConfig('http://127.0.0.1:5173'),
+    qualityGate: qualityGate(),
+    requirementCoverage: requirements(),
+    sourceHealth: sourceHealth({ packageScripts: [] }),
+    artifactIntegrity: artifacts(),
+    environment: environment(),
+    journeyTests: [journey('passed')],
+    interactionTests: [],
+    exceptionSimulations: [],
+    pageDomNodes: 100
+  });
+
+  assert.equal(result.scope.environmentKind, 'local-dev');
+  assert.equal(result.risks.some((item) => item.includes('dev server')), true);
+  assert.equal(result.requiredFollowups.some((item) => item.includes('build + preview')), true);
 });

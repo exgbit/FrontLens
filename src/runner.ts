@@ -28,6 +28,7 @@ import { dedupeIssues } from './fix/issueDedupe.js';
 import { generateFixTasks } from './fix/fixTasks.js';
 import { buildQualityGate } from './qualityGate.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
+import { buildEnvironmentAssessment } from './environment/environmentAssessment.js';
 import { buildRequirementCoverage } from './requirements/requirementCoverage.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
 import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
@@ -37,7 +38,7 @@ import { analyzeSource, createEmptySourceAnalysis } from './source/sourceAnalyze
 import { buildSourceRuntimeCorrelation, createEmptySourceRuntimeCorrelation } from './source/sourceRuntimeCorrelation.js';
 import { analyzeSourceHealth, createEmptySourceHealth } from './source/sourceHealth.js';
 import { sessionStorageSidecarPath } from './auth.js';
-import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult } from './types.js';
+import type { AccessibilityCheckResult, ApiContractResult, ArtifactIndex, BrowserName, CoverageResult, EnvironmentAssessment, ExceptionSimulationResult, FixTask, FrontLensConfig, InteractionTestResult, Issue, JourneyTestResult, PageModel, P2TestResult, PerformanceMetrics, PermissionCheckResult, PhaseError, QaResult, QaRunInput, RealtimeResult, ResourceRecord, ResponsiveCheckResult, SecurityScanResult, SourceAnalysisResult, SourceHealthResult, SourceRuntimeCorrelationResult } from './types.js';
 import { ensureDir, resolveOutputDir, writeJson } from './utils/fs.js';
 import { RESULT_SCHEMA_VERSION } from './resultNormalizer.js';
 import { redactText, redactUrl } from './utils/redact.js';
@@ -682,6 +683,11 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
       url: redactUrl(config.target.url)
     }
   };
+  const environment: EnvironmentAssessment = buildEnvironmentAssessment({
+    config,
+    pageModel,
+    networkRecords: networkCollector.list()
+  });
   const rootCauseGroups = buildRootCauseGroups(issues, resultConfig);
   const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
   const initialArtifactIntegrity = createEmptyArtifactIntegrity();
@@ -704,6 +710,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     requirementCoverage,
     sourceHealth,
     artifactIntegrity: initialArtifactIntegrity,
+    environment,
     journeyTests,
     interactionTests,
     exceptionSimulations,
@@ -756,6 +763,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     sourceAnalysis,
     sourceRuntimeCorrelation,
     sourceHealth,
+    environment,
     p2,
     artifactIntegrity: initialArtifactIntegrity,
     rootCauseGroups,

@@ -1,4 +1,4 @@
-import type { ArtifactIntegrityResult, FrontLensConfig, InteractionTestResult, JourneyTestResult, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult } from '../types.js';
+import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyTestResult, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult } from '../types.js';
 
 function passedCount(items: Array<{ status: string }>): number {
   return items.filter((item) => item.status === 'passed').length;
@@ -57,6 +57,7 @@ export function buildQaSignoff(input: {
   requirementCoverage: RequirementCoverageResult;
   sourceHealth: SourceHealthResult;
   artifactIntegrity: ArtifactIntegrityResult;
+  environment?: EnvironmentAssessment;
   journeyTests: JourneyTestResult[];
   interactionTests: InteractionTestResult[];
   exceptionSimulations: Array<{ status: string }>;
@@ -99,6 +100,16 @@ export function buildQaSignoff(input: {
     if (failedSourceScriptChecks.length > 0) blockers.push(`sourceHealth script checks failed: ${failedSourceScriptChecks.map((check) => `${check.scriptName}(${check.status})`).join(', ')}.`);
   }
   if (input.artifactIntegrity.status === 'failed') risks.push(`artifactIntegrity failed: ${input.artifactIntegrity.missingCount} missing artifact reference(s).`);
+  if (input.environment) {
+    evidence.push(`environment ${input.environment.kind} (performance trust ${input.environment.trust.performance}, security trust ${input.environment.trust.security})`);
+    if (input.environment.isViteDevServer) {
+      risks.push('当前目标为 dev server/source-module 模式；生产性能、安全泄漏、HMR/WebSocket 和资源请求数结论需要 build+preview 复核。');
+      followups.push('运行 build + preview 后复测性能、安全头、资源体积和覆盖率模块。');
+    } else if (input.environment.trust.performance !== 'high' || input.environment.trust.security !== 'high') {
+      risks.push(`当前环境为 ${input.environment.kind}；性能/安全发布结论置信度 ${input.environment.trust.performance}/${input.environment.trust.security}。`);
+      followups.push('在生产等价 HTTPS 域名或正式 staging 上复测部署安全、TLS、CDN、Cookie 和性能预算。');
+    }
+  }
   if (providedRequirementCount === 0) {
     gaps.push('未提供 PRD/验收标准；只能进行页面能力推断，不能给出完整业务通过结论。');
     followups.push('提供 PRD/验收标准，并用 selectors/expectedTexts/journeySteps 编码为 requirements。');
@@ -173,6 +184,8 @@ export function buildQaSignoff(input: {
       failedExceptionCount,
       authStateProvided: Boolean(input.config.auth.storageState || input.config.auth.sessionStorageState),
       destructiveActionsAllowed,
+      environmentKind: input.environment?.kind ?? 'unknown',
+      environmentConfidence: input.environment?.confidence ?? 'low',
       sourceHealthStatus: input.sourceHealth.status,
       artifactIntegrityStatus: input.artifactIntegrity.status
     },

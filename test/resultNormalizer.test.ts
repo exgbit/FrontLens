@@ -46,6 +46,8 @@ test('normalizeResult backfills stable contract fields and synthesized fix tasks
   assert.equal(result.sourceHealth.status, 'skipped');
   assert.equal(result.sourceHealth.syntaxErrorCount, 0);
   assert.equal(result.sourceHealth.scriptChecks.length, 0);
+  assert.equal(result.environment.kind, 'unknown');
+  assert.equal(result.environment.trust.performance, 'low');
   assert.equal(result.fixTasks.length, 1);
   assert.equal(result.rootCauseGroups.length, 1);
   assert.equal(result.rootCauseGroups[0].issueCount, 1);

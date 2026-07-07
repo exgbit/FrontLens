@@ -6,6 +6,7 @@ import type {
   ConsoleSection,
   CoverageResult,
   FrontLensConfig,
+  EnvironmentAssessment,
   Issue,
   NetworkSection,
   PageModel,
@@ -29,8 +30,9 @@ import { createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';
 import { buildIssueDisposition } from './disposition/issueDisposition.js';
 import { buildQaSignoff } from './signoff/qaSignoff.js';
+import { createEmptyEnvironmentAssessment } from './environment/environmentAssessment.js';
 
-export const RESULT_SCHEMA_VERSION = '1.14.0';
+export const RESULT_SCHEMA_VERSION = '1.15.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -562,6 +564,44 @@ function normalizeArtifactIntegrity(raw: unknown): QaResult['artifactIntegrity']
   };
 }
 
+function trustValue(value: unknown, fallback: 'high' | 'medium' | 'low' = 'low'): 'high' | 'medium' | 'low' {
+  return value === 'high' || value === 'medium' || value === 'low' ? value : fallback;
+}
+
+function environmentKind(value: unknown): EnvironmentAssessment['kind'] {
+  return value === 'production-like' || value === 'local-dev' || value === 'local-preview' || value === 'staging-or-private' || value === 'file' || value === 'unknown' ? value : 'unknown';
+}
+
+function normalizeEnvironment(raw: unknown, fallbackUrl = ''): EnvironmentAssessment {
+  const empty = createEmptyEnvironmentAssessment(fallbackUrl);
+  if (!isRecord(raw)) return empty;
+  const trust = isRecord(raw.trust) ? raw.trust : {};
+  return {
+    checkedAt: asString(raw.checkedAt, empty.checkedAt),
+    targetUrl: asString(raw.targetUrl, empty.targetUrl),
+    finalUrl: optionalString(raw.finalUrl),
+    origin: optionalString(raw.origin),
+    kind: environmentKind(raw.kind),
+    confidence: trustValue(raw.confidence),
+    isLocalOrPrivate: Boolean(raw.isLocalOrPrivate),
+    isHttps: Boolean(raw.isHttps),
+    isViteDevServer: Boolean(raw.isViteDevServer),
+    hasHmr: Boolean(raw.hasHmr),
+    sameOriginRequestCount: asNumber(raw.sameOriginRequestCount),
+    devModuleRequestCount: asNumber(raw.devModuleRequestCount),
+    hashedAssetCount: asNumber(raw.hashedAssetCount),
+    trust: {
+      functional: trustValue(trust.functional),
+      performance: trustValue(trust.performance),
+      security: trustValue(trust.security),
+      businessSignoff: trustValue(trust.businessSignoff)
+    },
+    evidence: asArray<string>(raw.evidence).filter((item) => typeof item === 'string'),
+    warnings: asArray<string>(raw.warnings).filter((item) => typeof item === 'string'),
+    recommendations: asArray<string>(raw.recommendations).filter((item) => typeof item === 'string')
+  };
+}
+
 function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): QaResult['qualityGate'] {
   if (!isRecord(raw)) return fallback;
   const status = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
@@ -602,6 +642,7 @@ function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaRe
   const artifactIntegrityStatus = scope.artifactIntegrityStatus === 'passed' || scope.artifactIntegrityStatus === 'warning' || scope.artifactIntegrityStatus === 'failed' || scope.artifactIntegrityStatus === 'skipped'
     ? scope.artifactIntegrityStatus
     : fallback.scope.artifactIntegrityStatus;
+  const environmentKindValue = environmentKind(scope.environmentKind);
   return {
     status,
     confidence,
@@ -624,6 +665,8 @@ function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaRe
       failedExceptionCount: asNumber(scope.failedExceptionCount, fallback.scope.failedExceptionCount),
       authStateProvided: typeof scope.authStateProvided === 'boolean' ? scope.authStateProvided : fallback.scope.authStateProvided,
       destructiveActionsAllowed: typeof scope.destructiveActionsAllowed === 'boolean' ? scope.destructiveActionsAllowed : fallback.scope.destructiveActionsAllowed,
+      environmentKind: environmentKindValue === 'unknown' ? fallback.scope.environmentKind : environmentKindValue,
+      environmentConfidence: trustValue(scope.environmentConfidence, fallback.scope.environmentConfidence),
       sourceHealthStatus,
       artifactIntegrityStatus
     },
@@ -906,6 +949,7 @@ export function normalizeResult(raw: unknown): QaResult {
   const sourceAnalysis = normalizeSourceAnalysis(raw.sourceAnalysis, metadataConfig);
   const sourceRuntimeCorrelation = normalizeSourceRuntimeCorrelation(raw.sourceRuntimeCorrelation);
   const sourceHealth = normalizeSourceHealth(raw.sourceHealth);
+  const environment = normalizeEnvironment(raw.environment, metadataConfig.target.url);
   const rootCauseGroups = buildRootCauseGroups(issues, metadataConfig);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
   const qualityGateFallback = buildQualityGate({
@@ -928,6 +972,7 @@ export function normalizeResult(raw: unknown): QaResult {
     requirementCoverage,
     sourceHealth,
     artifactIntegrity,
+    environment,
     journeyTests,
     interactionTests,
     exceptionSimulations,
@@ -957,6 +1002,7 @@ export function normalizeResult(raw: unknown): QaResult {
     sourceAnalysis,
     sourceRuntimeCorrelation,
     sourceHealth,
+    environment,
     p2: normalizeP2(raw.p2),
     artifactIntegrity,
     rootCauseGroups,

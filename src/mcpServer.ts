@@ -276,6 +276,13 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         apiContract: result.apiContract.summary,
         realtime: result.realtime.summary,
         requirementCoverage: result.requirementCoverage.summary,
+        environment: {
+          kind: result.environment.kind,
+          confidence: result.environment.confidence,
+          trust: result.environment.trust,
+          isViteDevServer: result.environment.isViteDevServer,
+          isLocalOrPrivate: result.environment.isLocalOrPrivate
+        },
         sourceHealth: {
           status: result.sourceHealth.status,
           syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
@@ -318,6 +325,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           score: result.security.score,
           summary: result.security.summary
         },
+        environment: result.environment,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,
         artifactIntegrity: result.artifactIntegrity,

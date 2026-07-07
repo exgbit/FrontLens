@@ -232,6 +232,7 @@ async function handleResultCommand(command: 'inspect' | 'issues' | 'root-causes'
             score: result.security.score,
             summary: result.security.summary
           },
+          environment: result.environment,
           requirementCoverage: result.requirementCoverage,
           sourceHealth: result.sourceHealth,
           artifactIntegrity: result.artifactIntegrity,
@@ -693,6 +694,13 @@ async function main(): Promise<void> {
           apiContract: result.apiContract.summary,
           realtime: result.realtime.summary,
           requirementCoverage: result.requirementCoverage.summary,
+          environment: {
+            kind: result.environment.kind,
+            confidence: result.environment.confidence,
+            trust: result.environment.trust,
+            isViteDevServer: result.environment.isViteDevServer,
+            isLocalOrPrivate: result.environment.isLocalOrPrivate
+          },
           sourceHealth: {
             status: result.sourceHealth.status,
             syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
@@ -724,6 +732,7 @@ async function main(): Promise<void> {
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);
     console.log(`Requirement coverage: ${result.requirementCoverage.summary.passedCount}/${result.requirementCoverage.summary.requirementCount} passed, ${result.requirementCoverage.summary.highPriorityGapCount} high-priority gaps`);
+    console.log(`Environment: ${result.environment.kind}, trust perf/security ${result.environment.trust.performance}/${result.environment.trust.security}`);
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
     console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);

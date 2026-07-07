@@ -86,6 +86,7 @@ Tools exposed:
 - `frontlens_security`: return passive security score, checks, evidence, and security issue suggestions.
 - `frontlens_fix_tasks`: return machine-executable fix tasks for downstream repair skills.
 - `frontlens_diff`: compare two `result.json` files by stable fingerprints.
+- `frontlens_env_compare`: run dev/source-module and build/preview QA, then classify persistent, dev-only, preview-only, and dev-artifact findings.
 - `frontlens_suggestions`: return frontend/backend/product/test suggestions.
 
 `frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, and `rootCauseGroups`; use `qaSignoff` plus `environment.trust` and `pageProfile.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.

@@ -1308,6 +1308,42 @@ export interface ResultDiff {
   };
 }
 
+export interface EnvironmentComparisonRunSummary {
+  url: string;
+  environmentKind: EnvironmentAssessment['kind'];
+  performanceTrust: EnvironmentAssessment['trust']['performance'];
+  securityTrust: EnvironmentAssessment['trust']['security'];
+  score: number;
+  issueCount: number;
+  qaSignoffStatus: QaSignoffResult['status'];
+  qaSignoffConfidence: QaSignoffResult['confidence'];
+  reportPath?: string;
+  jsonPath?: string;
+}
+
+export interface EnvironmentComparisonResult {
+  checkedAt: string;
+  outputDir: string;
+  dev: EnvironmentComparisonRunSummary;
+  preview: EnvironmentComparisonRunSummary;
+  diff: ResultDiff;
+  interpretation: {
+    productionReadiness: 'production-evidence' | 'pre-production-evidence' | 'invalid-preview' | 'blocked';
+    persistentIssueCount: number;
+    devOnlyIssueCount: number;
+    previewOnlyIssueCount: number;
+    highConfidenceIssueCount: number;
+    devArtifactIssueCount: number;
+  };
+  recommendations: string[];
+  artifacts: {
+    json: string;
+    markdown: string;
+    devResult?: string;
+    previewResult?: string;
+  };
+}
+
 export interface ArtifactIntegrityEntry {
   source: string;
   path: string;

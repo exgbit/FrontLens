@@ -163,3 +163,8 @@ When the source reveals the same unhandled-state pattern may exist on adjacent p
 For false positives, include the raw issue id and the exact contradiction: source line, exception simulation id, scan phase, ADR, or deployment ownership.
 
 For artifact evidence, cite report-relative paths and only cite files that exist. If a report generated on another OS uses absolute paths such as `D:\...` or `/tmp/...`, rewrite them to report-relative paths when possible; otherwise mark them as non-portable artifact references.
+
+
+## Dev vs preview comparison
+
+When a run targets Vite/dev-source mode and the user needs production-readiness, run `env-compare` after starting a build/preview server. Treat persistent findings as higher confidence, preview-only findings as production-build/deployment candidates, and dev-only findings as likely dev artifacts unless source/runtime evidence confirms an implementation defect.

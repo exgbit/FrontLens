@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { stdin, stdout } from 'node:process';
 import { runQa } from './runner.js';
 import { runCompatibility } from './matrix.js';
+import { runEnvironmentComparison } from './compare/environmentComparison.js';
 import type { BrowserName, Issue, QaResult, QaRunInput, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
@@ -165,6 +166,43 @@ function listTools(): Record<string, unknown> {
         name: 'frontlens_suggestions',
         description: 'Read result.json and return frontend/backend/product/test fix suggestions.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_env_compare',
+        description: 'Run QA against dev/source-module and build/preview URLs, then compare which findings are dev artifacts, preview-only, or persistent.',
+        inputSchema: schema(
+          {
+            devUrl: { type: 'string', description: 'Vite/dev/source-module URL.' },
+            previewUrl: { type: 'string', description: 'Build/preview/production-like URL.' },
+            outputDir: { type: 'string' },
+            output: { type: 'string' },
+            configPath: { type: 'string' },
+            config: { type: 'string' },
+            requirementsPath: { type: 'string' },
+            requirements: { type: 'string' },
+            sourceRoot: { type: 'string' },
+            sourceRunScripts: { type: 'boolean' },
+            sourceScripts: { type: 'array', items: { type: 'string' } },
+            sourceScriptTimeoutMs: { type: 'number' },
+            browser: { type: 'string', enum: ['chromium', 'firefox', 'webkit'] },
+            headless: { type: 'boolean' },
+            storageState: { type: 'string' },
+            sessionStorageState: { type: 'string' },
+            trace: { type: 'boolean' },
+            video: { type: 'boolean' },
+            screenshot: { type: 'boolean' },
+            simulateExceptions: { type: 'boolean' },
+            ai: { type: 'boolean' },
+            coverage: { type: 'boolean' },
+            security: { type: 'boolean' },
+            journeys: { type: 'boolean' },
+            contract: { type: 'boolean' },
+            realtime: { type: 'boolean' },
+            p2: { type: 'boolean' },
+            blockMutatingRequests: { type: 'boolean' }
+          },
+          ['devUrl', 'previewUrl']
+        )
       },
       {
         name: 'frontlens_matrix',
@@ -437,6 +475,37 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           suggestion: issue.suggestion
         }));
       return textContent(suggestions);
+    }
+    case 'frontlens_env_compare': {
+      const args = validateArgs(params.arguments ?? {}, ['devUrl', 'previewUrl', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['devUrl', 'previewUrl']);
+      const result = await runEnvironmentComparison({
+        devUrl: requireString(args, 'devUrl'),
+        previewUrl: requireString(args, 'previewUrl'),
+        outputDir: typeof args.outputDir === 'string' ? args.outputDir : typeof args.output === 'string' ? args.output : undefined,
+        configPath: typeof args.configPath === 'string' ? args.configPath : typeof args.config === 'string' ? args.config : undefined,
+        requirementsPath: typeof args.requirementsPath === 'string' ? args.requirementsPath : typeof args.requirements === 'string' ? args.requirements : undefined,
+        sourceRoot: typeof args.sourceRoot === 'string' ? args.sourceRoot : undefined,
+        sourceRunScripts: typeof args.sourceRunScripts === 'boolean' ? args.sourceRunScripts : undefined,
+        sourceScripts: Array.isArray(args.sourceScripts) && args.sourceScripts.every((item) => typeof item === 'string') ? args.sourceScripts : undefined,
+        sourceScriptTimeoutMs: typeof args.sourceScriptTimeoutMs === 'number' && Number.isFinite(args.sourceScriptTimeoutMs) ? args.sourceScriptTimeoutMs : undefined,
+        browser: normalizeBrowser(args.browser),
+        headless: typeof args.headless === 'boolean' ? args.headless : undefined,
+        storageState: typeof args.storageState === 'string' ? args.storageState : undefined,
+        sessionStorageState: typeof args.sessionStorageState === 'string' ? args.sessionStorageState : undefined,
+        trace: typeof args.trace === 'boolean' ? args.trace : undefined,
+        video: typeof args.video === 'boolean' ? args.video : undefined,
+        screenshot: typeof args.screenshot === 'boolean' ? args.screenshot : undefined,
+        simulateExceptions: typeof args.simulateExceptions === 'boolean' ? args.simulateExceptions : undefined,
+        ai: typeof args.ai === 'boolean' ? args.ai : undefined,
+        coverage: typeof args.coverage === 'boolean' ? args.coverage : undefined,
+        security: typeof args.security === 'boolean' ? args.security : undefined,
+        journeys: typeof args.journeys === 'boolean' ? args.journeys : undefined,
+        contract: typeof args.contract === 'boolean' ? args.contract : undefined,
+        realtime: typeof args.realtime === 'boolean' ? args.realtime : undefined,
+        p2: typeof args.p2 === 'boolean' ? args.p2 : undefined,
+        blockMutatingRequests: typeof args.blockMutatingRequests === 'boolean' ? args.blockMutatingRequests : undefined
+      });
+      return textContent(result);
     }
     case 'frontlens_matrix': {
       const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'browsers', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);

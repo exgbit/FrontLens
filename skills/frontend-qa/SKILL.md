@@ -118,7 +118,7 @@ If the user selects "all/default", run the full default QA command. If the user 
 
 6. If the sandbox blocks Chromium launch on macOS, rerun the same QA command with escalated execution.
 7. If source-aware analysis is enabled, the worker first verifies the target page is reachable from the intended deployment URL. If not, it follows `references/source-code-correlation.md` to build/start the local app, then reruns the reachability check before QA.
-8. The worker reads `qa-review.md` for the calibrated professional summary, `result.json` for structured findings, `report.md` for detailed narrative evidence, `references/triage-guidelines.md` for post-run calibration, and `references/source-code-correlation.md` when a source root is available. Inspect `result.json.environment` before performance/security/realtime/release claims and `result.json.pageProfile` before product/design/scope claims: dev-source mode is valid for functional/source correlation but not production bundle/security conclusions; heuristic pageProfile is a prompt for scope questions, not confirmed PRD. If `sourceAnalysis.status=passed`, use its route/import/API/state-signal indexes as the first source map before manually grepping files; if `sourceRuntimeCorrelation.status=passed`, use its `links[]` as the guard for API/UI binding claims; if `sourceHealth.status=failed`, treat syntax errors and failed/timed-out source script checks as source-confirmed blockers before interpreting runtime symptoms.
+8. The worker reads `qa-review.md` for the calibrated professional summary, `result.json` for structured findings, `report.md` for detailed narrative evidence, `references/triage-guidelines.md` for post-run calibration, and `references/source-code-correlation.md` when a source root is available. Inspect `result.json.environment` before performance/security/realtime/release claims and `result.json.pageProfile` before product/design/scope claims. If the target is local-dev and the user asked for production-readiness, build/start preview and run `env-compare` whenever practical. Dev-source mode is valid for functional/source correlation but not production bundle/security conclusions; heuristic pageProfile is a prompt for scope questions, not confirmed PRD. If `sourceAnalysis.status=passed`, use its route/import/API/state-signal indexes as the first source map before manually grepping files; if `sourceRuntimeCorrelation.status=passed`, use its `links[]` as the guard for API/UI binding claims; if `sourceHealth.status=failed`, treat syntax errors and failed/timed-out source script checks as source-confirmed blockers before interpreting runtime symptoms.
 9. The worker must bucket findings into real frontend fixes, backend/API fixes, deployment/security config, product decisions, and false positives/tool limitations. For real frontend fixes, include source file paths and line numbers that confirm the defect and the likely fix surface. Source-aware triage must also retain source-discovered defects even when the raw browser finding was downgraded as dev-mode/synthetic noise; for example, a dev-server request-count finding may be false as a production metric but still reveal a real eager route import/code-splitting problem.
 10. Before returning fixes, read `issueDisposition` to separate actionable, conditional, and non-actionable raw findings, then group actionable/conditional raw issues by implementation root cause. Do not treat raw issue count, heuristic AI issue count, or `fixTasks[]` length as workload. If an auto-generated suggestion does not match its evidence/category, call it template noise and replace it with an evidence-specific suggestion.
 11. Apply the professional QA actionability gate: a bug needs user impact, evidence, reproducibility, and an owner/fix surface. Move style/product choices and single-signal guesses to non-defect observations.
@@ -185,6 +185,18 @@ Run headed for debugging:
 
 ```bash
 node dist/cli.js qa --url "https://example.com" --headed --output "reports/frontlens/debug"
+```
+
+Compare dev vs build/preview when dev-server noise affects performance/security conclusions:
+
+```bash
+node dist/cli.js env-compare \
+  --dev-url "http://127.0.0.1:5173/admin/users" \
+  --preview-url "http://127.0.0.1:4173/admin/users" \
+  --source-root "/path/to/frontend" \
+  --output "reports/frontlens/users-env" \
+  --no-trace \
+  --json
 ```
 
 Run browser compatibility matrix:
@@ -266,6 +278,7 @@ node dist/cli.js disposition --report "reports/frontlens/users/result.json"
 node dist/cli.js root-causes --report "reports/frontlens/users/result.json"
 node dist/cli.js fix-tasks --report "reports/frontlens/users/result.json"
 node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "reports/frontlens/new/result.json" --output "reports/frontlens/diff"
+node dist/cli.js env-compare --dev-url "http://127.0.0.1:5173/users" --preview-url "http://127.0.0.1:4173/users" --output "reports/frontlens/users-env"
 ```
 
 Enable upload testing only when explicitly allowed:
@@ -356,6 +369,7 @@ node dist/cli.js disposition --report "reports/frontlens/users/result.json"
 node dist/cli.js root-causes --report "reports/frontlens/users/result.json"
 node dist/cli.js fix-tasks --report "reports/frontlens/users/result.json"
 node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "reports/frontlens/new/result.json"
+node dist/cli.js env-compare --dev-url "http://127.0.0.1:5173/users" --preview-url "http://127.0.0.1:4173/users"
 node dist/cli.js suggestions --report "reports/frontlens/users/result.json"
 ```
 
@@ -372,7 +386,7 @@ Summarize:
 - top backend/API fixes;
 - API contract / GraphQL / WebSocket / SSE findings;
 - machine-executable fix task count and important task IDs;
-- generated artifact paths and artifact integrity status;
+- generated artifact paths and artifact integrity status; env-compare artifact path when dev/preview dual-run was used;
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation; include pageProfile questions when product scope is inferred rather than configured;
 - raw score plus confidence/adjusted-risk note when score is distorted by skipped/synthetic/deployment-only findings;
 - raw issue count separated from implementation root-cause count;

@@ -113,3 +113,8 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 node dist/cli.js qa ...
 ```
 ```
+
+
+## Dev vs preview comparison
+
+When a run targets Vite/dev-source mode and the user needs production-readiness, run `env-compare` after starting a build/preview server. Treat persistent findings as higher confidence, preview-only findings as production-build/deployment candidates, and dev-only findings as likely dev artifacts unless source/runtime evidence confirms an implementation defect.

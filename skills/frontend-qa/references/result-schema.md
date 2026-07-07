@@ -808,7 +808,43 @@ Use `qaSignoff.status` for release/sign-off conversations and `qaSignoff.busines
 
 For batched GraphQL POSTs, `network.requests[]` keeps one request record while `realtime.graphql[]` expands the batch into one entry per operation. Those entries share the same `networkRequestId` and carry per-operation `operationName`, `operationType`, `variablesPreview`, and `hasErrors` where response batches can be parsed.
 
-Use `node dist/cli.js diff --before old/result.json --after new/result.json` to compare reports by stable fingerprints. The diff returns added, resolved, persistent, and severity-changed issues plus score/security/performance deltas.
+Use `node dist/cli.js diff --before old/result.json --after new/result.json` to compare reports by stable fingerprints. The diff returns added, resolved, persistent, and severity-changed issues plus score/security/performance deltas. Use `node dist/cli.js env-compare --dev-url <dev> --preview-url <preview>` when a Vite/dev-source run needs production-build validation; it writes `environment-comparison.json` and `environment-comparison.md`, classifying persistent, dev-only, preview-only, and dev-artifact candidate findings.
+
+
+`EnvironmentComparisonResult` is emitted by `env-compare` / `frontlens_env_compare` and is separate from a single-page `QaResult`:
+
+```ts
+interface EnvironmentComparisonResult {
+  checkedAt: string;
+  outputDir: string;
+  dev: {
+    url: string;
+    environmentKind: EnvironmentAssessment['kind'];
+    performanceTrust: EnvironmentAssessment['trust']['performance'];
+    securityTrust: EnvironmentAssessment['trust']['security'];
+    score: number;
+    issueCount: number;
+    qaSignoffStatus: QaSignoffResult['status'];
+    qaSignoffConfidence: QaSignoffResult['confidence'];
+    reportPath?: string;
+    jsonPath?: string;
+  };
+  preview: EnvironmentComparisonResult['dev'];
+  diff: ResultDiff;
+  interpretation: {
+    productionReadiness: 'production-evidence' | 'pre-production-evidence' | 'invalid-preview' | 'blocked';
+    persistentIssueCount: number;
+    devOnlyIssueCount: number;
+    previewOnlyIssueCount: number;
+    highConfidenceIssueCount: number;
+    devArtifactIssueCount: number;
+  };
+  recommendations: string[];
+  artifacts: { json: string; markdown: string; devResult?: string; previewResult?: string };
+}
+```
+
+Interpretation rule: persistent issues are higher confidence; preview-only issues are production-build/deployment candidates; dev-only issues are downgraded unless source/runtime evidence confirms a real implementation defect.
 
 ## Performance metrics
 

@@ -5,12 +5,13 @@ import { runQa } from './runner.js';
 import { runCompatibility } from './matrix.js';
 import { saveAuthState } from './auth.js';
 import { startMcpServer } from './mcpServer.js';
+import { runEnvironmentComparison } from './compare/environmentComparison.js';
 import type { BrowserName, Issue, QaResult, QaRunInput, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'matrix', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'matrix', 'env-compare', 'mcp', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -20,6 +21,7 @@ Usage:
   frontlens --url <url> [options]
   frontlens auth save --url <login-url> --output <storage-state-path>
   frontlens matrix --url <url> --browsers chromium,firefox,webkit
+  frontlens env-compare --dev-url <vite-dev-url> --preview-url <build-preview-url>
   frontlens mcp
   frontlens inspect --report <result.json>
   frontlens issues --report <result.json> [--severity high]
@@ -34,6 +36,8 @@ Usage:
 
 Options:
   --url <url>                 Target page URL.
+  --dev-url <url>             Dev/source-module URL for env-compare.
+  --preview-url <url>         Build/preview URL for env-compare.
   --config <path>             Optional config file (.json/.js/.mjs).
   --requirements <path>       Optional requirements/acceptance criteria JSON file.
   --source-root <path>        Optional frontend source repository root for static source correlation.
@@ -89,6 +93,7 @@ Examples:
   frontlens qa --url https://example.com/admin --storage-state .frontlens/auth/admin.json
   frontlens auth save --url https://example.com/login --output .frontlens/auth/admin.json
   frontlens matrix --url https://example.com --browsers chromium,firefox,webkit --output reports/compat
+  frontlens env-compare --dev-url http://127.0.0.1:5173/users --preview-url http://127.0.0.1:4173/users --output reports/env-users
   frontlens mcp
   frontlens issues --report reports/frontlens/users/result.json --severity high
   frontlens root-causes --report reports/frontlens/users/result.json
@@ -162,6 +167,7 @@ Stdio MCP command:
 Exposed tools:
   frontlens_qa
   frontlens_matrix
+  frontlens_env_compare
   frontlens_inspect
   frontlens_issues
   frontlens_root_causes
@@ -460,6 +466,102 @@ async function main(): Promise<void> {
 
   if (argv[0] === 'auth') {
     throw new Error(`Unsupported auth command: ${argv[1] ?? '(missing)'}. Expected: frontlens auth save --url <login-url> --output <storage-state-path>.`);
+  }
+
+  if (argv[0] === 'env-compare') {
+    const parsed = parseArgs({
+      args: argv.slice(1),
+      allowPositionals: true,
+      options: {
+        'dev-url': { type: 'string' },
+        'preview-url': { type: 'string' },
+        config: { type: 'string' },
+        requirements: { type: 'string' },
+        'source-root': { type: 'string' },
+        'source-run-scripts': { type: 'boolean' },
+        'source-scripts': { type: 'string' },
+        'source-script-timeout-ms': { type: 'string' },
+        output: { type: 'string' },
+        browser: { type: 'string' },
+        headed: { type: 'boolean' },
+        headless: { type: 'boolean' },
+        'storage-state': { type: 'string' },
+        'session-storage-state': { type: 'string' },
+        trace: { type: 'boolean' },
+        'no-trace': { type: 'boolean' },
+        video: { type: 'boolean' },
+        screenshot: { type: 'boolean' },
+        'simulate-exceptions': { type: 'boolean' },
+        'no-exceptions': { type: 'boolean' },
+        ai: { type: 'boolean' },
+        'no-ai': { type: 'boolean' },
+        coverage: { type: 'boolean' },
+        'no-coverage': { type: 'boolean' },
+        security: { type: 'boolean' },
+        'no-security': { type: 'boolean' },
+        journeys: { type: 'boolean' },
+        'no-journeys': { type: 'boolean' },
+        contract: { type: 'boolean' },
+        'no-contract': { type: 'boolean' },
+        realtime: { type: 'boolean' },
+        'no-realtime': { type: 'boolean' },
+        p2: { type: 'boolean' },
+        'no-p2': { type: 'boolean' },
+        'block-mutating-requests': { type: 'boolean' },
+        'allow-mutating-requests': { type: 'boolean' },
+        json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' }
+      }
+    });
+
+    if (parsed.values.help) {
+      printHelp();
+      return;
+    }
+
+    const devUrl = parsed.values['dev-url'] ?? parsed.positionals[0];
+    const previewUrl = parsed.values['preview-url'] ?? parsed.positionals[1];
+    if (!devUrl || !previewUrl) {
+      printHelp();
+      throw new Error('Missing required env-compare --dev-url <url> --preview-url <url>.');
+    }
+    const result = await runEnvironmentComparison({
+      devUrl,
+      previewUrl,
+      configPath: parsed.values.config,
+      requirementsPath: parsed.values.requirements,
+      sourceRoot: parsed.values['source-root'],
+      sourceRunScripts: parsed.values['source-run-scripts'],
+      sourceScripts: normalizeStringList(parsed.values['source-scripts']),
+      sourceScriptTimeoutMs: normalizePositiveNumber(parsed.values['source-script-timeout-ms'], '--source-script-timeout-ms'),
+      outputDir: parsed.values.output,
+      browser: normalizeBrowser(parsed.values.browser),
+      headless: parsed.values.headed ? false : parsed.values.headless,
+      storageState: parsed.values['storage-state'],
+      sessionStorageState: parsed.values['session-storage-state'],
+      trace: parsed.values['no-trace'] ? false : parsed.values.trace,
+      video: parsed.values.video,
+      screenshot: parsed.values.screenshot,
+      simulateExceptions: parsed.values['no-exceptions'] ? false : parsed.values['simulate-exceptions'],
+      ai: parsed.values['no-ai'] ? false : parsed.values.ai,
+      coverage: parsed.values['no-coverage'] ? false : parsed.values.coverage,
+      security: parsed.values['no-security'] ? false : parsed.values.security,
+      journeys: parsed.values['no-journeys'] ? false : parsed.values.journeys,
+      contract: parsed.values['no-contract'] ? false : parsed.values.contract,
+      realtime: parsed.values['no-realtime'] ? false : parsed.values.realtime,
+      p2: parsed.values['no-p2'] ? false : parsed.values.p2,
+      blockMutatingRequests: parsed.values['allow-mutating-requests'] ? false : parsed.values['block-mutating-requests']
+    });
+    if (parsed.values.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`Environment comparison completed: ${result.outputDir}`);
+      console.log(`Production readiness: ${result.interpretation.productionReadiness}`);
+      console.log(`Persistent/dev-only/preview-only issues: ${result.interpretation.persistentIssueCount}/${result.interpretation.devOnlyIssueCount}/${result.interpretation.previewOnlyIssueCount}`);
+      console.log(`Markdown: ${result.artifacts.markdown}`);
+      console.log(`JSON: ${result.artifacts.json}`);
+    }
+    return;
   }
 
   if (argv[0] === 'matrix') {

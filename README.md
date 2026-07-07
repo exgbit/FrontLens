@@ -298,6 +298,28 @@ node dist/cli.js diff \
   --output "reports/frontlens/diff"
 ```
 
+### 对比 dev 与 build/preview 环境
+
+当同一路由既有 Vite dev server 又有 build/preview 地址时，用环境对比把 dev 伪影、preview-only 生产构建问题和双环境都存在的高置信问题分开：
+
+```bash
+node dist/cli.js env-compare \
+  --dev-url "http://127.0.0.1:5173/users" \
+  --preview-url "http://127.0.0.1:4173/users" \
+  --source-root "/path/to/frontend" \
+  --output "reports/frontlens/users-env" \
+  --no-trace \
+  --json
+```
+
+产物：
+
+- `environment-comparison.json`
+- `environment-comparison.md`
+- `dev/result.json` 与 `preview/result.json`
+
+解释原则：dev 结果用于功能和源码关联；preview/生产等价结果用于 bundle、传输体积、安全头、HMR/WebSocket、源码路径泄露等生产结论；两个环境都存在的问题优先级最高。
+
 ## 默认安全策略
 
 FrontLens 引擎默认采用非破坏策略：

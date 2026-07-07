@@ -123,3 +123,8 @@ Return:
 4. Deployment/security tasks separately from app-code tasks.
 5. False positives/tool limitations with issue IDs and reason.
 6. Verification commands and rerun plan.
+
+
+## Dev vs preview comparison
+
+When a run targets Vite/dev-source mode and the user needs production-readiness, run `env-compare` after starting a build/preview server. Treat persistent findings as higher confidence, preview-only findings as production-build/deployment candidates, and dev-only findings as likely dev artifacts unless source/runtime evidence confirms an implementation defect.

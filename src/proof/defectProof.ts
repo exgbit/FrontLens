@@ -153,12 +153,13 @@ function scoreOf(dimensions: DefectProofItem['dimensions']): number {
   return Math.round(raw);
 }
 
-function statusOf(score: number, dimensions: DefectProofItem['dimensions'], dispositions: IssueDispositionItem[]): DefectProofItem['status'] {
+function statusOf(score: number, dimensions: DefectProofItem['dimensions'], dispositions: IssueDispositionItem[], owner: RootCauseGroup['owner']): DefectProofItem['status'] {
   if (dispositions.length > 0 && dispositions.every((item) => item.actionability !== 'actionable')) return 'not-a-defect';
   const runtimeMissing = dimensions.runtimeEvidence.strength === 'missing';
   const ownerMissing = dimensions.ownerFixSurface.strength === 'missing';
-  const sourceMissingForFrontend = dimensions.sourceEvidence.strength === 'missing' && dimensions.sourceEvidence.reason.includes('前端缺陷');
-  if (score >= 80 && !runtimeMissing && !ownerMissing && !sourceMissingForFrontend) return 'proven';
+  const sourceUnprovenForFrontend = owner === 'frontend' && (dimensions.sourceEvidence.strength === 'missing' || dimensions.sourceEvidence.strength === 'weak');
+  if (sourceUnprovenForFrontend) return 'needs-evidence';
+  if (score >= 80 && !runtimeMissing && !ownerMissing) return 'proven';
   if (score >= 60 && !runtimeMissing && !ownerMissing) return 'probable';
   return 'needs-evidence';
 }
@@ -202,7 +203,7 @@ function buildItem(input: DefectProofInput, group: RootCauseGroup): DefectProofI
     title: group.title,
     owner: group.owner,
     priority: group.priority,
-    status: statusOf(score, dimensions, dispositions),
+    status: statusOf(score, dimensions, dispositions, group.owner),
     confidence: score >= 80 ? 'high' as const : score >= 60 ? 'medium' as const : 'low' as const,
     score,
     dimensions,

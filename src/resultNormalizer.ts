@@ -43,7 +43,7 @@ import { buildClaimGuard } from './claims/claimGuard.js';
 import { buildQaIntake } from './intake/qaIntake.js';
 import { buildDefectProof } from './proof/defectProof.js';
 
-export const RESULT_SCHEMA_VERSION = '1.35.0';
+export const RESULT_SCHEMA_VERSION = '1.36.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1096,7 +1096,7 @@ export function normalizeResult(raw: unknown): QaResult {
     title: summary.title
   });
   const preliminaryDisposition = buildIssueDisposition(issues, metadataConfig);
-  const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), metadataConfig);
+  const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), metadataConfig, sourceRuntimeCorrelation);
   const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
   const defectProof = buildDefectProof({
     rootCauseGroups,

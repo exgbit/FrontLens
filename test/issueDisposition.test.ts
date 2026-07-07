@@ -110,7 +110,7 @@ test('quality gate uses disposition so speculative high findings become pass-wit
   assert.equal(result.qualityGate.coverageGaps.some((gap) => gap.includes('Raw finding')), true);
 });
 
-test('exception no-feedback findings become proof-ready root-cause candidates when runtime evidence is reproducible', () => {
+test('exception no-feedback findings become proof-ready root-cause candidates when runtime and source binding are reproducible', () => {
   const result = normalizeResult({
     summary: { url: 'https://example.com/credentials', title: 'Credentials' },
     pageModel: {
@@ -121,6 +121,29 @@ test('exception no-feedback findings become proof-ready root-cause candidates wh
     interactionTests: [{ id: 'IT-001', kind: 'search', target: 'search', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, actions: [], observations: {} }],
     journeyTests: [{ id: 'JOURNEY-001', name: 'smoke', status: 'passed', startedAt: '', endedAt: '', durationMs: 0, startUrl: 'https://example.com/credentials', steps: [] }],
     exceptionSimulations: [{ id: 'EX-001', kind: 'api-500', status: 'failed', target: 'https://example.com/api/credentials', startedAt: '', endedAt: '', durationMs: 0, observations: { networkRequestIds: ['REQ-500'] } }],
+    sourceRuntimeCorrelation: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '',
+      summary: { networkRequestCount: 1, linkedRequestCount: 1, strongLinkCount: 1, unlinkedRequestCount: 0, listResponseLinkCount: 0 },
+      links: [
+        {
+          id: 'SRC-LINK-001',
+          networkRequestId: 'REQ-BASELINE',
+          method: 'GET',
+          url: 'https://example.com/api/credentials',
+          path: '/api/credentials',
+          status: 200,
+          confidence: 'high',
+          sourceMatches: [{ file: 'src/api/credentials.ts', line: 8, method: 'GET', path: '/api/credentials', client: 'http-client', expression: "http.get('/api/credentials')" }],
+          stateSignals: [{ file: 'src/views/CredentialsView.vue', line: 55, kind: 'error', text: 'catch (err) { error.value = err }' }],
+          componentIds: ['CMP-001'],
+          responseListHints: [],
+          notes: []
+        }
+      ],
+      gaps: []
+    },
     issues: [
       {
         id: 'ISSUE-EX',
@@ -140,7 +163,11 @@ test('exception no-feedback findings become proof-ready root-cause candidates wh
   assert.equal(result.issueDisposition.items[0].actionability, 'actionable');
   assert.equal(result.rootCauseGroups.length, 1);
   assert.equal(result.rootCauseGroups[0].networkRequestIds.includes('REQ-500'), true);
-  assert.equal(result.defectProof.items[0].status, 'probable');
+  assert.deepEqual(result.rootCauseGroups[0].sourceLocations, [
+    { file: 'src/api/credentials.ts', line: 8 },
+    { file: 'src/views/CredentialsView.vue', line: 55 }
+  ]);
+  assert.equal(result.defectProof.items[0].status, 'proven');
   assert.equal(result.fixTasks.length, 1);
   assert.equal(result.professionalSummary.mustFix.length, 1);
   assert.equal(result.professionalSummary.mustFix[0].rootCauseGroupId, result.rootCauseGroups[0].id);

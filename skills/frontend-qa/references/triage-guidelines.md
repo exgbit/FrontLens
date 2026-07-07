@@ -29,7 +29,7 @@ Apply an **actionability gate** before presenting final findings:
 Also add a **root-cause grouping** before the final fix list:
 
 - Group multiple raw issue IDs that point to the same implementation defect, such as 500/401/403/404/timeout all rendering the same false empty state.
-- Count implementation work by proof-ready root cause, not by raw issue IDs. `fixTasks[]` is proof-aware in FrontLens 1.32+ but remains machine-oriented; `defectProof.needs-evidence` items are evidence-collection work, not implementation defects. In FrontLens 1.34+, use `rootCauseGroups[].sourceLocations` to report the normalized file:line fix surface instead of re-deriving it from each raw issue.
+- Count implementation work by proof-ready root cause, not by raw issue IDs. `fixTasks[]` is proof-aware in FrontLens 1.32+ but remains machine-oriented; `defectProof.needs-evidence` items are evidence-collection work, not implementation defects. In FrontLens 1.34+, use `rootCauseGroups[].sourceLocations` to report the normalized file:line fix surface instead of re-deriving it from each raw issue; in FrontLens 1.36+ this field also includes medium/high source-runtime links, and weak/missing source-bound frontend root causes stay needs-evidence.
 - In FrontLens 1.33+, reproducible exception no-feedback findings retain their EX/network/console/page-error evidence and can become proof-ready root-cause candidates. Keep them as frontend error-state/retry defects when the user impact is visible; still do not reinterpret the synthetic status code as a backend contract failure.
 - If a generated suggestion does not match the issue category or evidence, mark it as template noise and replace it with a source/evidence-specific fix.
 
@@ -98,7 +98,7 @@ If `result.json.scopeReview.questions[]` contains relevant unanswered items, inc
 8. **Artifact links and copied reports**
    - Before citing a screenshot/video/trace path, verify that the file exists in the report directory.
    - Prefer paths relative to the report directory, for example `screenshots/page-full.png`, so reports remain usable after being copied between machines.
-   - If a referenced artifact is missing, mark it as a tool/reporting issue and do not use it as evidence. In FrontLens 1.35+, prefer `result.json.artifactIntegrity` plus the rewritten `report.md`/`report.html`; if they disagree, trust result.json and report a reporter-staleness bug.
+   - If a referenced artifact is missing, mark it as a tool/reporting issue and do not use it as evidence. In FrontLens 1.35+, prefer `result.json.artifactIntegrity` plus the rewritten `report.md`/`report.html`; if they disagree, trust result.json and report a reporter-staleness bug. In FrontLens 1.36+, when sourceRoot is enabled, do not schedule a frontend fix whose defectProof remains needs-evidence because source binding is weak/missing.
 
 ## Source-code cross-check pattern
 

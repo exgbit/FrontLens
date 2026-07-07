@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDefaultConfig } from '../src/defaultConfig.ts';
 import { buildRootCauseGroups } from '../src/rootCause/rootCauseGroups.ts';
-import type { Issue } from '../src/types.ts';
+import type { Issue, SourceRuntimeLink } from '../src/types.ts';
 
 function issue(overrides: Partial<Issue>): Issue {
   return {
@@ -126,5 +126,51 @@ test('buildRootCauseGroups carries source file locations into implementation roo
   assert.deepEqual(groups[0].sourceLocations, [
     { file: 'src/api/orders.ts', line: 12 },
     { file: 'src/views/OrdersView.vue', line: 45 }
+  ]);
+});
+
+test('buildRootCauseGroups enriches root causes with medium/high source-runtime links by target endpoint', () => {
+  const config = createDefaultConfig('https://example.com/credentials');
+  const runtimeLinks: SourceRuntimeLink[] = [
+    {
+      id: 'SRC-LINK-001',
+      networkRequestId: 'REQ-BASELINE',
+      method: 'GET',
+      url: 'https://example.com/api/credentials',
+      path: '/api/credentials',
+      status: 200,
+      confidence: 'high',
+      sourceMatches: [
+        { file: 'src/api/credentials.ts', line: 8, method: 'GET', path: '/api/credentials', client: 'http-client', expression: "http.get('/api/credentials')" }
+      ],
+      stateSignals: [
+        { file: 'src/views/CredentialsView.vue', line: 51, kind: 'error', text: 'const { loading, error } = useCredentials()' },
+        { file: 'src/views/CredentialsView.vue', line: 72, kind: 'empty', text: '暂无匹配凭证' }
+      ],
+      componentIds: ['CMP-001'],
+      responseListHints: [],
+      notes: []
+    }
+  ];
+
+  const groups = buildRootCauseGroups([
+    issue({
+      id: 'ISSUE-001',
+      title: 'api-500 无错误反馈',
+      category: 'integration-no-feedback',
+      severity: 'high',
+      evidence: {
+        networkRequestId: 'REQ-SYNTHETIC',
+        details: { kind: 'api-500', target: 'https://example.com/api/credentials' }
+      },
+      suggestion: { frontend: '渲染错误态并提供重试。', priority: 'P1' }
+    })
+  ], config, { links: runtimeLinks });
+
+  assert.equal(groups.length, 1);
+  assert.deepEqual(groups[0].sourceLocations, [
+    { file: 'src/api/credentials.ts', line: 8 },
+    { file: 'src/views/CredentialsView.vue', line: 51 },
+    { file: 'src/views/CredentialsView.vue', line: 72 }
   ]);
 });

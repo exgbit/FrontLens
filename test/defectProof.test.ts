@@ -74,3 +74,64 @@ test('defect proof requires more evidence when source/runtime/product proof is w
   assert.equal(proof.items[0].missingEvidence.some((item) => item.includes('runtimeEvidence')), true);
   assert.equal(proof.items[0].nextSteps.some((item) => item.includes('sourceRoot')), true);
 });
+
+test('defect proof does not mark frontend root causes proof-ready when sourceRoot was indexed but the root cause is not source-bound', () => {
+  const result = baseResult();
+  result.rootCauseGroups = result.rootCauseGroups.map((group) => ({
+    ...group,
+    owner: 'frontend' as const,
+    sourceLocations: []
+  }));
+  result.issues = result.issues.map((issue) => ({
+    ...issue,
+    evidence: { selector: '.save-button', screenshot: 'screen.png' }
+  }));
+  result.issueDisposition.items = result.issueDisposition.items.map((item) => ({
+    ...item,
+    actionability: 'actionable' as const,
+    status: 'confirmed' as const
+  }));
+  result.scopeReview.status = 'configured';
+  result.sourceAnalysis = {
+    ...result.sourceAnalysis,
+    enabled: true,
+    status: 'passed',
+    root: '/repo/frontend',
+    scannedFiles: 10,
+    scannedBytes: 1000,
+    summary: {
+      routeFileCount: 1,
+      routeCount: 1,
+      eagerRouteImportCount: 0,
+      heavyImportCount: 0,
+      apiCallCount: 0,
+      errorStateSignalCount: 0,
+      emptyStateSignalCount: 0
+    },
+    routeFiles: [],
+    routes: [],
+    imports: [],
+    apiCalls: [],
+    stateSignals: [],
+    findings: []
+  };
+  result.sourceRuntimeCorrelation = {
+    ...result.sourceRuntimeCorrelation,
+    enabled: true,
+    status: 'passed',
+    summary: {
+      networkRequestCount: 0,
+      linkedRequestCount: 0,
+      strongLinkCount: 0,
+      unlinkedRequestCount: 0,
+      listResponseLinkCount: 0
+    },
+    links: [],
+    gaps: []
+  };
+
+  const proof = buildDefectProof(result);
+  assert.equal(proof.items[0].dimensions.sourceEvidence.strength, 'weak');
+  assert.equal(proof.items[0].status, 'needs-evidence');
+  assert.equal(proof.status, 'blocked');
+});

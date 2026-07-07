@@ -22,7 +22,7 @@ import { buildDefectProof } from './proof/defectProof.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
-  result.rootCauseGroups = buildRootCauseGroups(filterActionableIssues(result.issues, preliminaryDisposition), result.metadata.config);
+  result.rootCauseGroups = buildRootCauseGroups(filterActionableIssues(result.issues, preliminaryDisposition), result.metadata.config, result.sourceRuntimeCorrelation);
   result.issueDisposition = buildIssueDisposition(result.issues, result.metadata.config, result.rootCauseGroups);
   result.defectProof = buildDefectProof(result);
   result.fixTasks = generateFixTasks(result.issues, result.metadata.config, result.rootCauseGroups, result.defectProof);

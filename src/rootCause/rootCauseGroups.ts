@@ -1,4 +1,4 @@
-import type { FrontLensConfig, Issue, IssueCategory, RootCauseGroup, Severity, SourceLocation } from '../types.js';
+import type { FrontLensConfig, Issue, IssueCategory, RootCauseGroup, Severity, SourceLocation, SourceRuntimeLink } from '../types.js';
 
 const severityRank: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const priorityRank: Record<RootCauseGroup['priority'], number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -62,6 +62,19 @@ function endpointFrom(value: unknown): string | undefined {
   }
 }
 
+function comparableEndpoint(value: unknown): string | undefined {
+  const endpoint = endpointFrom(value);
+  if (!endpoint) return undefined;
+  return endpoint.replace(/\?\*$/, '').replace(/\/+/g, '/');
+}
+
+function endpointsMatch(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  const left = a.replace(/\/+$/, '');
+  const right = b.replace(/\/+$/, '');
+  return left === right || left.endsWith(right) || right.endsWith(left);
+}
+
 function groupKey(issue: Issue): string {
   const details = detailsOf(issue);
   const owner = ownerFor(issue);
@@ -101,7 +114,11 @@ function uniqSourceLocations(items: SourceLocation[]): SourceLocation[] {
     const key = sourceKey(item);
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push(item);
+    result.push({
+      file: item.file,
+      line: item.line,
+      ...(item.column !== undefined ? { column: item.column } : {})
+    });
   }
   return result;
 }
@@ -124,15 +141,33 @@ function locationsFromArray(value: unknown): SourceLocation[] {
   return Array.isArray(value) ? value.map(maybeLocation).filter((item): item is SourceLocation => Boolean(item)) : [];
 }
 
-function sourceLocationsFor(issue: Issue): SourceLocation[] {
+function issueTargetEndpoint(issue: Issue): string | undefined {
   const details = detailsOf(issue);
+  return comparableEndpoint(details.target) ?? comparableEndpoint(issue.affectedUrl) ?? comparableEndpoint(issue.evidence.resourceUrl);
+}
+
+function runtimeLinksFor(issue: Issue, runtimeLinks: SourceRuntimeLink[]): SourceRuntimeLink[] {
+  if (runtimeLinks.length === 0) return [];
+  const target = issueTargetEndpoint(issue);
+  return runtimeLinks.filter((link) => {
+    if (issue.evidence.networkRequestId && link.networkRequestId === issue.evidence.networkRequestId) return true;
+    return link.confidence !== 'none' && endpointsMatch(target, comparableEndpoint(link.url) ?? link.path);
+  });
+}
+
+function sourceLocationsFor(issue: Issue, runtimeLinks: SourceRuntimeLink[] = []): SourceLocation[] {
+  const details = detailsOf(issue);
+  const linkedRuntimeLocations = runtimeLinksFor(issue, runtimeLinks)
+    .filter((link) => link.confidence === 'high' || link.confidence === 'medium')
+    .flatMap((link) => [...link.sourceMatches, ...link.stateSignals]);
   return uniqSourceLocations([
     maybeLocation({ file: details.sourceFile, line: details.line, column: details.column }),
     ...locationsFromArray(details.locations),
     ...locationsFromArray(details.sourceApiMatches),
     ...locationsFromArray(details.sourceStateSignals),
     ...locationsFromArray(details.findings),
-    ...locationsFromArray(details.imports)
+    ...locationsFromArray(details.imports),
+    ...linkedRuntimeLocations
   ].filter((item): item is SourceLocation => Boolean(item)));
 }
 
@@ -161,8 +196,9 @@ function summaryFor(group: Omit<RootCauseGroup, 'summary' | 'verificationCommand
   return `${group.priority}/${group.severity}/${group.owner}: ${group.issueCount} 个 raw issue，类别 ${categoryText}。${group.suggestedFix}`;
 }
 
-export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig): RootCauseGroup[] {
+export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig, sourceRuntimeCorrelation?: { links: SourceRuntimeLink[] }): RootCauseGroup[] {
   const groups = new Map<string, GroupDraft>();
+  const runtimeLinks = sourceRuntimeCorrelation?.links ?? [];
   for (const issue of issues) {
     const key = groupKey(issue);
     const owner = ownerFor(issue);
@@ -183,7 +219,7 @@ export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig): 
         consoleIds: issue.evidence.consoleId ? [issue.evidence.consoleId] : [],
         pageErrorIds: uniq([issue.evidence.pageErrorId, ...(issue.evidence.pageErrorIds ?? [])]),
         resourceUrls: issue.evidence.resourceUrl ? [issue.evidence.resourceUrl] : [],
-        sourceLocations: sourceLocationsFor(issue),
+        sourceLocations: sourceLocationsFor(issue, runtimeLinks),
         suggestedFix: suggestedFix(issue),
         issues: [issue]
       });
@@ -202,7 +238,7 @@ export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig): 
     existing.consoleIds = uniq([...existing.consoleIds, ...(issue.evidence.consoleId ? [issue.evidence.consoleId] : [])]);
     existing.pageErrorIds = uniq([...existing.pageErrorIds, ...(issue.evidence.pageErrorId ? [issue.evidence.pageErrorId] : []), ...(issue.evidence.pageErrorIds ?? [])]);
     existing.resourceUrls = uniq([...existing.resourceUrls, ...(issue.evidence.resourceUrl ? [issue.evidence.resourceUrl] : [])]);
-    existing.sourceLocations = uniqSourceLocations([...existing.sourceLocations, ...sourceLocationsFor(issue)]);
+    existing.sourceLocations = uniqSourceLocations([...existing.sourceLocations, ...sourceLocationsFor(issue, runtimeLinks)]);
     if (priorityRank[priority] < priorityRank[previousPriority] || severityRank[issue.severity] < severityRank[previousSeverity]) {
       existing.suggestedFix = suggestedFix(issue);
     }

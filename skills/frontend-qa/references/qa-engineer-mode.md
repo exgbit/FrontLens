@@ -98,7 +98,7 @@ Otherwise classify as `product decision`, `coverage gap`, `reference observation
 - No release sign-off solely from `summary.score`; use `claimGuard`, `qaSignoff`, `qualityGate`, `requirementCoverage`, requirement/source context, and evidence.
 - No final answer may use a phrase listed in `claimGuard.forbiddenClaims[]` as a positive conclusion.
 - No product/design/style/API-data mismatch uncertainty should be promoted to a must-fix bug while `qaIntake.topQuestions[]` still blocks the linked claim.
-- No root cause with `defectProof.status=needs-evidence` should be scheduled as must-fix or counted as a fixTask until missing runtime/source/requirement/product/repro/owner evidence is supplied or the item is downgraded.
+- No root cause with `defectProof.status=needs-evidence` should be scheduled as must-fix or counted as a fixTask until missing runtime/source/requirement/product/repro/owner evidence is supplied or the item is downgraded. With sourceRoot enabled, weak/missing source binding for a frontend-owned root cause is a proof gap, not a must-fix.
 
 ## Output template
 

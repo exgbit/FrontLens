@@ -1097,6 +1097,60 @@ test('suggestion templates do not treat tablet touch-target issues as table issu
   assert.equal(issue.suggestion.priority, 'P3');
 });
 
+test('suggestion templates strip stale table/api advice from accessibility findings', () => {
+  const [issue] = applySuggestionTemplates([
+    {
+      id: 'TOUCH-NOISE',
+      title: '触控目标尺寸偏小：tablet 768x1024',
+      category: 'frontend-accessibility',
+      severity: 'low',
+      confidence: 0.74,
+      description: '',
+      evidence: {},
+      reproduceSteps: [],
+      reason: '',
+      suggestion: {
+        frontend: '修改表格分页状态和 rowSelection。',
+        backend: '后端列表接口返回 records/total/page/pageSize。',
+        test: '补充表格分页、排序回归。',
+        priority: 'P2'
+      }
+    }
+  ]);
+
+  assert.equal(issue.suggestion.backend, undefined);
+  assert.doesNotMatch(issue.suggestion.frontend ?? '', /分页|rowSelection|records|pageSize|列表接口/i);
+  assert.match(issue.suggestion.frontend ?? '', /a11y|无障碍|触控|点击区|可访问|键盘|aria|label/i);
+  assert.doesNotMatch(issue.suggestion.test ?? '', /分页|排序|records|pageSize|列表接口/i);
+  assert.match(issue.suggestion.test ?? '', /axe|键盘|可访问|断点/i);
+});
+
+test('suggestion templates strip stale api advice from SEO findings', () => {
+  const [issue] = applySuggestionTemplates([
+    {
+      id: 'SEO-NOISE',
+      title: '缺少 meta description',
+      category: 'seo',
+      severity: 'low',
+      confidence: 0.7,
+      description: '',
+      evidence: {},
+      reproduceSteps: [],
+      reason: '',
+      suggestion: {
+        frontend: '同步表格分页状态。',
+        backend: '后端列表接口返回 records/total/page/pageSize。',
+        test: '补充分页排序回归。'
+      }
+    }
+  ]);
+
+  assert.equal(issue.suggestion.backend, undefined);
+  assert.doesNotMatch(issue.suggestion.frontend ?? '', /分页|records|pageSize|列表接口/i);
+  assert.match(issue.suggestion.frontend ?? '', /SEO|title|meta|description|Open Graph/i);
+  assert.doesNotMatch(issue.suggestion.test ?? '', /分页|排序|records|pageSize|列表接口/i);
+});
+
 test('suggestion templates keep the stricter priority for high integration failures', () => {
   const [issue] = applySuggestionTemplates([
     {

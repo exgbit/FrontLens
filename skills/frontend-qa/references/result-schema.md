@@ -1376,8 +1376,31 @@ Use `professionalSummary` first in user-facing summaries; use `rootCauseGroups`,
 
 For batched GraphQL POSTs, `network.requests[]` keeps one request record while `realtime.graphql[]` expands the batch into one entry per operation. Those entries share the same `networkRequestId` and carry per-operation `operationName`, `operationType`, `variablesPreview`, and `hasErrors` where response batches can be parsed.
 
-Use `node dist/cli.js diff --before old/result.json --after new/result.json` to compare reports by stable fingerprints. The diff returns added, resolved, persistent, and severity-changed issues plus score/security/performance deltas. Use `node dist/cli.js env-compare --dev-url <dev> --preview-url <preview>` when a Vite/dev-source run needs production-build validation; it writes `environment-comparison.json` and `environment-comparison.md`, classifying persistent, dev-only, preview-only, and dev-artifact candidate findings.
+Use `node dist/cli.js diff --before old/result.json --after new/result.json` to compare reports. The diff returns a professional QA layer first: adjustedScore delta, qaSignoff/business-validation transitions, proof-ready root-cause delta, regression blocked/needs-input deltas, and added/resolved/persistent must-fix/should-fix workload keyed by rootCauseGroupId or issue IDs. Raw added/resolved/persistent issue fingerprint diff remains available below that layer for scanner trend analysis, but repair sign-off should prefer `diff.professional.interpretation`. Use `node dist/cli.js env-compare --dev-url <dev> --preview-url <preview>` when a Vite/dev-source run needs production-build validation; it writes `environment-comparison.json` and `environment-comparison.md`, classifying persistent, dev-only, preview-only, and dev-artifact candidate findings.
 
+```ts
+interface ResultDiffProfessional {
+  before: { adjustedScore: number; qaSignoffStatus: QaSignoffResult['status']; businessValidationConfidence: BusinessValidationConfidence; proofReadyRootCauseCount: number };
+  after: ResultDiffProfessional['before'];
+  adjustedScoreDelta: number;
+  proofReadyRootCauseDelta: number;
+  signoffChanged: boolean;
+  businessValidationChanged: boolean;
+  addedFixes: Array<{ key: string; title: string; priority: 'P0' | 'P1' | 'P2' | 'P3'; owner: string }>;
+  resolvedFixes: ResultDiffProfessional['addedFixes'];
+  persistentFixes: Array<{ before: ResultDiffProfessional['addedFixes'][number]; after: ResultDiffProfessional['addedFixes'][number] }>;
+  interpretation: 'improved' | 'regressed' | 'mixed' | 'unchanged';
+  notes: string[];
+}
+
+interface ResultDiff {
+  professional: ResultDiffProfessional;
+  addedIssues: Issue[];
+  resolvedIssues: Issue[];
+  persistentIssues: Array<{ before: Issue; after: Issue }>;
+  changedSeverity: Array<{ fingerprint: string; before: Severity; after: Severity; title: string }>;
+}
+```
 
 `EnvironmentComparisonResult` is emitted by `env-compare` / `frontlens_env_compare` and is separate from a single-page `QaResult`:
 
@@ -1391,6 +1414,7 @@ interface EnvironmentComparisonResult {
     performanceTrust: EnvironmentAssessment['trust']['performance'];
     securityTrust: EnvironmentAssessment['trust']['security'];
     score: number;
+    adjustedScore: number;
     issueCount: number;
     qaSignoffStatus: QaSignoffResult['status'];
     qaSignoffConfidence: QaSignoffResult['confidence'];

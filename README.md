@@ -510,6 +510,8 @@ node dist/cli.js diff \
   --output "reports/frontlens/diff"
 ```
 
+`diff.md/json` 会先输出 Professional QA Diff：对比 `adjustedScore`、`qaSignoff`、业务验证置信度、proof-ready 修复项、新增/已解决 must-fix/should-fix，再把 raw scanner issue diff 放到后面作趋势参考。修复验收时优先看 professional.interpretation，而不是 raw issue 数量。
+
 ### 对比 dev 与 build/preview 环境
 
 当同一路由既有 Vite dev server 又有 build/preview 地址时，用环境对比把 dev 伪影、preview-only 生产构建问题和双环境都存在的高置信问题分开：
@@ -578,7 +580,7 @@ node dist/cli.js mcp
 3. 证据采集引擎生成 raw artifacts、`professional-audit.md/json` 报告契约自检、`qa-plan.md/json` QA 执行计划、`qa-coverage.md/json` 覆盖矩阵、`product-context.md/json` + `product-context.config.json` 产品范围草案、决策型 `report.md`、精简 `qa-review.md` 和完整 `evidence-report.md`。
 4. LLM 优先读取一页式 `brief.md`，再按需读取 `professional-audit.md`、`qa-plan.md`、`qa-coverage.md`、`product-context.md`、`product-context.config.json`、源码和规则文档。
 5. LLM 输出经过校准后的真实问题与修复建议。
-6. 修复后再次运行 skill，并用 diff 对比前后变化。
+6. 修复后再次运行 skill，并用 diff 的 Professional QA Diff 对比 adjustedScore、签核状态和 proof-ready 修复项，而不是只看 raw issue 数。
 
 ## 作者
 

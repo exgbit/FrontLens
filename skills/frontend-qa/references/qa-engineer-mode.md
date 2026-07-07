@@ -58,7 +58,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Environment**: inspect `environment.kind` and `environment.trust`; use dev server only for function/source correlation, local/private preview for pre-production checks, and production-like HTTPS for release security/performance sign-off.
 - **Performance**: use production build/preview for bundle/security conclusions; use dev server only for function/source correlation.
 - **Security passive checks**: separate frontend code issues from deployment headers/TLS/gateway work.
-- **Regression stability**: compare against previous result fingerprints and flag added/resolved/persistent issues.
+- **Regression stability**: compare against previous reports with `frontlens diff`; use its Professional QA Diff (`adjustedScore`, `qaSignoff`, business-validation confidence, proof-ready fix workload) before raw added/resolved/persistent issues.
 
 ## Evidence thresholds
 

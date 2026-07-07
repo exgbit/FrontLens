@@ -104,7 +104,10 @@ test('environment comparison separates dev-only artifacts, persistent issues, an
     assert.equal(comparison.interpretation.devArtifactIssueCount, 1);
     assert.equal(comparison.interpretation.highConfidenceIssueCount, 1);
     assert.equal(comparison.recommendations.some((item) => /Dev-only findings/.test(item)), true);
-    assert.match(await readFile(comparison.artifacts.markdown, 'utf8'), /Environment Comparison/);
+    const markdown = await readFile(comparison.artifacts.markdown, 'utf8');
+    assert.match(markdown, /Environment Comparison/);
+    assert.match(markdown, /Professional interpretation/);
+    assert.match(markdown, /Adjusted score delta/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

@@ -1883,6 +1883,50 @@ export interface QaSignoffResult {
   evidence: string[];
 }
 
+export interface ResultDiffProfessionalFix {
+  key: string;
+  title: string;
+  priority: ProfessionalSummaryItem['priority'];
+  owner: ProfessionalSummaryItem['owner'];
+  issueIds: string[];
+  rootCauseGroupId?: string;
+}
+
+export interface ResultDiffProfessionalSnapshot {
+  adjustedScore: number;
+  adjustedIssueCount: number;
+  qaSignoffStatus: QaSignoffResult['status'];
+  qaSignoffConfidence: QaSignoffResult['confidence'];
+  businessValidationConfidence: BusinessValidationConfidence;
+  proofReadyRootCauseCount: number;
+  mustFixCount: number;
+  shouldFixCount: number;
+  releaseRiskCount: number;
+  regressionBlockedCount: number;
+  regressionNeedsInputCount: number;
+  actionableIssueCount: number;
+  nonActionableFindingCount: number;
+  coverageGapCount: number;
+}
+
+export interface ResultDiffProfessional {
+  before: ResultDiffProfessionalSnapshot;
+  after: ResultDiffProfessionalSnapshot;
+  adjustedScoreDelta: number;
+  adjustedIssueDelta: number;
+  proofReadyRootCauseDelta: number;
+  releaseRiskDelta: number;
+  regressionBlockedDelta: number;
+  regressionNeedsInputDelta: number;
+  signoffChanged: boolean;
+  businessValidationChanged: boolean;
+  addedFixes: ResultDiffProfessionalFix[];
+  resolvedFixes: ResultDiffProfessionalFix[];
+  persistentFixes: Array<{ before: ResultDiffProfessionalFix; after: ResultDiffProfessionalFix }>;
+  interpretation: 'improved' | 'regressed' | 'mixed' | 'unchanged';
+  notes: string[];
+}
+
 export interface ResultDiff {
   before: { url: string; score: number; issueCount: number; testedAt: string };
   after: { url: string; score: number; issueCount: number; testedAt: string };
@@ -1897,6 +1941,7 @@ export interface ResultDiff {
     loadDeltaMs?: number;
     transferDeltaBytes?: number;
   };
+  professional: ResultDiffProfessional;
 }
 
 export interface EnvironmentComparisonRunSummary {
@@ -1905,6 +1950,7 @@ export interface EnvironmentComparisonRunSummary {
   performanceTrust: EnvironmentAssessment['trust']['performance'];
   securityTrust: EnvironmentAssessment['trust']['security'];
   score: number;
+  adjustedScore: number;
   issueCount: number;
   qaSignoffStatus: QaSignoffResult['status'];
   qaSignoffConfidence: QaSignoffResult['confidence'];

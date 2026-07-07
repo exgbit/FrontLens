@@ -51,6 +51,7 @@ function summary(result: QaResult): EnvironmentComparisonResult['dev'] {
     performanceTrust: result.environment.trust.performance,
     securityTrust: result.environment.trust.security,
     score: result.summary.score,
+    adjustedScore: result.summary.adjustedScore,
     issueCount: result.summary.issueCount,
     qaSignoffStatus: result.qaSignoff.status,
     qaSignoffConfidence: result.qaSignoff.confidence,
@@ -106,16 +107,19 @@ This report separates dev/source-module evidence from build/preview evidence. Us
 
 ## Summary
 
-| Run | URL | Env | Perf trust | Security trust | Score | Issues | QA Sign-off | Report |
+| Run | URL | Env | Perf trust | Security trust | Adjusted / Raw Score | Issues | QA Sign-off | Report |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Dev | ${markdownEscape(result.dev.url)} | ${result.dev.environmentKind} | ${result.dev.performanceTrust} | ${result.dev.securityTrust} | ${result.dev.score} | ${result.dev.issueCount} | ${result.dev.qaSignoffStatus}/${result.dev.qaSignoffConfidence} | ${result.dev.reportPath ? `\`${markdownEscape(result.dev.reportPath)}\`` : '-'} |
-| Preview | ${markdownEscape(result.preview.url)} | ${result.preview.environmentKind} | ${result.preview.performanceTrust} | ${result.preview.securityTrust} | ${result.preview.score} | ${result.preview.issueCount} | ${result.preview.qaSignoffStatus}/${result.preview.qaSignoffConfidence} | ${result.preview.reportPath ? `\`${markdownEscape(result.preview.reportPath)}\`` : '-'} |
+| Dev | ${markdownEscape(result.dev.url)} | ${result.dev.environmentKind} | ${result.dev.performanceTrust} | ${result.dev.securityTrust} | ${result.dev.adjustedScore} / ${result.dev.score} | ${result.dev.issueCount} | ${result.dev.qaSignoffStatus}/${result.dev.qaSignoffConfidence} | ${result.dev.reportPath ? `\`${markdownEscape(result.dev.reportPath)}\`` : '-'} |
+| Preview | ${markdownEscape(result.preview.url)} | ${result.preview.environmentKind} | ${result.preview.performanceTrust} | ${result.preview.securityTrust} | ${result.preview.adjustedScore} / ${result.preview.score} | ${result.preview.issueCount} | ${result.preview.qaSignoffStatus}/${result.preview.qaSignoffConfidence} | ${result.preview.reportPath ? `\`${markdownEscape(result.preview.reportPath)}\`` : '-'} |
 
 - Production readiness: **${result.interpretation.productionReadiness}**
 - Persistent / Dev-only / Preview-only issues: ${result.interpretation.persistentIssueCount} / ${result.interpretation.devOnlyIssueCount} / ${result.interpretation.previewOnlyIssueCount}
 - High-confidence issue candidates: ${result.interpretation.highConfidenceIssueCount}
 - Dev artifact candidates: ${result.interpretation.devArtifactIssueCount}
-- Score delta (preview - dev): ${result.diff.scoreDelta}
+- Professional interpretation: ${result.diff.professional.interpretation}
+- Adjusted score delta (preview - dev): ${result.diff.professional.adjustedScoreDelta}
+- QA sign-off transition: ${result.diff.professional.before.qaSignoffStatus} → ${result.diff.professional.after.qaSignoffStatus}
+- Raw score delta (preview - dev): ${result.diff.scoreDelta}
 - Security score delta: ${result.diff.securityScoreDelta ?? '-'}
 - Transfer delta bytes: ${result.diff.performance.transferDeltaBytes ?? '-'}
 

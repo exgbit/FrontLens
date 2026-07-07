@@ -1,5 +1,6 @@
 import type { FixTask, ProfessionalSummaryItem, QaResult, RootCauseGroup } from '../types.js';
 import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
+import { evaluateDataMismatchProof } from '../proof/dataMismatchProof.js';
 
 export type ProfessionalAuditStatus = 'passed' | 'warning' | 'failed';
 export type ProfessionalAuditSeverity = 'blocker' | 'warning' | 'info';
@@ -148,14 +149,20 @@ function auditDispositionQuality(result: QaResult, findings: ProfessionalAuditFi
     });
   }
 
-  const actionableDataMismatch = actionable.filter((item) => item.category === 'integration-data-mismatch');
+  const issuesById = new Map(result.issues.map((issue) => [issue.id, issue]));
+  const actionableDataMismatch = actionable
+    .filter((item) => item.category === 'integration-data-mismatch')
+    .filter((item) => {
+      const issue = issuesById.get(item.issueId);
+      return !issue || evaluateDataMismatchProof(issue, result.requirementCoverage).status !== 'proven';
+    });
   if (actionableDataMismatch.length > 0) {
     add(findings, {
       severity: 'blocker',
       category: 'disposition-quality',
-      title: `API/UI data-mismatch guess is actionable: ${actionableDataMismatch.slice(0, 6).map((item) => item.issueId).join(', ')}.`,
+      title: `API/UI data-mismatch finding(s) are actionable without four-part proof: ${actionableDataMismatch.slice(0, 6).map((item) => item.issueId).join(', ')}.`,
       evidenceRefs: ['issueDisposition', 'sourceRuntimeCorrelation', ...actionableDataMismatch.slice(0, 6).map((item) => item.issueId)],
-      recommendation: 'Treat “API has data but UI is empty” as conditional until exact response, DOM/screenshot state, source data-flow binding, and requirement expectation are proven.'
+      recommendation: 'Treat “API has data but UI is empty” as conditional until explicit requirement, exact list response, visible empty DOM/screenshot state, and source API/state/render binding are all proven.'
     });
   }
 

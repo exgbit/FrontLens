@@ -52,7 +52,7 @@ import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 
-export const RESULT_SCHEMA_VERSION = '1.68.0';
+export const RESULT_SCHEMA_VERSION = '1.69.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1209,9 +1209,9 @@ export function normalizeResult(raw: unknown): QaResult {
     requirementCoverage,
     title: summary.title
   });
-  const preliminaryDisposition = buildIssueDisposition(issues, metadataConfig);
+  const preliminaryDisposition = buildIssueDisposition(issues, metadataConfig, [], { requirementCoverage });
   const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), metadataConfig, sourceRuntimeCorrelation, sourceAnalysis);
-  const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups);
+  const issueDisposition = buildIssueDisposition(issues, metadataConfig, rootCauseGroups, { requirementCoverage });
   const defectProof = buildDefectProof({
     rootCauseGroups,
     issues,

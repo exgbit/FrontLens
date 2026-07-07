@@ -51,7 +51,7 @@ Use these categories to design/triage, but only retain findings with evidence:
 - **Recorded journeys**: convert human-executed business paths into reusable journey configs; require explicit assertions because click/fill replay alone only proves the path did not crash.
 - **Export/download evidence**: when export/download is in scope, require `safety.allowDownload=true`, `interactionTests[].observations.downloadPath` or `journeyTests[].steps[].downloadPath`, non-zero `downloadSizeBytes`, `downloadSha256`, `downloadContent` parse summary, and `artifactIntegrity` coverage before marking it runtime-verified.
 - **Test data lifecycle**: for create/edit/delete/upload/import/submit flows, verify `testData.records`, setup, cleanup, and environment authorization before claiming runtime-verified business validation.
-- **Data correctness**: bind one exact API response to one exact UI region; verify totals, rows/cards, field formatting, permissions, and stale refresh behavior. Prefer `sourceRuntimeCorrelation.links[]` as the API↔source↔UI binding evidence when available.
+- **Data correctness**: bind one exact API response to one exact UI region; verify totals, rows/cards, field formatting, permissions, and stale refresh behavior. For API/UI empty-data claims, require the four-part gate: explicit requirement, exact list response, visible empty target region, and source API/state/render binding. Prefer `sourceRuntimeCorrelation.links[]` as the API↔source↔UI binding evidence when available.
 - **Negative/resilience**: 401/403/404/500/timeout/offline, but classify synthetic probes separately from real backend behavior.
 - **Forms**: validation, required fields, boundary values, duplicate submit, success/failure feedback.
 - **Permissions**: visible/disabled dangerous actions, unauthorized API status, role-specific visibility.
@@ -106,7 +106,7 @@ Default final answers should fit in one decision screen unless the user asks for
 - No “业务功能验证通过可信度 100%” from generated requirement drafts alone; synthesized requirements are a checklist starter and must be reviewed/grounded in runtime evidence.
 - No business pass solely from `sourceHealth.status=passed`; it only means parsed source files had no syntax errors and any explicitly enabled source script checks passed.
 - No source-health/release sign-off while `qaPlan` or `regressionPlan` contains unresolved `source-health` follow-ups for detected-but-unexecuted build/typecheck/test/e2e/lint scripts.
-- No “API has data but UI empty” unless the exact list response is bound to the exact UI by DOM/source/E2E evidence; if `sourceRuntimeCorrelation.status=passed`, missing link or `confidence=none/low` means not a defect.
+- No “API has data but UI empty” unless the exact list response is required by PRD/product scope, bound to the exact UI by DOM/source/E2E evidence, and the target table/list/card is visibly empty; if `sourceRuntimeCorrelation.status=passed`, missing link or `confidence=none/low` means not a defect.
 - No style/design bug unless it violates an explicit design/ADR/accessibility requirement or blocks a task.
 - No product-scope assumption becomes must-fix while `scopeReview.status=needs-input`; keep it as a scope question or product decision unless direct user impact is proven.
 - No production performance/security conclusion from Vite dev server artifacts.

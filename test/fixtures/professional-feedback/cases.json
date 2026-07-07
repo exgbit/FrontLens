@@ -145,7 +145,7 @@
     ],
     "expect": {
       "dispositions": {
-        "ISSUE-LIST-EMPTY": { "status": "needs-source-confirmation", "actionability": "conditional", "bucket": "coverage-gap", "owner": "frontend" }
+        "ISSUE-LIST-EMPTY": { "status": "needs-source-confirmation", "actionability": "conditional", "bucket": "coverage-gap", "owner": "test" }
       },
       "proofReadyRootCauseCount": 0,
       "mustFixIssueIds": [],

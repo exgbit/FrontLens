@@ -54,7 +54,7 @@ Do not mark business functionality as passed just because source-health commands
 Use `sourceAnalysis` before manual grep:
 
 1. If `sourceAnalysis.status=passed`, inspect `sourceAnalysis.findings[]` for route-level eager imports, heavy dependencies, `ui-accessibility`, and `error-state-gap` evidence.
-2. Use `sourceRuntimeCorrelation.links[]` first when available. For “接口有数据但页面为空/表格为空”类结论，只有相关 `networkRequestId` 的 `confidence` 达到 `medium/high` 才能保留为缺陷候选；`none` 代表全局 Network 响应没有证明绑定到当前页面源码/UI，`low` 代表弱关键词匹配，证据不足。
+2. Use `sourceRuntimeCorrelation.links[]` first when available. For “接口有数据但页面为空/表格为空”类结论，只有相关 `networkRequestId` 的 `confidence` 达到 `medium/high`，且同时具备明确需求、具体列表响应路径/数量、目标 UI 空态 DOM/截图、源码 API/state/render 绑定时才能保留为缺陷候选；`none` 代表全局 Network 响应没有证明绑定到当前页面源码/UI，`low` 代表弱关键词匹配，证据不足。
 3. If `sourceHealth.status=failed`, inspect `sourceHealth.findings[]` and `sourceHealth.scriptChecks[]` first. Syntax errors and failed/timed-out typecheck/build/test script checks are source-confirmed blockers and may explain broken runtime routes; do not bury them under secondary UI symptoms.
 4. Use `sourceAnalysis.apiCalls[]` to map network endpoints to source files before claiming API/UI binding issues.
 5. Use `sourceAnalysis.stateSignals[]` as a starting map for loading/error/empty/retry triage; use `sourceAnalysis.findings[kind=error-state-gap]` to bind exception no-feedback issues to a concrete view only when runtime exception evidence also shows a false empty/no-feedback state.
@@ -154,7 +154,7 @@ For every retained or passed business requirement, include a confidence label:
 - `static-source-only`: include source/chunk evidence and state that runtime behavior/data/export was not proven.
 - `not-verified`: include the blocker, such as login state, missing storageState, branch mismatch, download not allowed, or target route not reached.
 
-In FrontLens 1.42+, do not resurrect a suppressed API/UI list-empty mismatch when sourceRuntimeCorrelation is unavailable, none, or low; collect a medium/high source-runtime link or explicit E2E assertion first. Never report "business function validation passed with 100% confidence" from static source/chunk inspection alone. Runtime business validation requires the target page state, relevant API response, visible UI result, and any export/download artifact when export is part of the requirement.
+In FrontLens 1.42+, do not resurrect a suppressed API/UI list-empty mismatch when sourceRuntimeCorrelation is unavailable, none, or low; collect a medium/high source-runtime link or explicit E2E assertion first. In FrontLens 1.69+, data-mismatch must also pass the four-part gate: requirement, exact list response, visible empty target region, and source binding. Never report "business function validation passed with 100% confidence" from static source/chunk inspection alone. Runtime business validation requires the target page state, relevant API response, visible UI result, and any export/download artifact when export is part of the requirement.
 
 Before listing fixes, group raw browser issues by implementation root cause. For example, if `useXxx()` captures `error` but the page never renders it, group api-500/api-401/api-403/api-404/timeout no-feedback findings under one frontend fix and list the raw issue IDs / exception IDs as supporting evidence. Keep scenario-specific severity in evidence, but present one actionable fix unless separate source paths prove separate causes.
 

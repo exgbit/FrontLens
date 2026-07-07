@@ -1,4 +1,5 @@
-import type { FrontLensConfig, Issue, IssueDispositionItem, IssueDispositionResult, RootCauseGroup } from '../types.js';
+import type { FrontLensConfig, Issue, IssueDispositionItem, IssueDispositionResult, RequirementCoverageResult, RootCauseGroup } from '../types.js';
+import { evaluateDataMismatchProof } from '../proof/dataMismatchProof.js';
 
 type Status = IssueDispositionItem['status'];
 type Actionability = IssueDispositionItem['actionability'];
@@ -358,17 +359,34 @@ function classifyProductOrSpec(issue: Issue, config: FrontLensConfig, rootCauseG
   return undefined;
 }
 
-function classifyIntegration(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+interface IssueDispositionContext {
+  requirementCoverage?: RequirementCoverageResult;
+}
+
+function classifyIntegration(issue: Issue, context: IssueDispositionContext, rootCauseGroupId?: string): IssueDispositionItem | undefined {
   if (!issue.category.startsWith('integration')) return undefined;
   if (issue.category === 'integration-data-mismatch') {
+    const proof = evaluateDataMismatchProof(issue, context.requirementCoverage);
+    if (proof.status === 'proven') {
+      return makeItem(issue, {
+        status: 'confirmed',
+        bucket: 'real-frontend-fix',
+        actionability: 'actionable',
+        owner: 'frontend',
+        evidenceStrength: 'strong',
+        reason: 'API/UI 数据不一致已满足专业证据门槛：明确需求、具体列表响应、可见空 UI 状态和源码 API/state/render 绑定均已证明。',
+        nextStep: '按 sourceRuntimeLink 指向的 API 调用、状态写入和列表/表格渲染链路修复，并补充 expectRequest + expectVisible/expectText/row-count 回归断言。',
+        rootCauseGroupId
+      });
+    }
     return makeItem(issue, {
       status: 'needs-source-confirmation',
       bucket: 'coverage-gap',
       actionability: 'conditional',
-      owner: 'frontend',
+      owner: 'test',
       evidenceStrength: issue.evidence.networkRequestId && issue.evidence.screenshot ? 'medium' : 'weak',
-      reason: '“接口有数据但页面为空”是高风险推断；需要证明具体列表响应绑定当前 UI，单凭全局 Network 与 DOM 空态不足以定责。',
-      nextStep: '核对响应字段、可见 DOM 和源码数据流；只有 source/E2E 证明绑定关系后才升级为前端或后端缺陷。',
+      reason: `“接口有数据但页面为空”是高风险推断；必须同时证明需求、Network、可见 UI 空态和源码数据流绑定。缺口：${proof.missingEvidence.join('；') || '未知'}`,
+      nextStep: '补齐 PRD/requirementCoverage、具体响应路径/数量、目标 DOM/截图 renderedItemCount=0、medium/high sourceRuntimeCorrelation 和源码 API/state/render file:line 后再升级为缺陷。',
       rootCauseGroupId
     });
   }
@@ -595,7 +613,7 @@ function summarize(items: IssueDispositionItem[]): IssueDispositionResult['summa
   };
 }
 
-export function buildIssueDisposition(issues: Issue[], config: FrontLensConfig, rootCauseGroups: RootCauseGroup[] = []): IssueDispositionResult {
+export function buildIssueDisposition(issues: Issue[], config: FrontLensConfig, rootCauseGroups: RootCauseGroup[] = [], context: IssueDispositionContext = {}): IssueDispositionResult {
   const groupByIssueId = new Map<string, string>();
   for (const group of rootCauseGroups) {
     for (const issueId of group.issueIds) groupByIssueId.set(issueId, group.id);
@@ -606,7 +624,7 @@ export function buildIssueDisposition(issues: Issue[], config: FrontLensConfig, 
       classifySecurity(issue, rootCauseGroupId) ??
       classifyException(issue, rootCauseGroupId) ??
       classifyProductOrSpec(issue, config, rootCauseGroupId) ??
-      classifyIntegration(issue, rootCauseGroupId) ??
+      classifyIntegration(issue, context, rootCauseGroupId) ??
       classifyAccessibility(issue, config, rootCauseGroupId) ??
       classifyPerformance(issue, rootCauseGroupId) ??
       classifyDefault(issue, rootCauseGroupId)

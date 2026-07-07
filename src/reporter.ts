@@ -28,9 +28,9 @@ import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
-  const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
+  const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config, [], { requirementCoverage: result.requirementCoverage });
   result.rootCauseGroups = buildRootCauseGroups(filterActionableIssues(result.issues, preliminaryDisposition), result.metadata.config, result.sourceRuntimeCorrelation, result.sourceAnalysis);
-  result.issueDisposition = buildIssueDisposition(result.issues, result.metadata.config, result.rootCauseGroups);
+  result.issueDisposition = buildIssueDisposition(result.issues, result.metadata.config, result.rootCauseGroups, { requirementCoverage: result.requirementCoverage });
   result.defectProof = buildDefectProof(result);
   result.fixTasks = generateFixTasks(result.issues, result.metadata.config, result.rootCauseGroups, result.defectProof);
 }

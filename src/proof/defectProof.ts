@@ -153,11 +153,18 @@ function scoreOf(dimensions: DefectProofItem['dimensions']): number {
   return Math.round(raw);
 }
 
-function statusOf(score: number, dimensions: DefectProofItem['dimensions'], dispositions: IssueDispositionItem[], owner: RootCauseGroup['owner']): DefectProofItem['status'] {
+function statusOf(score: number, dimensions: DefectProofItem['dimensions'], dispositions: IssueDispositionItem[], group: RootCauseGroup): DefectProofItem['status'] {
   if (dispositions.length > 0 && dispositions.every((item) => item.actionability !== 'actionable')) return 'not-a-defect';
   const runtimeMissing = dimensions.runtimeEvidence.strength === 'missing';
   const ownerMissing = dimensions.ownerFixSurface.strength === 'missing';
-  const sourceUnprovenForFrontend = owner === 'frontend' && (dimensions.sourceEvidence.strength === 'missing' || dimensions.sourceEvidence.strength === 'weak');
+  const sourceUnprovenForFrontend = group.owner === 'frontend' && (dimensions.sourceEvidence.strength === 'missing' || dimensions.sourceEvidence.strength === 'weak');
+  const isDataMismatch = group.categories.includes('integration-data-mismatch');
+  if (isDataMismatch) {
+    const requirementUnproven = dimensions.requirementEvidence.strength === 'missing' || dimensions.requirementEvidence.strength === 'weak';
+    const runtimeUnproven = dimensions.runtimeEvidence.strength === 'missing' || dimensions.runtimeEvidence.strength === 'weak';
+    const sourceUnproven = dimensions.sourceEvidence.strength === 'missing' || dimensions.sourceEvidence.strength === 'weak';
+    if (requirementUnproven || runtimeUnproven || sourceUnproven || ownerMissing) return 'needs-evidence';
+  }
   if (sourceUnprovenForFrontend) return 'needs-evidence';
   if (score >= 80 && !runtimeMissing && !ownerMissing) return 'proven';
   if (score >= 60 && !runtimeMissing && !ownerMissing) return 'probable';
@@ -203,7 +210,7 @@ function buildItem(input: DefectProofInput, group: RootCauseGroup): DefectProofI
     title: group.title,
     owner: group.owner,
     priority: group.priority,
-    status: statusOf(score, dimensions, dispositions, group.owner),
+    status: statusOf(score, dimensions, dispositions, group),
     confidence: score >= 80 ? 'high' as const : score >= 60 ? 'medium' as const : 'low' as const,
     score,
     dimensions,

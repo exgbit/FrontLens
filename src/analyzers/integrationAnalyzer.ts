@@ -79,6 +79,34 @@ function sourceBindingRequired(context: AnalyzerContext): boolean {
   return Boolean(context.config.source.root || context.sourceAnalysis?.enabled);
 }
 
+function patternMatches(pattern: string, value: string): boolean {
+  if (!pattern) return false;
+  if (value.includes(pattern)) return true;
+  try {
+    return new RegExp(pattern).test(value);
+  } catch {
+    return false;
+  }
+}
+
+function providedRequirementIdsForListResponse(context: AnalyzerContext, record: NetworkRecord, tables: AnalyzerContext['pageModel']['tables']): string[] {
+  const selectors = tables.map((table) => table.selector).filter((selector): selector is string => Boolean(selector));
+  const tableSelectors = new Set(selectors);
+  const tableIds = new Set(tables.map((table) => table.id).filter(Boolean));
+  return context.config.requirements.items
+    .map((item, index) => ({ item, id: item.id?.trim() || `REQ-${String(index + 1).padStart(3, '0')}` }))
+    .filter(({ item }) => item.source !== 'inferred')
+    .filter(({ item }) =>
+      (item.apiPatterns ?? []).some((pattern) => patternMatches(pattern, record.url)) ||
+      (item.selectors ?? []).some((selector) =>
+        tableSelectors.has(selector) ||
+        tableIds.has(selector) ||
+        selectors.some((tableSelector) => tableSelector.includes(selector) || selector.includes(tableSelector))
+      )
+    )
+    .map(({ id }) => id);
+}
+
 export function analyzeIntegration(context: AnalyzerContext, factory: IssueFactory): Issue[] {
   const issues: Issue[] = [];
   const bodyText = context.pageModel.stats.bodyTextSample;
@@ -147,6 +175,7 @@ export function analyzeIntegration(context: AnalyzerContext, factory: IssueFacto
         (requiresSourceBinding && !sourceRuntimePassed) ||
         (sourceRuntimePassed && (sourceRuntimeConfidence === 'none' || sourceRuntimeConfidence === 'low'));
       if (!shouldSuppressUnboundListMismatch) {
+        const requirementIds = source ? providedRequirementIdsForListResponse(context, source.record, tables) : [];
         issues.push(
           factory.create({
             title: '接口返回疑似有列表数据，但页面表格为空',
@@ -162,7 +191,12 @@ export function analyzeIntegration(context: AnalyzerContext, factory: IssueFacto
                 maxTableRows,
                 responsePath: source?.path,
                 sampleKeys: source?.sampleKeys,
+                renderedItemCount: maxTableRows,
                 tableIds: tables.map((table) => table.id),
+                tableSelectors: tables.map((table) => table.selector).filter(Boolean),
+                uiSelectors: tables.map((table) => table.selector).filter(Boolean),
+                requirementIds,
+                requirementEvidence: requirementIds.length ? 'provided' : 'missing',
                 sourceRuntimeLinkId: sourceRuntimeLink?.id,
                 sourceRuntimeConfidence,
                 sourceApiMatches: sourceRuntimeLink?.sourceMatches.map((match) => ({

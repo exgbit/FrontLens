@@ -720,9 +720,9 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     requirementCoverage,
     title: pageModel.title
   });
-  const preliminaryDisposition = buildIssueDisposition(issues, resultConfig);
+  const preliminaryDisposition = buildIssueDisposition(issues, resultConfig, [], { requirementCoverage });
   const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), resultConfig, sourceRuntimeCorrelation, sourceAnalysis);
-  const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
+  const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups, { requirementCoverage });
   const defectProof: DefectProofResult = buildDefectProof({
     rootCauseGroups,
     issues,

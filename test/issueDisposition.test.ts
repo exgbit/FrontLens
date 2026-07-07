@@ -110,6 +110,120 @@ test('quality gate uses disposition so speculative high findings become pass-wit
   assert.equal(result.qualityGate.coverageGaps.some((gap) => gap.includes('Raw finding')), true);
 });
 
+test('api/ui data mismatch becomes actionable only with requirement network ui and source proof', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/orders', title: 'Orders' },
+    metadata: {
+      config: {
+        requirements: {
+          enabled: true,
+          inferFromPage: false,
+          items: [
+            {
+              id: 'REQ-ORDERS-LIST',
+              title: '订单列表必须展示接口返回记录',
+              priority: 'P1',
+              source: 'provided',
+              apiPatterns: ['/api/orders/list'],
+              selectors: ['table.orders']
+            }
+          ]
+        },
+        productContext: {
+          pageType: 'admin-data-list',
+          requiredFeatures: ['list-rendering']
+        }
+      }
+    },
+    pageModel: {
+      url: 'https://example.com/orders',
+      title: 'Orders',
+      tables: [
+        { id: 'TBL-001', type: 'table', tagName: 'table', selector: 'table.orders', visible: true, attributes: {}, confidence: 0.95, rowCount: 0, columnCount: 4, headers: ['ID', 'Name'] }
+      ],
+      stats: { domNodes: 30, visibleTextLength: 100, bodyTextSample: 'Orders 暂无数据' }
+    },
+    network: {
+      requests: [
+        {
+          id: 'REQ-LIST',
+          url: 'https://example.com/api/orders/list',
+          method: 'GET',
+          resourceType: 'fetch',
+          status: 200,
+          ok: true,
+          failed: false,
+          startedAt: '2026-07-07T00:00:00.000Z',
+          requestHeaders: {},
+          responseBodyPreview: '{"data":[{"id":1,"name":"A"},{"id":2,"name":"B"}]}',
+          contentType: 'application/json'
+        }
+      ]
+    },
+    sourceRuntimeCorrelation: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '',
+      summary: { networkRequestCount: 1, linkedRequestCount: 1, strongLinkCount: 1, unlinkedRequestCount: 0, listResponseLinkCount: 1 },
+      links: [
+        {
+          id: 'SRC-LINK-ORDERS',
+          networkRequestId: 'REQ-LIST',
+          method: 'GET',
+          url: 'https://example.com/api/orders/list',
+          path: '/api/orders/list',
+          status: 200,
+          confidence: 'high',
+          sourceMatches: [{ file: 'src/api/orders.ts', line: 12, method: 'GET', path: '/api/orders/list', client: 'http-client', expression: "http.get('/api/orders/list')" }],
+          stateSignals: [{ file: 'src/views/OrdersView.vue', line: 44, kind: 'empty', text: 'orders.length === 0' }],
+          componentIds: ['TBL-001'],
+          responseListHints: [{ path: '$.data', length: 2, sampleKeys: ['id', 'name'] }],
+          notes: []
+        }
+      ],
+      gaps: []
+    },
+    issues: [
+      {
+        id: 'ISSUE-LIST',
+        title: '接口返回疑似有列表数据，但页面表格为空',
+        category: 'integration-data-mismatch',
+        severity: 'high',
+        confidence: 0.9,
+        description: '订单接口返回 2 条记录，但订单表格 rowCount=0。',
+        evidence: {
+          networkRequestId: 'REQ-LIST',
+          screenshot: 'screenshots/orders-empty.png',
+          details: {
+            maxReturnedArrayLength: 2,
+            maxTableRows: 0,
+            responsePath: '$.data',
+            tableIds: ['TBL-001'],
+            tableSelectors: ['table.orders'],
+            sourceRuntimeLinkId: 'SRC-LINK-ORDERS',
+            sourceRuntimeConfidence: 'high',
+            sourceApiMatches: [{ file: 'src/api/orders.ts', line: 12 }],
+            sourceStateSignals: [{ file: 'src/views/OrdersView.vue', line: 44 }],
+            sourceComponentIds: ['TBL-001']
+          }
+        },
+        reproduceSteps: ['打开订单页', '检查 REQ-LIST 响应', '观察 table.orders 行数为 0'],
+        reason: '明确需求要求订单列表展示接口返回记录，且运行时与源码均已绑定到当前 UI。',
+        suggestion: { frontend: '修复订单列表数据绑定或空态判断。', priority: 'P1' }
+      }
+    ]
+  });
+
+  assert.equal(result.requirementCoverage.items[0].evidence.issueIds.includes('ISSUE-LIST'), true);
+  assert.equal(result.issueDisposition.items[0].status, 'confirmed');
+  assert.equal(result.issueDisposition.items[0].actionability, 'actionable');
+  assert.equal(result.issueDisposition.items[0].evidenceStrength, 'strong');
+  assert.equal(result.rootCauseGroups.length, 1);
+  assert.equal(result.defectProof.items[0].status === 'proven' || result.defectProof.items[0].status === 'probable', true);
+  assert.equal(result.fixTasks.length, 1);
+  assert.equal(result.professionalSummary.mustFix.length, 1);
+});
+
 test('exception no-feedback findings become proof-ready root-cause candidates when runtime and source binding are reproducible', () => {
   const result = normalizeResult({
     summary: { url: 'https://example.com/credentials', title: 'Credentials' },

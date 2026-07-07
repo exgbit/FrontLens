@@ -923,9 +923,11 @@ export function formatProfessionalReview(result: QaResult): string {
     return `| ${markdownEscape(item.id)} | ${markdownEscape(item.priority)} | ${markdownEscape(item.source)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(truncateMiddle(item.title, 90))} | ${markdownEscape(truncateMiddle(evidence, 120))} |`;
   });
 
+  const evidenceReport = typeof result.artifacts.evidenceReport === 'string' ? result.artifacts.evidenceReport : result.artifacts.markdownReport;
+
   return `# FrontLens Professional QA Review
 
-这是一份面向决策和修复排期的精简复盘；完整原始证据见 ${artifactPath(result.artifacts.markdownReport)}，机器可读数据见 ${artifactPath(result.artifacts.jsonReport)}。
+这是一份面向决策和修复排期的精简复盘；完整原始证据见 ${artifactPath(evidenceReport)}，机器可读数据见 ${artifactPath(result.artifacts.jsonReport)}。
 
 ## 结论
 
@@ -979,8 +981,10 @@ node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --output "report
 
 export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const outputPath = path.join(result.artifacts.outputDir, 'report.md');
+  const evidencePath = path.join(result.artifacts.outputDir, 'evidence-report.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   result.artifacts.markdownReport = outputPath;
+  result.artifacts.evidenceReport = evidencePath;
   result.artifacts.qaReview = reviewPath;
 
   const dispositionByIssue = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
@@ -992,7 +996,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const integrationIssues = actionableIssues.filter((issue) => issue.category.startsWith('integration'));
   const securityIssues = actionableIssues.filter((issue) => issue.category === 'security');
 
-  const markdown = `# FrontLens QA Report
+  const evidenceMarkdown = `# FrontLens QA Evidence Appendix
 
 ## 一、测试概览
 
@@ -1139,6 +1143,9 @@ ${formatArtifactIntegrity(result)}
 ${formatArtifacts(result)}
 `;
 
-  await writeText(outputPath, markdown);
-  await writeText(reviewPath, formatProfessionalReview(result));
+  const reviewMarkdown = formatProfessionalReview(result);
+  const reportMarkdown = reviewMarkdown.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
+  await writeText(outputPath, reportMarkdown);
+  await writeText(reviewPath, reviewMarkdown);
+  await writeText(evidencePath, evidenceMarkdown);
 }

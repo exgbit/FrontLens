@@ -39,7 +39,7 @@ import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 
-export const RESULT_SCHEMA_VERSION = '1.26.0';
+export const RESULT_SCHEMA_VERSION = '1.27.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));

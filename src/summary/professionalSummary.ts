@@ -194,7 +194,7 @@ export function buildProfessionalSummary(input: ProfessionalSummaryInput): Profe
     releaseRisks: risks,
     nextActions: actions,
     notes: unique([
-      'Use this professionalSummary as the default human-facing answer; keep raw issues in result.json/report.md for evidence drill-down.',
+      'Use this professionalSummary as the default human-facing answer; keep raw issues in result.json/evidence-report.md for evidence drill-down.',
       input.issueDisposition.summary.conditionalCount > 0 ? `${input.issueDisposition.summary.conditionalCount} raw finding(s) still need confirmation before they can become defects.` : '',
       input.regressionPlan.status !== 'ready' ? `Regression plan is ${input.regressionPlan.status}; inspect blocked/needs-input items before sign-off.` : ''
     ])

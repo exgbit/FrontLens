@@ -6,6 +6,7 @@ import { isActionableIssue } from '../qualityGate.js';
 import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 import { formatProfessionalBrief } from './briefReporter.js';
 import { formatProfessionalAudit, runProfessionalAudit } from '../audit/professionalAudit.js';
+import { buildProductContextSuggestion, formatProductContextSuggestion } from '../product/productContextSuggestion.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1146,6 +1147,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const evidencePath = path.join(result.artifacts.outputDir, 'evidence-report.md');
   const briefPath = path.join(result.artifacts.outputDir, 'brief.md');
   const auditPath = path.join(result.artifacts.outputDir, 'professional-audit.md');
+  const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
@@ -1155,6 +1157,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.evidenceReport = evidencePath;
   result.artifacts.professionalBrief = briefPath;
   result.artifacts.professionalAudit = auditPath;
+  result.artifacts.productContext = productContextPath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
@@ -1332,6 +1335,7 @@ ${formatArtifacts(result)}
   const reportMarkdown = reviewMarkdown.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
   await writeText(briefPath, formatProfessionalBrief(result));
   await writeText(auditPath, formatProfessionalAudit(runProfessionalAudit(result)));
+  await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);

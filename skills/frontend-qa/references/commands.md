@@ -200,6 +200,7 @@ Inspect machine-readable fix tasks or compare two reports:
 ```bash
 node dist/cli.js brief --report "reports/frontlens/users/result.json"
 node dist/cli.js audit --report "reports/frontlens/users/result.json"
+node dist/cli.js product-context --report "reports/frontlens/users/result.json"
 node dist/cli.js disposition --report "reports/frontlens/users/result.json"
 node dist/cli.js root-causes --report "reports/frontlens/users/result.json"
 node dist/cli.js fix-tasks --report "reports/frontlens/users/result.json"
@@ -207,7 +208,7 @@ node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "repo
 node dist/cli.js env-compare --dev-url "http://127.0.0.1:5173/users" --preview-url "http://127.0.0.1:4173/users" --output "reports/frontlens/users-env"
 ```
 
-In schema 1.51+, normal `qa` runs also write `professional-audit.md` and `professional-audit.json`; use the `audit` command for older reports or for a fresh self-check after manual report edits.
+In schema 1.51+, normal `qa` runs also write `professional-audit.md` and `professional-audit.json`; use the `audit` command for older reports or for a fresh self-check after manual report edits. In schema 1.52+, normal `qa` runs also write `product-context.md` and `product-context.json`; use `product-context` for older reports or to copy a reviewed productContext config snippet into a rerun.
 
 Enable upload testing only when explicitly allowed:
 
@@ -317,6 +318,7 @@ Stable result-consumption commands for other skills:
 node dist/cli.js inspect --report "reports/frontlens/users/result.json"
 node dist/cli.js brief --report "reports/frontlens/users/result.json"
 node dist/cli.js audit --report "reports/frontlens/users/result.json"
+node dist/cli.js product-context --report "reports/frontlens/users/result.json"
 node dist/cli.js issues --report "reports/frontlens/users/result.json" --severity high
 node dist/cli.js issues --report "reports/frontlens/users/result.json" --severity high --full
 node dist/cli.js network --report "reports/frontlens/users/result.json"

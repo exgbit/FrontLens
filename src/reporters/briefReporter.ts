@@ -106,6 +106,7 @@ ${forbidden.length ? ['以下结论当前不能正向使用：', ...forbidden].j
 - result.json: \`${markdownEscape(artifactPath(result, 'jsonReport'))}\`
 - report.md: \`${markdownEscape(artifactPath(result, 'markdownReport'))}\`
 - professional-audit.md: \`${markdownEscape(artifactPath(result, 'professionalAudit'))}\`
+- product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\`
 - qa-review.md: \`${markdownEscape(artifactPath(result, 'qaReview'))}\`
 - evidence-report.md: \`${markdownEscape(artifactPath(result, 'evidenceReport'))}\`
 - artifact integrity: **${result.artifactIntegrity.status}**（missing ${result.artifactIntegrity.missingCount}）

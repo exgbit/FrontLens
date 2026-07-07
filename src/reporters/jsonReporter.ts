@@ -2,6 +2,7 @@ import path from 'node:path';
 import type { QaResult } from '../types.js';
 import { writeJson } from '../utils/fs.js';
 import { runProfessionalAudit } from '../audit/professionalAudit.js';
+import { buildProductContextSuggestion } from '../product/productContextSuggestion.js';
 
 export function assignJsonArtifactPaths(result: QaResult): void {
   const outputDir = result.artifacts.outputDir;
@@ -17,6 +18,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.testDataLog = path.join(outputDir, 'test-data.json');
   result.artifacts.professionalSummaryLog = path.join(outputDir, 'professional-summary.json');
   result.artifacts.professionalAuditLog = path.join(outputDir, 'professional-audit.json');
+  result.artifacts.productContextLog = path.join(outputDir, 'product-context.json');
   result.artifacts.regressionPlanLog = path.join(outputDir, 'regression-plan.json');
   result.artifacts.scopeReviewLog = path.join(outputDir, 'scope-review.json');
   result.artifacts.claimGuardLog = path.join(outputDir, 'claim-guard.json');
@@ -42,6 +44,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     testDataLog: string;
     professionalSummaryLog: string;
     professionalAuditLog: string;
+    productContextLog: string;
     regressionPlanLog: string;
     scopeReviewLog: string;
     claimGuardLog: string;
@@ -62,6 +65,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   await writeJson(artifacts.testDataLog, result.testData);
   await writeJson(artifacts.professionalSummaryLog, result.professionalSummary);
   await writeJson(artifacts.professionalAuditLog, runProfessionalAudit(result));
+  await writeJson(artifacts.productContextLog, buildProductContextSuggestion(result));
   await writeJson(artifacts.regressionPlanLog, result.regressionPlan);
   await writeJson(artifacts.scopeReviewLog, result.scopeReview);
   await writeJson(artifacts.claimGuardLog, result.claimGuard);

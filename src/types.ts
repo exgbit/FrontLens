@@ -1040,6 +1040,24 @@ export interface ScopeReviewResult {
   notes: string[];
 }
 
+export interface ProductContextSuggestionResult {
+  generatedAt: string;
+  status: ScopeReviewResult['status'];
+  confidence: ScopeReviewResult['confidence'];
+  pageType: PageProfileType;
+  summary: string;
+  productContext: ProductContextConfig;
+  questions: ScopeReviewQuestion[];
+  notes: string[];
+  usage: {
+    configKey: 'productContext';
+    configSnippet: {
+      productContext: ProductContextConfig;
+    };
+    rerunCommand: string;
+  };
+}
+
 export interface SourceHealthScript {
   name: string;
   command: string;
@@ -1808,6 +1826,8 @@ export interface ArtifactIndex {
   professionalBrief?: string;
   /** Professional report-contract self-audit Markdown. */
   professionalAudit?: string;
+  /** Reviewable productContext suggestion Markdown. */
+  productContext?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -1827,6 +1847,7 @@ export interface ArtifactIndex {
   testDataLog?: string;
   professionalSummaryLog?: string;
   professionalAuditLog?: string;
+  productContextLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;

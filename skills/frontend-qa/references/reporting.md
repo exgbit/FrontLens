@@ -32,6 +32,7 @@ Summarize:
 - requirement coverage / business-validation confidence when the user asks for acceptance or professional QA;
 - QA sign-off status (`pass`, `pass-with-risks`, `blocked`, or `fail`) when using professional QA mode;
 - scopeReview status/questions and `scope-review.md` path; if `needs-input`, state which findings remain product/PRD-dependent instead of must-fix;
+- product-context suggestion path (`product-context.md`) when product/style/device scope is inferred; say it must be confirmed before being used as a triage contract;
 - claimGuard status and `claim-guard.md` path; if `limited` or `blocked`, state which broad conclusions are forbidden;
 - qaIntake status and `qa-intake.md` path; if `needs-input` or `blocked`, list topQuestions and keep linked conclusions conditional;
 - defectProof status and `defect-proof.md` path; if root causes are `needs-evidence`, list missing evidence and next steps and do not count them as implementation fixes;

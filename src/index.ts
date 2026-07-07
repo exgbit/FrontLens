@@ -14,6 +14,7 @@ export { buildTestDataAssessment, writeTestDataAssessment } from './testData/tes
 export { buildRegressionPlan } from './regression/regressionPlan.js';
 export { buildProfessionalSummary } from './summary/professionalSummary.js';
 export { buildScopeReview, createEmptyScopeReview } from './product/scopeReview.js';
+export { buildProductContextSuggestion, formatProductContextSuggestion } from './product/productContextSuggestion.js';
 export { buildClaimGuard, createEmptyClaimGuard } from './claims/claimGuard.js';
 export { buildQaIntake, createEmptyQaIntake } from './intake/qaIntake.js';
 export { buildDefectProof, createEmptyDefectProof } from './proof/defectProof.js';

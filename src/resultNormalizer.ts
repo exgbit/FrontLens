@@ -45,8 +45,9 @@ import { buildDefectProof } from './proof/defectProof.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
+import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 
-export const RESULT_SCHEMA_VERSION = '1.58.0';
+export const RESULT_SCHEMA_VERSION = '1.59.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -613,6 +614,78 @@ function normalizeReportContentAudit(raw: unknown, profile: QaResult['metadata']
   };
 }
 
+function journeyAuditSeverity(value: unknown): QaResult['journeyAssertionAudit']['findings'][number]['severity'] {
+  return value === 'blocker' || value === 'warning' || value === 'info' ? value : 'info';
+}
+
+function journeyAuditCategory(value: unknown): QaResult['journeyAssertionAudit']['findings'][number]['category'] {
+  return value === 'missing-assertion' || value === 'weak-assertion' || value === 'failed-assertion' || value === 'failed-journey' || value === 'requirement-binding'
+    ? value
+    : 'weak-assertion';
+}
+
+function normalizeJourneyAssertionAudit(raw: unknown, fallback: QaResult['journeyAssertionAudit']): QaResult['journeyAssertionAudit'] {
+  if (!isRecord(raw)) return fallback;
+  const status = raw.status === 'passed' || raw.status === 'warning' || raw.status === 'failed' || raw.status === 'skipped' ? raw.status : fallback.status;
+  const summary = isRecord(raw.summary) ? raw.summary : {};
+  const findings: QaResult['journeyAssertionAudit']['findings'] = asArray(raw.findings).filter(isRecord).map((item, index) => ({
+    id: asString(item.id, `JA-${String(index + 1).padStart(3, '0')}`),
+    severity: journeyAuditSeverity(item.severity),
+    category: journeyAuditCategory(item.category),
+    journeyId: optionalString(item.journeyId),
+    title: asString(item.title),
+    evidence: asString(item.evidence),
+    recommendation: asString(item.recommendation)
+  }));
+  return {
+    status,
+    checkedAt: asString(raw.checkedAt, new Date().toISOString()),
+    summary: {
+      journeyCount: asNumber(summary.journeyCount),
+      passedJourneyCount: asNumber(summary.passedJourneyCount),
+      pathOnlyJourneyCount: asNumber(summary.pathOnlyJourneyCount),
+      weaklyAssertedJourneyCount: asNumber(summary.weaklyAssertedJourneyCount),
+      runtimeVerifiedJourneyCount: asNumber(summary.runtimeVerifiedJourneyCount),
+      failedJourneyCount: asNumber(summary.failedJourneyCount),
+      assertionStepCount: asNumber(summary.assertionStepCount),
+      meaningfulAssertionStepCount: asNumber(summary.meaningfulAssertionStepCount),
+      findingCount: asNumber(summary.findingCount, findings.length),
+      blockerCount: asNumber(summary.blockerCount, findings.filter((item) => item.severity === 'blocker').length),
+      warningCount: asNumber(summary.warningCount, findings.filter((item) => item.severity === 'warning').length),
+      infoCount: asNumber(summary.infoCount, findings.filter((item) => item.severity === 'info').length)
+    },
+    items: asArray(raw.items).filter(isRecord).map((item) => ({
+      journeyId: asString(item.journeyId),
+      name: asString(item.name),
+      source: item.source === 'requirement-generated' || item.source === 'inferred' ? item.source : 'configured',
+      status: item.status === 'passed' || item.status === 'warning' || item.status === 'failed' || item.status === 'skipped' ? item.status : 'skipped',
+      quality: item.quality === 'runtime-verified' || item.quality === 'weakly-asserted' || item.quality === 'path-only' || item.quality === 'runtime-partial' || item.quality === 'failed' || item.quality === 'skipped' ? item.quality : 'runtime-partial',
+      requirementIds: asArray<string>(item.requirementIds).filter((value) => typeof value === 'string'),
+      stepCount: asNumber(item.stepCount),
+      actionStepCount: asNumber(item.actionStepCount),
+      assertionStepCount: asNumber(item.assertionStepCount),
+      passedAssertionStepCount: asNumber(item.passedAssertionStepCount),
+      failedAssertionStepCount: asNumber(item.failedAssertionStepCount),
+      weakAssertionStepCount: asNumber(item.weakAssertionStepCount),
+      meaningfulAssertionStepCount: asNumber(item.meaningfulAssertionStepCount),
+      assertionActions: asArray(item.assertionActions).filter((value): value is QaResult['journeyAssertionAudit']['items'][number]['assertionActions'][number] =>
+        value === 'expectVisible' || value === 'expectText' || value === 'expectUrl' || value === 'expectRequest'
+      ),
+      findings: asArray(item.findings).filter(isRecord).map((finding, index) => ({
+        id: asString(finding.id, `JA-${String(index + 1).padStart(3, '0')}`),
+        severity: journeyAuditSeverity(finding.severity),
+        category: journeyAuditCategory(finding.category),
+        journeyId: optionalString(finding.journeyId),
+        title: asString(finding.title),
+        evidence: asString(finding.evidence),
+        recommendation: asString(finding.recommendation)
+      }))
+    })),
+    findings,
+    notes: asArray<string>(raw.notes).filter((item) => typeof item === 'string')
+  };
+}
+
 function trustValue(value: unknown, fallback: 'high' | 'medium' | 'low' = 'low'): 'high' | 'medium' | 'low' {
   return value === 'high' || value === 'medium' || value === 'low' ? value : fallback;
 }
@@ -1112,6 +1185,11 @@ export function normalizeResult(raw: unknown): QaResult {
     interactionTests,
     accessibilityChecks
   });
+  const journeyAssertionAuditFallback = buildJourneyAssertionAudit({
+    journeyTests,
+    requirementCoverage
+  });
+  const journeyAssertionAudit = normalizeJourneyAssertionAudit(raw.journeyAssertionAudit, journeyAssertionAuditFallback);
   const artifactIntegrity = normalizeArtifactIntegrity(raw.artifactIntegrity);
   const sourceAnalysis = normalizeSourceAnalysis(raw.sourceAnalysis, metadataConfig);
   const sourceRuntimeCorrelation = normalizeSourceRuntimeCorrelation(raw.sourceRuntimeCorrelation);
@@ -1328,6 +1406,7 @@ export function normalizeResult(raw: unknown): QaResult {
     qaPlan,
     qaCoverage,
     reportContentAudit,
+    journeyAssertionAudit,
     professionalSummary,
     defectProof,
     claimGuard,

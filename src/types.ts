@@ -808,6 +808,65 @@ export interface JourneyTestResult {
   suggestion?: IssueSuggestion;
 }
 
+export type JourneyAssertionAuditStatus = 'passed' | 'warning' | 'failed' | 'skipped';
+export type JourneyAssertionAuditSeverity = 'blocker' | 'warning' | 'info';
+export type JourneyAssertionAuditCategory =
+  | 'missing-assertion'
+  | 'weak-assertion'
+  | 'failed-assertion'
+  | 'failed-journey'
+  | 'requirement-binding';
+
+export interface JourneyAssertionAuditFinding {
+  id: string;
+  severity: JourneyAssertionAuditSeverity;
+  category: JourneyAssertionAuditCategory;
+  journeyId?: string;
+  title: string;
+  evidence: string;
+  recommendation: string;
+}
+
+export interface JourneyAssertionAuditItem {
+  journeyId: string;
+  name: string;
+  source: JourneySource;
+  status: InteractionTestStatus;
+  quality: 'runtime-verified' | 'weakly-asserted' | 'path-only' | 'runtime-partial' | 'failed' | 'skipped';
+  requirementIds: string[];
+  stepCount: number;
+  actionStepCount: number;
+  assertionStepCount: number;
+  passedAssertionStepCount: number;
+  failedAssertionStepCount: number;
+  weakAssertionStepCount: number;
+  meaningfulAssertionStepCount: number;
+  assertionActions: JourneyStepAction[];
+  findings: JourneyAssertionAuditFinding[];
+}
+
+export interface JourneyAssertionAuditResult {
+  status: JourneyAssertionAuditStatus;
+  checkedAt: string;
+  summary: {
+    journeyCount: number;
+    passedJourneyCount: number;
+    pathOnlyJourneyCount: number;
+    weaklyAssertedJourneyCount: number;
+    runtimeVerifiedJourneyCount: number;
+    failedJourneyCount: number;
+    assertionStepCount: number;
+    meaningfulAssertionStepCount: number;
+    findingCount: number;
+    blockerCount: number;
+    warningCount: number;
+    infoCount: number;
+  };
+  items: JourneyAssertionAuditItem[];
+  findings: JourneyAssertionAuditFinding[];
+  notes: string[];
+}
+
 export interface ResponsiveCheckResult {
   name: string;
   width: number;
@@ -1982,6 +2041,8 @@ export interface ArtifactIndex {
   professionalAudit?: string;
   /** Generated Markdown content self-audit; checks forbidden wording and report depth. */
   reportContentAudit?: string;
+  /** Journey assertion quality audit Markdown; separates path replay from business validation. */
+  journeyAssertionAudit?: string;
   /** Reviewable productContext suggestion Markdown. */
   productContext?: string;
   /** Direct FrontLens config JSON containing the suggested/reviewed productContext snippet. */
@@ -2010,6 +2071,7 @@ export interface ArtifactIndex {
   professionalSummaryLog?: string;
   professionalAuditLog?: string;
   reportContentAuditLog?: string;
+  journeyAssertionAuditLog?: string;
   productContextLog?: string;
   qaPlanLog?: string;
   qaCoverageLog?: string;
@@ -2174,6 +2236,7 @@ export interface QaResult {
   qaPlan: QaExecutionPlanResult;
   qaCoverage: QaCoverageMatrixResult;
   reportContentAudit: ReportContentAuditResult;
+  journeyAssertionAudit: JourneyAssertionAuditResult;
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
   claimGuard: ClaimGuardResult;

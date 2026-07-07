@@ -1194,6 +1194,10 @@ async function main(): Promise<void> {
             profile: result.reportContentAudit.profile,
             summary: result.reportContentAudit.summary
           },
+          journeyAssertionAudit: {
+            status: result.journeyAssertionAudit.status,
+            summary: result.journeyAssertionAudit.summary
+          },
           testData: {
             status: result.testData.status,
             environment: result.testData.environment,
@@ -1252,6 +1256,7 @@ async function main(): Promise<void> {
     console.log(`QA Intake: ${result.qaIntake.status}, questions ${result.qaIntake.questions.length}, top ${result.qaIntake.topQuestions.length}`);
     console.log(`Defect Proof: ${result.defectProof.status}, proven ${result.defectProof.counts.proven}, needs-evidence ${result.defectProof.counts.needsEvidence}`);
     console.log(`Report Content Audit: ${result.reportContentAudit.status}, blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}`);
+    console.log(`Journey Assertion Audit: ${result.journeyAssertionAudit.status}, runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}`);
     const failedScriptChecks = result.sourceHealth.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
     console.log(`Source Health: ${result.sourceHealth.status}, syntax errors ${result.sourceHealth.syntaxErrorCount}, script checks ${result.sourceHealth.scriptChecks.length} (${failedScriptChecks} failed/timed-out)`);
     console.log(`Artifact Integrity: ${result.artifactIntegrity.status}, missing ${result.artifactIntegrity.missingCount}`);
@@ -1270,6 +1275,7 @@ async function main(): Promise<void> {
     console.log(`QA Intake: ${result.artifacts.qaIntake ?? '(disabled)'}`);
     console.log(`Defect Proof: ${result.artifacts.defectProof ?? '(disabled)'}`);
     console.log(`Report Content Audit: ${result.artifacts.reportContentAudit ?? '(disabled)'}`);
+    console.log(`Journey Assertion Audit: ${result.artifacts.journeyAssertionAudit ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

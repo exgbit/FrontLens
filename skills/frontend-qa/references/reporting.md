@@ -24,6 +24,7 @@ Summarize:
 - generated artifact paths and artifact integrity status; in FrontLens 1.35+ expect report.md/report.html to reflect the final artifactIntegrity snapshot, not an early pre-human-report snapshot; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used; test-data lifecycle status when write/data-changing flows are in scope;
 - professional-audit status and `professional-audit.md` path; if it is `failed`, report the blocker before trusting any must-fix list or business/sign-off claim;
 - report-content-audit status and `report-content-audit.md` path; if it is `failed`, do not echo the generated conclusion until forbidden wording/raw-evidence leakage/profile-depth issues are fixed or explicitly scoped;
+- journey-assertion-audit status and `journey-assertion-audit.md` path; distinguish runtime-verified, weakly asserted, and path-only journeys before discussing business validation;
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation; include pageProfile/scopeReview questions when product scope is inferred rather than configured;
 - claimGuard status, forbidden claims, and required inputs; avoid forbidden wording in the final answer;
 - qaIntake status, top questions, and missing inputs; ask these before turning product/design assumptions into defects;
@@ -41,6 +42,7 @@ Summarize:
 - QA execution plan status/items from `result.json.qaPlan` and `qa-plan.md` so follow-up work is a tester worklist, not a raw issue dump;
 - QA coverage matrix status/items from `result.json.qaCoverage` and `qa-coverage.md`; skipped and needs-input rows must be phrased as coverage gaps, not passes;
 - generated-report content audit from `result.json.reportContentAudit` and `report-content-audit.md`; blockers mean the report text itself overclaims or violates the selected depth profile;
+- journey assertion audit from `result.json.journeyAssertionAudit` and `journey-assertion-audit.md`; path-only click/fill journeys are coverage gaps, not business passes;
 - skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;
 - for each retained critical/high issue: issue id, severity, category, evidence reference, reproduction step summary, and suggested owner/fix.
 

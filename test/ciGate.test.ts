@@ -159,6 +159,27 @@ test('professional CI gate fails on report/sign-off contract blockers while raw 
       findings: [],
       notes: []
     },
+    journeyAssertionAudit: {
+      status: 'failed' as const,
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      summary: {
+        journeyCount: 1,
+        passedJourneyCount: 1,
+        pathOnlyJourneyCount: 1,
+        weaklyAssertedJourneyCount: 0,
+        runtimeVerifiedJourneyCount: 0,
+        failedJourneyCount: 0,
+        assertionStepCount: 0,
+        meaningfulAssertionStepCount: 0,
+        findingCount: 1,
+        blockerCount: 1,
+        warningCount: 0,
+        infoCount: 0
+      },
+      items: [],
+      findings: [],
+      notes: []
+    },
     qaSignoff: {
       status: 'blocked' as const,
       confidence: 'low' as const,
@@ -205,6 +226,7 @@ test('professional CI gate fails on report/sign-off contract blockers while raw 
   assert.equal(professionalGate.status, 'failed');
   assert.equal(professionalGate.failedByProfessionalContract, true);
   assert.equal(professionalGate.professionalContractFailures.some((item) => item.includes('reportContentAudit failed')), true);
+  assert.equal(professionalGate.professionalContractFailures.some((item) => item.includes('journeyAssertionAudit failed')), true);
   assert.equal(professionalGate.professionalContractFailures.some((item) => item.includes('qaSignoff is blocked')), true);
   assert.equal(rawGate.status, 'passed');
   assert.equal(rawGate.failedByProfessionalContract, false);

@@ -479,6 +479,10 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           profile: result.reportContentAudit.profile,
           summary: result.reportContentAudit.summary
         },
+        journeyAssertionAudit: {
+          status: result.journeyAssertionAudit.status,
+          summary: result.journeyAssertionAudit.summary
+        },
         testData: {
           status: result.testData.status,
           environment: result.testData.environment,
@@ -559,6 +563,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         qaIntake: result.qaIntake,
         defectProof: result.defectProof,
         reportContentAudit: result.reportContentAudit,
+        journeyAssertionAudit: result.journeyAssertionAudit,
         testData: result.testData,
         requirementCoverage: result.requirementCoverage,
         sourceHealth: result.sourceHealth,

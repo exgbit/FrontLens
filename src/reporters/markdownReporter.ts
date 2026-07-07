@@ -7,6 +7,7 @@ import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 import { formatProfessionalBrief } from './briefReporter.js';
 import { formatProfessionalAudit, runProfessionalAudit } from '../audit/professionalAudit.js';
 import { formatReportContentAudit, runReportContentAudit } from '../audit/reportContentAudit.js';
+import { formatJourneyAssertionAudit } from '../journeys/journeyAssertionAudit.js';
 import { buildProductContextSuggestion, formatProductContextSuggestion } from '../product/productContextSuggestion.js';
 import { buildQaExecutionPlan, formatQaExecutionPlan } from '../plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix, formatQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
@@ -1164,6 +1165,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const briefPath = path.join(result.artifacts.outputDir, 'brief.md');
   const auditPath = path.join(result.artifacts.outputDir, 'professional-audit.md');
   const reportContentAuditPath = path.join(result.artifacts.outputDir, 'report-content-audit.md');
+  const journeyAssertionAuditPath = path.join(result.artifacts.outputDir, 'journey-assertion-audit.md');
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
   const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
@@ -1177,6 +1179,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.professionalBrief = briefPath;
   result.artifacts.professionalAudit = auditPath;
   result.artifacts.reportContentAudit = reportContentAuditPath;
+  result.artifacts.journeyAssertionAudit = journeyAssertionAuditPath;
   result.artifacts.productContext = productContextPath;
   result.artifacts.qaPlan = qaPlanPath;
   result.artifacts.qaCoverage = qaCoveragePath;
@@ -1365,6 +1368,7 @@ ${formatArtifacts(result)}
   await writeText(briefPath, formatProfessionalBrief(result));
   await writeText(auditPath, formatProfessionalAudit(runProfessionalAudit(result)));
   await writeText(reportContentAuditPath, formatReportContentAudit(result.reportContentAudit));
+  await writeText(journeyAssertionAuditPath, formatJourneyAssertionAudit(result.journeyAssertionAudit));
   await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));
   result.qaPlan = buildQaExecutionPlan(result);
   await writeText(qaPlanPath, formatQaExecutionPlan(result.qaPlan));

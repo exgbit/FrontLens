@@ -23,6 +23,7 @@ import { JourneyTester } from './journeys/journeyTester.js';
 import { analyzeApiContract } from './contract/apiContract.js';
 import { RealtimeCollector, createEmptyRealtimeResult } from './realtime/realtimeCollector.js';
 import { P2Tester, createEmptyP2Result } from './p2/p2Tester.js';
+import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 import { applySuggestionTemplates } from './fix/suggestionTemplates.js';
 import { dedupeIssues } from './fix/issueDedupe.js';
 import { generateFixTasks } from './fix/fixTasks.js';
@@ -695,6 +696,10 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
       url: redactUrl(config.target.url)
     }
   };
+  const journeyAssertionAudit = buildJourneyAssertionAudit({
+    journeyTests,
+    requirementCoverage
+  });
   const testData: TestDataAssessmentResult = buildTestDataAssessment(resultConfig, requirementCoverage);
   const environment: EnvironmentAssessment = buildEnvironmentAssessment({
     config,
@@ -942,6 +947,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     qaPlan,
     qaCoverage,
     reportContentAudit: createSkippedReportContentAudit(resultConfig.report.profile),
+    journeyAssertionAudit,
     professionalSummary,
     defectProof,
     claimGuard,

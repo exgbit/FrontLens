@@ -6,6 +6,7 @@ export type ProfessionalAuditSeverity = 'blocker' | 'warning' | 'info';
 export type ProfessionalAuditCategory =
   | 'artifact-integrity'
   | 'report-content'
+  | 'journey-assertion'
   | 'claim-guard'
   | 'qa-signoff'
   | 'overclaim'
@@ -206,6 +207,23 @@ function auditEnvironmentAndScope(result: QaResult, findings: ProfessionalAuditF
       title: `Report content audit has ${result.reportContentAudit.summary.warningCount} warning(s).`,
       evidenceRefs: ['reportContentAudit', 'artifacts.reportContentAudit'],
       recommendation: 'Review report-content-audit.md and keep final wording within profile/coverage/raw-score boundaries.'
+    });
+  }
+  if (result.journeyAssertionAudit.status === 'failed') {
+    add(findings, {
+      severity: 'blocker',
+      category: 'journey-assertion',
+      title: `Journey assertion audit failed with ${result.journeyAssertionAudit.summary.blockerCount} blocker(s).`,
+      evidenceRefs: ['journeyAssertionAudit', 'artifacts.journeyAssertionAudit', ...result.journeyAssertionAudit.findings.slice(0, 4).map((item) => item.id)],
+      recommendation: 'Fix failed/missing journey assertions before using journey results as professional business-validation evidence.'
+    });
+  } else if (result.journeyAssertionAudit.status === 'warning') {
+    add(findings, {
+      severity: 'warning',
+      category: 'journey-assertion',
+      title: `Journey assertion audit has ${result.journeyAssertionAudit.summary.warningCount} warning(s).`,
+      evidenceRefs: ['journeyAssertionAudit', 'artifacts.journeyAssertionAudit'],
+      recommendation: 'Review path-only or weakly asserted journeys; add meaningful expect* assertions before claiming runtime-verified business behavior.'
     });
   }
   if (result.claimGuard.status === 'blocked') {

@@ -22,6 +22,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.professionalSummaryLog = path.join(outputDir, 'professional-summary.json');
   result.artifacts.professionalAuditLog = path.join(outputDir, 'professional-audit.json');
   result.artifacts.reportContentAuditLog = path.join(outputDir, 'report-content-audit.json');
+  result.artifacts.journeyAssertionAuditLog = path.join(outputDir, 'journey-assertion-audit.json');
   result.artifacts.productContextLog = path.join(outputDir, 'product-context.json');
   result.artifacts.productContextConfig = path.join(outputDir, 'product-context.config.json');
   result.artifacts.qaPlanLog = path.join(outputDir, 'qa-plan.json');
@@ -52,6 +53,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     professionalSummaryLog: string;
     professionalAuditLog: string;
     reportContentAuditLog: string;
+    journeyAssertionAuditLog: string;
     productContextLog: string;
     productContextConfig: string;
     qaPlanLog: string;
@@ -80,6 +82,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     result.reportContentAudit = createSkippedReportContentAudit(result.metadata.config.report.profile);
   }
   await writeJson(artifacts.reportContentAuditLog, result.reportContentAudit);
+  await writeJson(artifacts.journeyAssertionAuditLog, result.journeyAssertionAudit);
   const productContextSuggestion = buildProductContextSuggestion(result);
   await writeJson(artifacts.productContextLog, productContextSuggestion);
   await writeJson(artifacts.productContextConfig, productContextSuggestion.usage.configSnippet);

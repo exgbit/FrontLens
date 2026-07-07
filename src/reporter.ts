@@ -21,6 +21,7 @@ import { buildQaIntake } from './intake/qaIntake.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
+import { buildJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config);
@@ -53,6 +54,10 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     journeyTests: result.journeyTests,
     interactionTests: result.interactionTests,
     accessibilityChecks: result.accessibilityChecks
+  });
+  result.journeyAssertionAudit = buildJourneyAssertionAudit({
+    journeyTests: result.journeyTests,
+    requirementCoverage: result.requirementCoverage
   });
   result.artifactIntegrity = await buildArtifactIntegrity(result);
   result.testData = buildTestDataAssessment(result.metadata.config, result.requirementCoverage);

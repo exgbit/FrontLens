@@ -48,12 +48,15 @@ function hasSeverityAtOrAbove(counts: Record<Severity, number>, failOn: Severity
   return severities.some((severity) => severityRank[severity] <= severityRank[failOn] && counts[severity] > 0);
 }
 
-type ProfessionalContractInput = Partial<Pick<QaResult, 'artifactIntegrity' | 'claimGuard' | 'qaCoverage' | 'qaIntake' | 'qaSignoff' | 'qualityGate' | 'reportContentAudit'>>;
+type ProfessionalContractInput = Partial<Pick<QaResult, 'artifactIntegrity' | 'claimGuard' | 'qaCoverage' | 'qaIntake' | 'qaSignoff' | 'qualityGate' | 'reportContentAudit' | 'journeyAssertionAudit'>>;
 
 function professionalContractFailures(result: ProfessionalContractInput): string[] {
   const failures: string[] = [];
   if (result.reportContentAudit?.status === 'failed') {
     failures.push(`reportContentAudit failed (${result.reportContentAudit.summary.blockerCount} blocker(s)).`);
+  }
+  if (result.journeyAssertionAudit?.status === 'failed') {
+    failures.push(`journeyAssertionAudit failed (${result.journeyAssertionAudit.summary.blockerCount} blocker(s)).`);
   }
   if (result.artifactIntegrity?.status === 'failed') {
     failures.push(`artifactIntegrity failed (${result.artifactIntegrity.missingCount} missing artifact(s)).`);
@@ -105,7 +108,7 @@ export function evaluateQaCiGate(input: {
     notes: mode === 'professional'
       ? [
           'Professional gate uses adjustedScore and actionable+proof-ready findings only; raw deployment/product/tool/needs-evidence findings do not fail CI.',
-          'Professional gate also fails on report/sign-off contract blockers such as failed reportContentAudit, qaSignoff, qualityGate, artifactIntegrity, claimGuard, qaIntake, or failed/insufficient qaCoverage.'
+          'Professional gate also fails on report/sign-off contract blockers such as failed reportContentAudit, failed journeyAssertionAudit, qaSignoff, qualityGate, artifactIntegrity, claimGuard, qaIntake, or failed/insufficient qaCoverage.'
         ]
       : ['Raw gate uses raw score and all raw findings for backward-compatible scanner behavior.']
   };

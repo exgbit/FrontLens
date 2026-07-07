@@ -207,6 +207,8 @@ node dist/cli.js diff --before "reports/frontlens/old/result.json" --after "repo
 node dist/cli.js env-compare --dev-url "http://127.0.0.1:5173/users" --preview-url "http://127.0.0.1:4173/users" --output "reports/frontlens/users-env"
 ```
 
+In schema 1.51+, normal `qa` runs also write `professional-audit.md` and `professional-audit.json`; use the `audit` command for older reports or for a fresh self-check after manual report edits.
+
 Enable upload testing only when explicitly allowed:
 
 ```json
@@ -330,5 +332,7 @@ node dist/cli.js role-matrix --url "http://127.0.0.1:5173/users" --role admin=".
 node dist/cli.js journey record --url "http://127.0.0.1:5173/users" --output "journeys/users-smoke.json"
 node dist/cli.js suggestions --report "reports/frontlens/users/result.json"
 ```
+
+`brief` is the default one-page human/LLM summary. `audit` is the report-contract self-check; a failed audit should block trusting must-fix/fixTasks or broad sign-off claims until the report is corrected or downgraded.
 
 `--severity high` returns high and above (`critical` + `high`), not only exact high.

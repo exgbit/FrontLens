@@ -22,6 +22,7 @@ Summarize:
 - API contract / GraphQL / WebSocket / SSE findings;
 - machine-executable fix task count and important task IDs; regressionPlan status, blocked/needs-input counts, and top rerun commands;
 - generated artifact paths and artifact integrity status; in FrontLens 1.35+ expect report.md/report.html to reflect the final artifactIntegrity snapshot, not an early pre-human-report snapshot; env-compare artifact path when dev/preview dual-run was used; role-matrix artifact path when multi-role runs were used; test-data lifecycle status when write/data-changing flows are in scope;
+- professional-audit status and `professional-audit.md` path; if it is `failed`, report the blocker before trusting any must-fix list or business/sign-off claim;
 - triage buckets: real frontend, backend/API, deployment/security config, product decision, false positive/tool limitation; include pageProfile/scopeReview questions when product scope is inferred rather than configured;
 - claimGuard status, forbidden claims, and required inputs; avoid forbidden wording in the final answer;
 - qaIntake status, top questions, and missing inputs; ask these before turning product/design assumptions into defects;

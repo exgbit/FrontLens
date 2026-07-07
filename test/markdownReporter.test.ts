@@ -43,6 +43,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
 
   const report = await readFile(result.artifacts.markdownReport!, 'utf8');
   const brief = await readFile(result.artifacts.professionalBrief!, 'utf8');
+  const audit = await readFile(result.artifacts.professionalAudit!, 'utf8');
   const review = await readFile(result.artifacts.qaReview!, 'utf8');
   const evidence = await readFile(result.artifacts.evidenceReport!, 'utf8');
   const scopeReview = await readFile(result.artifacts.scopeReview!, 'utf8');
@@ -52,8 +53,11 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
 
   assert.match(report, /FrontLens Professional QA Report/);
   assert.match(brief, /FrontLens QA Brief/);
+  assert.match(audit, /FrontLens Professional Audit/);
   assert.match(brief, /Core fixes/);
+  assert.match(brief, /professional-audit\.md/);
   assert.match(report, /核心缺陷 \/ 修复根因/);
+  assert.match(report, /Professional audit/);
   assert.match(report, /产品范围 \/ PRD 待确认/);
   assert.match(report, /结论护栏 \/ 禁止过度承诺/);
   assert.match(report, /专业 QA 待补输入 \/ 避免猜测/);
@@ -110,6 +114,8 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.missingCount, 0);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.markdownReport' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.professionalBrief' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.professionalAudit' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.professionalAuditLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.evidenceReport' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.htmlReport' && entry.exists), true);
   assert.match(report, /Artifact integrity：passed（missing 0）/);

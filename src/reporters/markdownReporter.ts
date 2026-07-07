@@ -5,6 +5,7 @@ import { writeText } from '../utils/fs.js';
 import { isActionableIssue } from '../qualityGate.js';
 import { proofReadyRootCauseGroups } from '../proof/proofReadiness.js';
 import { formatProfessionalBrief } from './briefReporter.js';
+import { formatProfessionalAudit, runProfessionalAudit } from '../audit/professionalAudit.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -987,6 +988,7 @@ ${entries.map(([key, value]) => `- ${key}: \`${reportPath(result, value as strin
 
 export function formatProfessionalReview(result: QaResult): string {
   const actionableGroups = proofReadyRootCauseGroups(result.rootCauseGroups, result.defectProof);
+  const professionalAudit = runProfessionalAudit(result);
   const rawActionableGroupCount = result.rootCauseGroups.filter((group) => group.status === 'actionable').length;
   const blockerGroups = actionableGroups.filter((group) => group.priority === 'P0' || group.priority === 'P1');
   const sourceScriptPassed = result.sourceHealth.scriptChecks.filter((check) => check.status === 'passed').length;
@@ -1055,6 +1057,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Adjusted score：**${result.summary.adjustedScore}/100**（专业排期口径，基于 ${result.summary.adjustedIssueCount} 个 ${result.summary.scoreBasis} finding）
 - Fix queue：${actionableGroups.length} proof-ready root cause(s) / ${blockerGroups.length} P0-P1 blocker(s)
 - Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
+- Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
 - Raw score：**${result.summary.score}/100**（原始扫描趋势分，不能直接等同页面质量或修复工作量）
 - Raw issues：${result.summary.issueCount}；actionable / conditional / non-actionable：${disposition.actionableCount} / ${disposition.conditionalCount} / ${disposition.nonActionableCount}
 - Proof-ready root causes：${actionableGroups.length} / actionable ${rawActionableGroupCount}（P0/P1 ${blockerGroups.length}）
@@ -1142,6 +1145,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const outputPath = path.join(result.artifacts.outputDir, 'report.md');
   const evidencePath = path.join(result.artifacts.outputDir, 'evidence-report.md');
   const briefPath = path.join(result.artifacts.outputDir, 'brief.md');
+  const auditPath = path.join(result.artifacts.outputDir, 'professional-audit.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
@@ -1150,6 +1154,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.markdownReport = outputPath;
   result.artifacts.evidenceReport = evidencePath;
   result.artifacts.professionalBrief = briefPath;
+  result.artifacts.professionalAudit = auditPath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
@@ -1326,6 +1331,7 @@ ${formatArtifacts(result)}
   const reviewMarkdown = formatProfessionalReview(result);
   const reportMarkdown = reviewMarkdown.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
   await writeText(briefPath, formatProfessionalBrief(result));
+  await writeText(auditPath, formatProfessionalAudit(runProfessionalAudit(result)));
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);

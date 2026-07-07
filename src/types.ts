@@ -1806,6 +1806,8 @@ export interface ArtifactIndex {
   evidenceReport?: string;
   /** One-page professional QA brief intended as the default LLM/user answer shape. */
   professionalBrief?: string;
+  /** Professional report-contract self-audit Markdown. */
+  professionalAudit?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -1824,6 +1826,7 @@ export interface ArtifactIndex {
   p2Log?: string;
   testDataLog?: string;
   professionalSummaryLog?: string;
+  professionalAuditLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;

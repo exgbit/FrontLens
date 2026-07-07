@@ -378,6 +378,7 @@ export async function writeHtmlReport(result: QaResult): Promise<void> {
           <div class="metric"><span>Business validation</span><strong>${escapeHtml(result.qaSignoff.businessValidationConfidence)}</strong></div>
           <div class="metric"><span>Provided reqs</span><strong>${result.qaSignoff.scope.providedRequirementCount}</strong></div>
           <div class="metric"><span>Journeys</span><strong>${result.qaSignoff.scope.passedJourneyCount}/${result.qaSignoff.scope.journeyCount}</strong></div>
+          <div class="metric"><span>Journey assertions</span><strong>${result.qaSignoff.scope.passedAssertionStepCount}/${result.qaSignoff.scope.assertionStepCount}</strong></div>
           <div class="metric"><span>Interactions</span><strong>${result.qaSignoff.scope.passedInteractionCount}/${result.qaSignoff.scope.interactionCount}</strong></div>
           <div class="metric"><span>Auth</span><strong>${String(result.qaSignoff.scope.authStateProvided)}</strong></div>
           <div class="metric"><span>Environment</span><strong>${escapeHtml(result.qaSignoff.scope.environmentKind)}</strong></div>

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDefaultConfig } from '../src/defaultConfig.ts';
 import { buildQaSignoff } from '../src/signoff/qaSignoff.ts';
-import type { ArtifactIntegrityResult, EnvironmentAssessment, JourneyTestResult, PageProfileAssessment, QaQualityGate, RequirementCoverageResult, SourceHealthResult } from '../src/types.ts';
+import type { ArtifactIntegrityResult, EnvironmentAssessment, JourneyStepResult, JourneyTestResult, PageProfileAssessment, QaQualityGate, RequirementCoverageResult, SourceHealthResult } from '../src/types.ts';
 
 function qualityGate(overrides: Partial<QaQualityGate> = {}): QaQualityGate {
   return {
@@ -120,7 +120,21 @@ function pageProfile(overrides: Partial<PageProfileAssessment> = {}): PageProfil
   };
 }
 
-function journey(status: JourneyTestResult['status']): JourneyTestResult {
+function assertionStep(overrides: Partial<JourneyStepResult> = {}): JourneyStepResult {
+  return {
+    index: 0,
+    action: 'expectText',
+    target: 'body',
+    value: 'Users',
+    status: 'passed',
+    startedAt: '',
+    endedAt: '',
+    durationMs: 1,
+    ...overrides
+  };
+}
+
+function journey(status: JourneyTestResult['status'], steps: JourneyStepResult[] = []): JourneyTestResult {
   return {
     id: `J-${status}`,
     name: 'journey',
@@ -129,7 +143,7 @@ function journey(status: JourneyTestResult['status']): JourneyTestResult {
     endedAt: '',
     durationMs: 1,
     startUrl: 'https://example.com',
-    steps: []
+    steps
   };
 }
 
@@ -186,7 +200,7 @@ test('qa signoff can pass with provided requirements and passed runtime journey'
     }),
     sourceHealth: sourceHealth({ packageScripts: [] }),
     artifactIntegrity: artifacts(),
-    journeyTests: [journey('passed')],
+    journeyTests: [journey('passed', [assertionStep()])],
     interactionTests: [{ id: 'IT-1', kind: 'search', target: 'search', status: 'passed', startedAt: '', endedAt: '', durationMs: 1, actions: [], observations: {} }],
     exceptionSimulations: [],
     pageDomNodes: 100
@@ -195,6 +209,55 @@ test('qa signoff can pass with provided requirements and passed runtime journey'
   assert.equal(result.status, 'pass');
   assert.equal(result.confidence, 'high');
   assert.equal(result.businessValidationConfidence, 'runtime-verified');
+  assert.equal(result.scope.passedAssertionStepCount, 1);
+  assert.equal(result.scope.passedJourneyWithAssertionCount, 1);
+});
+
+test('qa signoff does not runtime-verify passed recorded journeys without success assertions', () => {
+  const config = createDefaultConfig('https://example.com');
+  config.auth.storageState = '.auth/admin.json';
+  const result = buildQaSignoff({
+    config,
+    qualityGate: qualityGate(),
+    requirementCoverage: requirements({
+      source: 'provided',
+      summary: {
+        requirementCount: 1,
+        passedCount: 1,
+        failedCount: 0,
+        partialCount: 0,
+        notCoveredCount: 0,
+        notApplicableCount: 0,
+        providedCount: 1,
+        inferredCount: 0,
+        highPriorityGapCount: 0
+      },
+      items: [
+        {
+          id: 'REQ-1',
+          title: 'recorded flow',
+          priority: 'P1',
+          source: 'provided',
+          status: 'passed',
+          confidence: 'high',
+          evidence: { selectors: [], componentIds: [], journeyIds: ['J-passed'], interactionTestIds: [], networkRequestIds: [], issueIds: [], notes: [] },
+          gaps: []
+        }
+      ]
+    }),
+    sourceHealth: sourceHealth({ packageScripts: [] }),
+    artifactIntegrity: artifacts(),
+    journeyTests: [journey('passed', [assertionStep({ action: 'click', target: 'text=保存', value: undefined })])],
+    interactionTests: [],
+    exceptionSimulations: [],
+    pageDomNodes: 100
+  });
+
+  assert.equal(result.status, 'pass-with-risks');
+  assert.equal(result.businessValidationConfidence, 'runtime-partial');
+  assert.equal(result.scope.passedJourneyWithAssertionCount, 0);
+  assert.equal(result.scope.passedJourneyWithoutAssertionCount, 1);
+  assert.equal(result.coverageGaps.some((gap) => gap.includes('缺少 expectVisible/expectText/expectUrl')), true);
 });
 
 test('qa signoff fails on source health syntax blockers', () => {

@@ -1,4 +1,4 @@
-import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
+import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyStepAction, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
 
 function passedCount(items: Array<{ status: string }>): number {
   return items.filter((item) => item.status === 'passed').length;
@@ -10,6 +10,30 @@ function failedCount(items: Array<{ status: string }>): number {
 
 function allSkipped(items: Array<{ status: string }>): boolean {
   return items.length > 0 && items.every((item) => item.status === 'skipped');
+}
+
+const assertionActions = new Set<JourneyStepAction>(['expectVisible', 'expectText', 'expectUrl']);
+
+function isAssertionAction(action: string): boolean {
+  return assertionActions.has(action as JourneyStepAction);
+}
+
+function journeyAssertionSummary(journeys: JourneyTestResult[]): {
+  assertionStepCount: number;
+  passedAssertionStepCount: number;
+  passedJourneyWithAssertionCount: number;
+  passedJourneyWithoutAssertionCount: number;
+} {
+  const assertionStepCount = journeys.reduce((count, journey) => count + journey.steps.filter((step) => isAssertionAction(step.action)).length, 0);
+  const passedAssertionStepCount = journeys.reduce((count, journey) => count + journey.steps.filter((step) => isAssertionAction(step.action) && step.status === 'passed').length, 0);
+  const passedJourneys = journeys.filter((journey) => journey.status === 'passed');
+  const passedJourneyWithAssertionCount = passedJourneys.filter((journey) => journey.steps.some((step) => isAssertionAction(step.action) && step.status === 'passed')).length;
+  return {
+    assertionStepCount,
+    passedAssertionStepCount,
+    passedJourneyWithAssertionCount,
+    passedJourneyWithoutAssertionCount: passedJourneys.length - passedJourneyWithAssertionCount
+  };
 }
 
 function hasAnyRuntimeEvidence(input: {
@@ -26,13 +50,14 @@ function businessValidationConfidence(input: {
   journeyTests: JourneyTestResult[];
   interactionTests: InteractionTestResult[];
   pageDomNodes: number;
+  passedJourneyWithAssertionCount: number;
 }): QaSignoffResult['businessValidationConfidence'] {
   if (input.qualityGate.status === 'blocked' || input.pageDomNodes === 0) return 'not-verified';
   const providedRequirements = input.requirementCoverage.summary.providedCount;
   const providedAllPassed = providedRequirements > 0 && input.requirementCoverage.items
     .filter((item) => item.source === 'provided')
     .every((item) => item.status === 'passed' || item.status === 'not-applicable');
-  if (providedAllPassed && passedCount(input.journeyTests) > 0) return 'runtime-verified';
+  if (providedAllPassed && input.passedJourneyWithAssertionCount > 0) return 'runtime-verified';
   if (hasAnyRuntimeEvidence(input)) return 'runtime-partial';
   return 'static-source-only';
 }
@@ -69,6 +94,7 @@ export function buildQaSignoff(input: {
   const inferredRequirementCount = input.requirementCoverage.summary.inferredCount;
   const passedJourneyCount = passedCount(input.journeyTests);
   const failedJourneyCount = failedCount(input.journeyTests);
+  const journeyAssertions = journeyAssertionSummary(input.journeyTests);
   const passedInteractionCount = passedCount(input.interactionTests);
   const failedInteractionCount = failedCount(input.interactionTests);
   const failedExceptionCount = failedCount(input.exceptionSimulations);
@@ -92,6 +118,7 @@ export function buildQaSignoff(input: {
 
   if (input.pageDomNodes > 0) evidence.push(`runtime DOM captured (${input.pageDomNodes} nodes)`);
   if (passedJourneyCount > 0) evidence.push(`${passedJourneyCount} journey(s) passed`);
+  if (journeyAssertions.assertionStepCount > 0) evidence.push(`${journeyAssertions.passedAssertionStepCount}/${journeyAssertions.assertionStepCount} journey assertion step(s) passed`);
   if (passedInteractionCount > 0) evidence.push(`${passedInteractionCount} interaction check(s) passed`);
   if (input.sourceHealth.status === 'passed') evidence.push(`sourceHealth passed (${input.sourceHealth.parsedFiles} parsed files)`);
   if (passedSourceScriptChecks > 0) evidence.push(`${passedSourceScriptChecks} source script check(s) passed`);
@@ -126,6 +153,9 @@ export function buildQaSignoff(input: {
   if (input.journeyTests.length === 0 || passedJourneyCount === 0 || allSkipped(input.journeyTests)) {
     gaps.push('核心用户旅程没有形成 passed 的运行时证据。');
     followups.push('补充覆盖核心业务流的非破坏 journey；涉及写操作时明确授权测试环境。');
+  } else if (journeyAssertions.passedJourneyWithAssertionCount === 0) {
+    gaps.push('已通过的用户旅程缺少 expectVisible/expectText/expectUrl 成功断言；只能证明路径未崩溃，不能证明业务结果正确。');
+    followups.push('为录制/配置的 journey 补充 expectVisible、expectText 或 expectUrl 成功断言，再复测需求覆盖。');
   }
   if (input.interactionTests.length === 0 || allSkipped(input.interactionTests)) {
     gaps.push('安全交互探索未覆盖或全部 skipped，搜索/表单/弹窗/表格等交互结论低置信。');
@@ -162,7 +192,8 @@ export function buildQaSignoff(input: {
     requirementCoverage: input.requirementCoverage,
     journeyTests: input.journeyTests,
     interactionTests: input.interactionTests,
-    pageDomNodes: input.pageDomNodes
+    pageDomNodes: input.pageDomNodes,
+    passedJourneyWithAssertionCount: journeyAssertions.passedJourneyWithAssertionCount
   });
 
   let status: QaSignoffResult['status'] = input.qualityGate.status;
@@ -200,6 +231,10 @@ export function buildQaSignoff(input: {
       journeyCount: input.journeyTests.length,
       passedJourneyCount,
       failedJourneyCount,
+      assertionStepCount: journeyAssertions.assertionStepCount,
+      passedAssertionStepCount: journeyAssertions.passedAssertionStepCount,
+      passedJourneyWithAssertionCount: journeyAssertions.passedJourneyWithAssertionCount,
+      passedJourneyWithoutAssertionCount: journeyAssertions.passedJourneyWithoutAssertionCount,
       interactionCount: input.interactionTests.length,
       passedInteractionCount,
       failedInteractionCount,

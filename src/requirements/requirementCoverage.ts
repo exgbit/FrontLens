@@ -13,7 +13,8 @@ import type {
   RequirementCoverageResult,
   RequirementCoverageStatus,
   RequirementPriority,
-  RequirementSource
+  RequirementSource,
+  JourneyStepAction
 } from '../types.js';
 
 function makeEmptyCoverage(enabled: boolean, gap?: string): RequirementCoverageResult {
@@ -75,6 +76,12 @@ function statusFromTests(tests: Array<{ status: string }>): RequirementCoverageS
   return 'partial';
 }
 
+const journeyAssertionActions = new Set<JourneyStepAction>(['expectVisible', 'expectText', 'expectUrl']);
+
+function hasPassedJourneyAssertion(journey: JourneyTestResult): boolean {
+  return journey.steps.some((step) => journeyAssertionActions.has(step.action) && step.status === 'passed');
+}
+
 function relatedIssuesForEvidence(input: {
   issues: Issue[];
   selectors: string[];
@@ -133,6 +140,8 @@ function buildItemFromConfig(
   const mediumIssue = relatedIssues.find((issue) => issue.severity === 'medium');
   const journeyStatus = statusFromTests(journeyTests);
   const interactionStatus = statusFromTests(interactionTests);
+  const passedJourneyTests = journeyTests.filter((journey) => journey.status === 'passed');
+  const hasPassedAssertion = passedJourneyTests.some(hasPassedJourneyAssertion);
   const failedNetwork = networkRecords.filter((record) => record.failed || (record.status !== undefined && record.status >= 400));
 
   const evidenceNotes: string[] = [];
@@ -151,8 +160,14 @@ function buildItemFromConfig(
     if (blockingIssue) gaps.push(`存在阻断/高风险关联问题：${blockingIssue.id} ${blockingIssue.title}`);
     if (failedNetwork.length > 0) gaps.push(`${failedNetwork.length} 个关联接口失败或返回 4xx/5xx。`);
   } else if (journeyStatus === 'passed' || interactionStatus === 'passed') {
-    status = 'passed';
-    confidence = 'high';
+    if (journeyStatus === 'passed' && interactionStatus !== 'passed' && !hasPassedAssertion) {
+      status = 'partial';
+      confidence = 'medium';
+      gaps.push('关联 journey 已通过但缺少 expectVisible/expectText/expectUrl 成功断言，只能证明路径未崩溃，不能证明业务结果正确。');
+    } else {
+      status = 'passed';
+      confidence = 'high';
+    }
   } else if (journeyStatus === 'partial' || interactionStatus === 'partial' || mediumIssue || matchedComponents.length > 0 || networkRecords.length > 0) {
     status = 'partial';
     confidence = journeyStatus === 'partial' || interactionStatus === 'partial' ? 'medium' : 'low';

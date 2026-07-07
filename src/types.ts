@@ -1484,6 +1484,10 @@ export interface QaSignoffResult {
     journeyCount: number;
     passedJourneyCount: number;
     failedJourneyCount: number;
+    assertionStepCount: number;
+    passedAssertionStepCount: number;
+    passedJourneyWithAssertionCount: number;
+    passedJourneyWithoutAssertionCount: number;
     interactionCount: number;
     passedInteractionCount: number;
     failedInteractionCount: number;

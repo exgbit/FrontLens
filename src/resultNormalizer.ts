@@ -39,7 +39,7 @@ import { buildTestDataAssessment } from './testData/testDataAssessment.js';
 import { buildRegressionPlan } from './regression/regressionPlan.js';
 import { buildProfessionalSummary } from './summary/professionalSummary.js';
 
-export const RESULT_SCHEMA_VERSION = '1.22.0';
+export const RESULT_SCHEMA_VERSION = '1.23.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -719,7 +719,7 @@ function normalizeTestDataAssessment(raw: unknown, fallback: TestDataAssessmentR
 
 function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): QaResult['qualityGate'] {
   if (!isRecord(raw)) return fallback;
-  const status = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
+  let status: QaResult['qaSignoff']['status'] = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
   const confidence = raw.confidence === 'high' || raw.confidence === 'medium' || raw.confidence === 'low' ? raw.confidence : fallback.confidence;
   return {
     status,
@@ -738,9 +738,9 @@ function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): 
 
 function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaResult['qaSignoff'] {
   if (!isRecord(raw)) return fallback;
-  const status = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
+  let status: QaResult['qaSignoff']['status'] = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
   const confidence = raw.confidence === 'high' || raw.confidence === 'medium' || raw.confidence === 'low' ? raw.confidence : fallback.confidence;
-  const businessValidationConfidence =
+  let businessValidationConfidence: QaResult['qaSignoff']['businessValidationConfidence'] =
     raw.businessValidationConfidence === 'runtime-verified' ||
     raw.businessValidationConfidence === 'runtime-partial' ||
     raw.businessValidationConfidence === 'static-source-only' ||
@@ -759,35 +759,46 @@ function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaRe
     : fallback.scope.artifactIntegrityStatus;
   const environmentKindValue = environmentKind(scope.environmentKind);
   const pageProfileTypeValue = pageProfileType(scope.pageProfileType);
+  const normalizedScope = {
+    targetUrl: asString(scope.targetUrl, fallback.scope.targetUrl),
+    sourceRoot: optionalString(scope.sourceRoot) ?? fallback.scope.sourceRoot,
+    requirementSource,
+    providedRequirementCount: asNumber(scope.providedRequirementCount, fallback.scope.providedRequirementCount),
+    inferredRequirementCount: asNumber(scope.inferredRequirementCount, fallback.scope.inferredRequirementCount),
+    journeyCount: asNumber(scope.journeyCount, fallback.scope.journeyCount),
+    passedJourneyCount: asNumber(scope.passedJourneyCount, fallback.scope.passedJourneyCount),
+    failedJourneyCount: asNumber(scope.failedJourneyCount, fallback.scope.failedJourneyCount),
+    assertionStepCount: asNumber(scope.assertionStepCount, fallback.scope.assertionStepCount),
+    passedAssertionStepCount: asNumber(scope.passedAssertionStepCount, fallback.scope.passedAssertionStepCount),
+    passedJourneyWithAssertionCount: asNumber(scope.passedJourneyWithAssertionCount, fallback.scope.passedJourneyWithAssertionCount),
+    passedJourneyWithoutAssertionCount: asNumber(scope.passedJourneyWithoutAssertionCount, fallback.scope.passedJourneyWithoutAssertionCount),
+    interactionCount: asNumber(scope.interactionCount, fallback.scope.interactionCount),
+    passedInteractionCount: asNumber(scope.passedInteractionCount, fallback.scope.passedInteractionCount),
+    failedInteractionCount: asNumber(scope.failedInteractionCount, fallback.scope.failedInteractionCount),
+    exceptionCount: asNumber(scope.exceptionCount, fallback.scope.exceptionCount),
+    failedExceptionCount: asNumber(scope.failedExceptionCount, fallback.scope.failedExceptionCount),
+    authStateProvided: typeof scope.authStateProvided === 'boolean' ? scope.authStateProvided : fallback.scope.authStateProvided,
+    destructiveActionsAllowed: typeof scope.destructiveActionsAllowed === 'boolean' ? scope.destructiveActionsAllowed : fallback.scope.destructiveActionsAllowed,
+    environmentKind: environmentKindValue === 'unknown' ? fallback.scope.environmentKind : environmentKindValue,
+    environmentConfidence: trustValue(scope.environmentConfidence, fallback.scope.environmentConfidence),
+    pageProfileStatus: pageProfileStatus(scope.pageProfileStatus) === 'unknown' ? fallback.scope.pageProfileStatus : pageProfileStatus(scope.pageProfileStatus),
+    pageProfileType: pageProfileTypeValue === 'unknown' ? fallback.scope.pageProfileType : pageProfileTypeValue,
+    sourceHealthStatus,
+    artifactIntegrityStatus
+  };
+  if (businessValidationConfidence === 'runtime-verified' && normalizedScope.passedJourneyWithAssertionCount === 0) {
+    businessValidationConfidence = fallback.businessValidationConfidence;
+  }
+  if (status === 'pass' && businessValidationConfidence !== 'runtime-verified') {
+    status = 'pass-with-risks';
+  }
   return {
     status,
     confidence,
     businessValidationConfidence,
     checkedAt: asString(raw.checkedAt, fallback.checkedAt),
     summary: asString(raw.summary, fallback.summary),
-    scope: {
-      targetUrl: asString(scope.targetUrl, fallback.scope.targetUrl),
-      sourceRoot: optionalString(scope.sourceRoot) ?? fallback.scope.sourceRoot,
-      requirementSource,
-      providedRequirementCount: asNumber(scope.providedRequirementCount, fallback.scope.providedRequirementCount),
-      inferredRequirementCount: asNumber(scope.inferredRequirementCount, fallback.scope.inferredRequirementCount),
-      journeyCount: asNumber(scope.journeyCount, fallback.scope.journeyCount),
-      passedJourneyCount: asNumber(scope.passedJourneyCount, fallback.scope.passedJourneyCount),
-      failedJourneyCount: asNumber(scope.failedJourneyCount, fallback.scope.failedJourneyCount),
-      interactionCount: asNumber(scope.interactionCount, fallback.scope.interactionCount),
-      passedInteractionCount: asNumber(scope.passedInteractionCount, fallback.scope.passedInteractionCount),
-      failedInteractionCount: asNumber(scope.failedInteractionCount, fallback.scope.failedInteractionCount),
-      exceptionCount: asNumber(scope.exceptionCount, fallback.scope.exceptionCount),
-      failedExceptionCount: asNumber(scope.failedExceptionCount, fallback.scope.failedExceptionCount),
-      authStateProvided: typeof scope.authStateProvided === 'boolean' ? scope.authStateProvided : fallback.scope.authStateProvided,
-      destructiveActionsAllowed: typeof scope.destructiveActionsAllowed === 'boolean' ? scope.destructiveActionsAllowed : fallback.scope.destructiveActionsAllowed,
-      environmentKind: environmentKindValue === 'unknown' ? fallback.scope.environmentKind : environmentKindValue,
-      environmentConfidence: trustValue(scope.environmentConfidence, fallback.scope.environmentConfidence),
-      pageProfileStatus: pageProfileStatus(scope.pageProfileStatus) === 'unknown' ? fallback.scope.pageProfileStatus : pageProfileStatus(scope.pageProfileStatus),
-      pageProfileType: pageProfileTypeValue === 'unknown' ? fallback.scope.pageProfileType : pageProfileTypeValue,
-      sourceHealthStatus,
-      artifactIntegrityStatus
-    },
+    scope: normalizedScope,
     blockers: asArray<string>(raw.blockers).filter((item) => typeof item === 'string'),
     risks: asArray<string>(raw.risks).filter((item) => typeof item === 'string'),
     coverageGaps: asArray<string>(raw.coverageGaps).filter((item) => typeof item === 'string'),

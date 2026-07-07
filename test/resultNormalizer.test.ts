@@ -100,6 +100,96 @@ test('normalizeResult preserves sourceHealth script checks from reports', () => 
   assert.equal(result.sourceHealth.scriptChecks[0].signal, 'SIGTERM');
 });
 
+test('normalizeResult downgrades legacy runtime-verified signoff without journey assertions', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/users' },
+    pageModel: {
+      url: 'https://example.com/users',
+      title: 'Users',
+      stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: 'Users' }
+    },
+    requirementCoverage: {
+      enabled: true,
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      source: 'provided',
+      summary: {
+        requirementCount: 1,
+        passedCount: 1,
+        failedCount: 0,
+        partialCount: 0,
+        notCoveredCount: 0,
+        notApplicableCount: 0,
+        providedCount: 1,
+        inferredCount: 0,
+        highPriorityGapCount: 0
+      },
+      items: [
+        {
+          id: 'REQ-1',
+          title: 'recorded flow',
+          priority: 'P1',
+          source: 'provided',
+          status: 'passed',
+          confidence: 'high',
+          evidence: { selectors: [], componentIds: [], journeyIds: ['JOURNEY-001'], interactionTestIds: [], networkRequestIds: [], issueIds: [], notes: [] },
+          gaps: []
+        }
+      ],
+      gaps: []
+    },
+    journeyTests: [
+      {
+        id: 'JOURNEY-001',
+        name: 'legacy recorded flow',
+        status: 'passed',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 1,
+        startUrl: 'https://example.com/users',
+        steps: [{ index: 0, action: 'click', target: 'text=保存', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 }]
+      }
+    ],
+    qaSignoff: {
+      status: 'pass',
+      confidence: 'high',
+      businessValidationConfidence: 'runtime-verified',
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      summary: 'legacy pass',
+      scope: {
+        targetUrl: 'https://example.com/users',
+        requirementSource: 'provided',
+        providedRequirementCount: 1,
+        inferredRequirementCount: 0,
+        journeyCount: 1,
+        passedJourneyCount: 1,
+        failedJourneyCount: 0,
+        interactionCount: 0,
+        passedInteractionCount: 0,
+        failedInteractionCount: 0,
+        exceptionCount: 0,
+        failedExceptionCount: 0,
+        authStateProvided: true,
+        destructiveActionsAllowed: false,
+        environmentKind: 'unknown',
+        environmentConfidence: 'low',
+        pageProfileStatus: 'unknown',
+        pageProfileType: 'unknown',
+        sourceHealthStatus: 'skipped',
+        artifactIntegrityStatus: 'skipped'
+      },
+      blockers: [],
+      risks: [],
+      coverageGaps: [],
+      requiredFollowups: [],
+      evidence: []
+    }
+  });
+
+  assert.equal(result.qaSignoff.status, 'pass-with-risks');
+  assert.equal(result.qaSignoff.businessValidationConfidence, 'runtime-partial');
+  assert.equal(result.qaSignoff.scope.passedJourneyWithAssertionCount, 0);
+});
+
 test('normalizeResult recalculates missing score and normalizes P2 child records', () => {
   const result = normalizeResult({
     summary: {

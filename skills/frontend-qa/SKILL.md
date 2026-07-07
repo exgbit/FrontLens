@@ -251,7 +251,7 @@ node dist/cli.js qa \
   --json
 ```
 
-Do not treat a recorded click/fill path alone as business validation. It is runtime-partial until success assertions, role/auth state, and test data setup/cleanup are present.
+Do not treat a recorded click/fill path alone as business validation. It is runtime-partial until success assertions, role/auth state, and test data setup/cleanup are present. FrontLens 1.23+ exposes `qaSignoff.scope.passedAssertionStepCount` / `assertionStepCount` to enforce this.
 
 Run headed for debugging:
 

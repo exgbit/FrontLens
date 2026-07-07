@@ -57,7 +57,7 @@ test('requirements file loads acceptance criteria into config', async () => {
   assert.equal(config.requirements.items[0].journeySteps?.[0].action, 'waitForLoad');
 });
 
-test('requirement coverage marks explicit journey-backed requirement as passed', () => {
+test('requirement coverage treats journey without success assertions as partial', () => {
   const config = createDefaultConfig('https://example.com/users');
   config.requirements.inferFromPage = false;
   config.requirements.items = [
@@ -80,9 +80,10 @@ test('requirement coverage marks explicit journey-backed requirement as passed',
   });
 
   assert.equal(coverage.summary.requirementCount, 1);
-  assert.equal(coverage.items[0].status, 'passed');
-  assert.equal(coverage.items[0].confidence, 'high');
-  assert.equal(coverage.summary.highPriorityGapCount, 0);
+  assert.equal(coverage.items[0].status, 'partial');
+  assert.equal(coverage.items[0].confidence, 'medium');
+  assert.equal(coverage.items[0].gaps.some((gap) => gap.includes('缺少 expectVisible/expectText/expectUrl')), true);
+  assert.equal(coverage.summary.highPriorityGapCount, 1);
 });
 
 test('explicit requirement assertions synthesize safe journeys and link coverage by requirement id', () => {
@@ -126,7 +127,10 @@ test('explicit requirement assertions synthesize safe journeys and link coverage
         endedAt: '',
         durationMs: 1,
         startUrl: 'https://example.com/users',
-        steps: []
+        steps: [
+          { index: 0, action: 'expectVisible', target: 'body', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 },
+          { index: 1, action: 'expectText', target: 'body', value: 'Users', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 }
+        ]
       }
     ],
     interactionTests: [],

@@ -915,7 +915,7 @@ export interface SourceAnalysisResult {
   stateSignals: SourceStateSignal[];
   findings: Array<{
     id: string;
-    kind: 'eager-route-imports' | 'heavy-import' | 'api-surface' | 'state-signal';
+    kind: 'eager-route-imports' | 'heavy-import' | 'api-surface' | 'state-signal' | 'ui-accessibility';
     severity: Severity;
     title: string;
     locations: SourceLocation[];

@@ -135,3 +135,61 @@ test('defect proof does not mark frontend root causes proof-ready when sourceRoo
   assert.equal(proof.items[0].status, 'needs-evidence');
   assert.equal(proof.status, 'blocked');
 });
+
+test('normalizeResult can make runtime accessibility findings proof-ready when source template findings bind file lines', () => {
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/rules', title: 'Rules' },
+    pageModel: { url: 'https://example.com/rules', title: 'Rules', stats: { domNodes: 20, visibleTextLength: 80, bodyTextSample: 'Rules' } },
+    sourceAnalysis: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '',
+      root: '/repo/frontend',
+      scannedFiles: 1,
+      scannedBytes: 100,
+      summary: {
+        routeFileCount: 0,
+        routeCount: 0,
+        eagerRouteImportCount: 0,
+        heavyImportCount: 0,
+        apiCallCount: 0,
+        errorStateSignalCount: 0,
+        emptyStateSignalCount: 0
+      },
+      routeFiles: [],
+      routes: [],
+      imports: [],
+      apiCalls: [],
+      stateSignals: [],
+      findings: [
+        {
+          id: 'SRC-001',
+          kind: 'ui-accessibility',
+          severity: 'medium',
+          title: '源码发现疑似无可访问名称的图标按钮：1 处',
+          locations: [{ file: 'src/components/RuleActions.vue', line: 18 }],
+          details: { rule: 'button-name' }
+        }
+      ]
+    },
+    issues: [
+      {
+        id: 'ISSUE-A11Y',
+        title: '按钮缺少可访问名称：1 处',
+        category: 'frontend-accessibility',
+        severity: 'medium',
+        confidence: 0.9,
+        description: '按钮需要文本、aria-label 或 title。',
+        evidence: { selector: 'button:nth-of-type(1)', details: { accessibilityCheckId: 'A11Y-003', rule: 'button-name', count: 1 } },
+        reproduceSteps: ['打开页面', '运行 a11y 检查'],
+        reason: '图标按钮没有 accessible name。',
+        suggestion: { frontend: '增加 aria-label。', priority: 'P2' }
+      }
+    ]
+  });
+
+  assert.deepEqual(result.rootCauseGroups[0].sourceLocations, [{ file: 'src/components/RuleActions.vue', line: 18 }]);
+  assert.equal(result.defectProof.items[0].dimensions.sourceEvidence.strength, 'strong');
+  assert.equal(result.defectProof.items[0].status === 'proven' || result.defectProof.items[0].status === 'probable', true);
+  assert.equal(result.fixTasks.length, 1);
+});

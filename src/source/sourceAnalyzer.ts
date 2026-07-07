@@ -184,6 +184,74 @@ function parseStateSignals(rel: string, lines: string[]): SourceStateSignal[] {
   return signals;
 }
 
+function attrValue(attrs: string, name: string): string | undefined {
+  const pattern = new RegExp(`(?:^|\\s)(?::|v-bind:)?${name}\\s*=\\s*["']([^"']+)["']`, 'i');
+  return pattern.exec(attrs)?.[1];
+}
+
+function hasAccessibleName(attrs: string, sameLineInnerText: string): boolean {
+  if (/\b(aria-label|aria-labelledby|title|label)\s*=/.test(attrs)) return true;
+  return sameLineInnerText.replace(/<[^>]+>/g, '').replace(/{{[^}]+}}/g, '').trim().length > 0;
+}
+
+function sourceSelectorHints(attrs: string): string[] {
+  const hints: string[] = [];
+  const id = attrValue(attrs, 'id');
+  if (id && !/[{}()[\]$]/.test(id)) hints.push(`#${id}`);
+  for (const attr of ['data-testid', 'data-test', 'data-cy']) {
+    const value = attrValue(attrs, attr);
+    if (value && !/[{}()[\]$]/.test(value)) hints.push(`[${attr}="${value}"]`);
+  }
+  const className = attrValue(attrs, 'class');
+  if (className && !/[{}()[\]$]/.test(className)) {
+    const firstClass = className.split(/\s+/).find((item) => item && /^[A-Za-z_-][\w-]*$/.test(item));
+    if (firstClass) hints.push(`.${firstClass}`);
+  }
+  return hints.slice(0, 5);
+}
+
+function parseUiAccessibilityFindings(rel: string, lines: string[]): SourceAnalysisResult['findings'] {
+  const locations: SourceLocation[] = [];
+  const samples: Array<Record<string, unknown>> = [];
+  const tagPattern = /<([A-Za-z][\w.-]*)([^<>]*)>/g;
+  for (const [index, line] of lines.entries()) {
+    if (!/<[A-Za-z][\w.-]*/.test(line)) continue;
+    for (const match of line.matchAll(tagPattern)) {
+      const tag = match[1];
+      const lowerTag = tag.toLowerCase();
+      const attrs = match[2] ?? '';
+      const isButtonLike = lowerTag === 'button' || lowerTag.endsWith('-button') || lowerTag.includes('button') || /\brole\s*=\s*["']button["']/.test(attrs);
+      if (!isButtonLike) continue;
+      const afterOpen = line.slice((match.index ?? 0) + match[0].length);
+      const sameLineInnerText = afterOpen.split(new RegExp(`</${tag}>`, 'i'))[0] ?? '';
+      if (hasAccessibleName(attrs, sameLineInnerText)) continue;
+      const iconOnlySignal = /(:?icon|icon\s*=|circle|round|text|link|svg|<\s*[A-Z][\w.]*Icon|class\s*=\s*["'][^"']*(icon|act-icon|btn-icon))/i.test(`${attrs} ${sameLineInnerText}`);
+      const selfClosing = /\/>\s*$/.test(match[0]) || /\/>\s*$/.test(line.trim());
+      if (!iconOnlySignal && !selfClosing) continue;
+      const location = { file: rel, line: index + 1, column: match.index };
+      locations.push(location);
+      samples.push({
+        ...location,
+        tag,
+        selectorHints: sourceSelectorHints(attrs),
+        snippet: redactText(line.trim()).slice(0, 240)
+      });
+    }
+  }
+  if (locations.length === 0) return [];
+  return [{
+    id: '',
+    kind: 'ui-accessibility',
+    severity: 'medium',
+    title: `源码发现疑似无可访问名称的图标按钮：${locations.length} 处`,
+    locations: locations.slice(0, 20),
+    details: {
+      rule: 'button-name',
+      samples: samples.slice(0, 20)
+    }
+  }];
+}
+
 function makeFinding(id: number, input: SourceAnalysisResult['findings'][number]): SourceAnalysisResult['findings'][number] {
   return {
     ...input,
@@ -257,6 +325,7 @@ export async function analyzeSource(config: FrontLensConfig): Promise<{ result: 
     result.imports.push(...imports);
     result.apiCalls.push(...parseApiCalls(rel, lines));
     result.stateSignals.push(...parseStateSignals(rel, lines));
+    result.findings.push(...parseUiAccessibilityFindings(rel, lines));
     if (isRouteFile(rel, content)) {
       routeFileSet.add(rel);
       result.routes.push(...parseRoutes(rel, lines));
@@ -276,23 +345,22 @@ export async function analyzeSource(config: FrontLensConfig): Promise<{ result: 
     emptyStateSignalCount: result.stateSignals.filter((item) => item.kind === 'empty').length
   };
 
-  const findings: SourceAnalysisResult['findings'] = [];
-  let findingIndex = 1;
+  const findings: SourceAnalysisResult['findings'] = [...result.findings];
   if (routeImports.length >= 2) {
-    findings.push(makeFinding(findingIndex++, {
+    findings.push({
       id: '',
       kind: 'eager-route-imports',
       severity: routeImports.some((item) => item.isHeavy) || result.summary.heavyImportCount > 0 ? 'medium' : 'low',
       title: `源码发现路由组件静态导入：${routeImports.length} 个`,
       locations: routeImports.slice(0, 20).map(({ file, line, column }) => ({ file, line, column })),
       details: {
-        routeFiles: result.routeFiles,
-        imports: routeImports.slice(0, 20).map((item) => ({ file: item.file, line: item.line, source: item.source, specifier: item.specifier }))
-      }
-    }));
+          routeFiles: result.routeFiles,
+          imports: routeImports.slice(0, 20).map((item) => ({ file: item.file, line: item.line, source: item.source, specifier: item.specifier }))
+        }
+    });
   }
   if (heavyStaticImports.length > 0) {
-    findings.push(makeFinding(findingIndex++, {
+    findings.push({
       id: '',
       kind: 'heavy-import',
       severity: 'low',
@@ -301,11 +369,11 @@ export async function analyzeSource(config: FrontLensConfig): Promise<{ result: 
       details: {
         imports: heavyStaticImports.slice(0, 20).map((item) => ({ file: item.file, line: item.line, source: item.source }))
       }
-    }));
+    });
   }
-  result.findings = findings;
+  result.findings = findings.map((finding, index) => makeFinding(index + 1, finding));
   return {
     result,
-    issues: findings.filter((finding) => finding.kind === 'eager-route-imports').map((finding) => sourceIssue(finding, config))
+    issues: result.findings.filter((finding) => finding.kind === 'eager-route-imports').map((finding) => sourceIssue(finding, config))
   };
 }

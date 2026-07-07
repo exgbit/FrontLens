@@ -1,4 +1,4 @@
-import type { FrontLensConfig, Issue, IssueCategory, RootCauseGroup, Severity, SourceLocation, SourceRuntimeLink } from '../types.js';
+import type { FrontLensConfig, Issue, IssueCategory, RootCauseGroup, Severity, SourceAnalysisResult, SourceLocation, SourceRuntimeLink } from '../types.js';
 
 const severityRank: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const priorityRank: Record<RootCauseGroup['priority'], number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -155,7 +155,19 @@ function runtimeLinksFor(issue: Issue, runtimeLinks: SourceRuntimeLink[]): Sourc
   });
 }
 
-function sourceLocationsFor(issue: Issue, runtimeLinks: SourceRuntimeLink[] = []): SourceLocation[] {
+function sourceFindingsForIssue(issue: Issue, sourceAnalysis?: SourceAnalysisResult): SourceLocation[] {
+  if (!sourceAnalysis || sourceAnalysis.status !== 'passed') return [];
+  const details = detailsOf(issue);
+  const rule = String(details.rule ?? '');
+  if (issue.category === 'frontend-accessibility' && rule) {
+    return sourceAnalysis.findings
+      .filter((finding) => finding.kind === 'ui-accessibility' && String(finding.details?.rule ?? '') === rule)
+      .flatMap((finding) => finding.locations);
+  }
+  return [];
+}
+
+function sourceLocationsFor(issue: Issue, runtimeLinks: SourceRuntimeLink[] = [], sourceAnalysis?: SourceAnalysisResult): SourceLocation[] {
   const details = detailsOf(issue);
   const linkedRuntimeLocations = runtimeLinksFor(issue, runtimeLinks)
     .filter((link) => link.confidence === 'high' || link.confidence === 'medium')
@@ -167,7 +179,8 @@ function sourceLocationsFor(issue: Issue, runtimeLinks: SourceRuntimeLink[] = []
     ...locationsFromArray(details.sourceStateSignals),
     ...locationsFromArray(details.findings),
     ...locationsFromArray(details.imports),
-    ...linkedRuntimeLocations
+    ...linkedRuntimeLocations,
+    ...sourceFindingsForIssue(issue, sourceAnalysis)
   ].filter((item): item is SourceLocation => Boolean(item)));
 }
 
@@ -196,7 +209,7 @@ function summaryFor(group: Omit<RootCauseGroup, 'summary' | 'verificationCommand
   return `${group.priority}/${group.severity}/${group.owner}: ${group.issueCount} 个 raw issue，类别 ${categoryText}。${group.suggestedFix}`;
 }
 
-export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig, sourceRuntimeCorrelation?: { links: SourceRuntimeLink[] }): RootCauseGroup[] {
+export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig, sourceRuntimeCorrelation?: { links: SourceRuntimeLink[] }, sourceAnalysis?: SourceAnalysisResult): RootCauseGroup[] {
   const groups = new Map<string, GroupDraft>();
   const runtimeLinks = sourceRuntimeCorrelation?.links ?? [];
   for (const issue of issues) {
@@ -219,7 +232,7 @@ export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig, s
         consoleIds: issue.evidence.consoleId ? [issue.evidence.consoleId] : [],
         pageErrorIds: uniq([issue.evidence.pageErrorId, ...(issue.evidence.pageErrorIds ?? [])]),
         resourceUrls: issue.evidence.resourceUrl ? [issue.evidence.resourceUrl] : [],
-        sourceLocations: sourceLocationsFor(issue, runtimeLinks),
+        sourceLocations: sourceLocationsFor(issue, runtimeLinks, sourceAnalysis),
         suggestedFix: suggestedFix(issue),
         issues: [issue]
       });
@@ -238,7 +251,7 @@ export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig, s
     existing.consoleIds = uniq([...existing.consoleIds, ...(issue.evidence.consoleId ? [issue.evidence.consoleId] : [])]);
     existing.pageErrorIds = uniq([...existing.pageErrorIds, ...(issue.evidence.pageErrorId ? [issue.evidence.pageErrorId] : []), ...(issue.evidence.pageErrorIds ?? [])]);
     existing.resourceUrls = uniq([...existing.resourceUrls, ...(issue.evidence.resourceUrl ? [issue.evidence.resourceUrl] : [])]);
-    existing.sourceLocations = uniqSourceLocations([...existing.sourceLocations, ...sourceLocationsFor(issue, runtimeLinks)]);
+    existing.sourceLocations = uniqSourceLocations([...existing.sourceLocations, ...sourceLocationsFor(issue, runtimeLinks, sourceAnalysis)]);
     if (priorityRank[priority] < priorityRank[previousPriority] || severityRank[issue.severity] < severityRank[previousSeverity]) {
       existing.suggestedFix = suggestedFix(issue);
     }

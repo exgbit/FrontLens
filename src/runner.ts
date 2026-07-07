@@ -709,7 +709,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     title: pageModel.title
   });
   const preliminaryDisposition = buildIssueDisposition(issues, resultConfig);
-  const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), resultConfig, sourceRuntimeCorrelation);
+  const rootCauseGroups = buildRootCauseGroups(filterActionableIssues(issues, preliminaryDisposition), resultConfig, sourceRuntimeCorrelation, sourceAnalysis);
   const issueDisposition = buildIssueDisposition(issues, resultConfig, rootCauseGroups);
   const defectProof: DefectProofResult = buildDefectProof({
     rootCauseGroups,

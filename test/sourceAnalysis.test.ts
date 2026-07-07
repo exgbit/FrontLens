@@ -28,7 +28,15 @@ export const routes = [
     'utf8'
   );
   await writeFile(path.join(dir, 'src/views/UsersView.vue'), '<template><div>Users</div></template>', 'utf8');
-  await writeFile(path.join(dir, 'src/views/RulesView.vue'), '<template><div>Rules</div></template>', 'utf8');
+  await writeFile(
+    path.join(dir, 'src/views/RulesView.vue'),
+    `<template>
+  <div>Rules</div>
+  <el-button :icon="Edit" circle />
+  <el-button :icon="Delete" circle aria-label="删除规则" />
+</template>`,
+    'utf8'
+  );
   await writeFile(
     path.join(dir, 'src/api/users.ts'),
     `
@@ -56,6 +64,11 @@ export async function listUsers() {
   assert.equal(result.summary.errorStateSignalCount >= 1, true);
   assert.equal(result.summary.emptyStateSignalCount >= 1, true);
   assert.equal(result.findings.some((finding) => finding.kind === 'eager-route-imports'), true);
+  const uiFinding = result.findings.find((finding) => finding.kind === 'ui-accessibility');
+  assert.equal(Boolean(uiFinding), true);
+  assert.equal(uiFinding?.details.rule, 'button-name');
+  assert.equal(uiFinding?.locations.length, 1);
+  assert.match(JSON.stringify(uiFinding?.details.samples), /el-button/);
   assert.equal(issues.length, 1);
   assert.equal(issues[0].category, 'frontend-performance');
 });

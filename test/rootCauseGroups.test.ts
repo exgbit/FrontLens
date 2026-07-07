@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDefaultConfig } from '../src/defaultConfig.ts';
 import { buildRootCauseGroups } from '../src/rootCause/rootCauseGroups.ts';
-import type { Issue, SourceRuntimeLink } from '../src/types.ts';
+import type { Issue, SourceAnalysisResult, SourceRuntimeLink } from '../src/types.ts';
 
 function issue(overrides: Partial<Issue>): Issue {
   return {
@@ -172,5 +172,64 @@ test('buildRootCauseGroups enriches root causes with medium/high source-runtime 
     { file: 'src/api/credentials.ts', line: 8 },
     { file: 'src/views/CredentialsView.vue', line: 51 },
     { file: 'src/views/CredentialsView.vue', line: 72 }
+  ]);
+});
+
+test('buildRootCauseGroups enriches runtime accessibility issues with source ui-accessibility findings', () => {
+  const config = createDefaultConfig('https://example.com/rules');
+  const sourceAnalysis: SourceAnalysisResult = {
+    enabled: true,
+    status: 'passed',
+    checkedAt: '',
+    root: '/repo',
+    scannedFiles: 1,
+    scannedBytes: 100,
+    summary: {
+      routeFileCount: 0,
+      routeCount: 0,
+      eagerRouteImportCount: 0,
+      heavyImportCount: 0,
+      apiCallCount: 0,
+      errorStateSignalCount: 0,
+      emptyStateSignalCount: 0
+    },
+    routeFiles: [],
+    routes: [],
+    imports: [],
+    apiCalls: [],
+    stateSignals: [],
+    findings: [
+      {
+        id: 'SRC-001',
+        kind: 'ui-accessibility',
+        severity: 'medium',
+        title: '源码发现疑似无可访问名称的图标按钮：2 处',
+        locations: [
+          { file: 'src/components/RuleActions.vue', line: 12 },
+          { file: 'src/components/RuleActions.vue', line: 15 }
+        ],
+        details: { rule: 'button-name' }
+      }
+    ]
+  };
+
+  const groups = buildRootCauseGroups([
+    issue({
+      id: 'ISSUE-001',
+      title: '按钮缺少可访问名称：2 处',
+      category: 'frontend-accessibility',
+      severity: 'medium',
+      evidence: {
+        selector: 'button:nth-of-type(1)',
+        details: { accessibilityCheckId: 'A11Y-003', rule: 'button-name', count: 2 }
+      },
+      suggestion: { frontend: '为图标按钮增加 aria-label。', priority: 'P2' }
+    })
+  ], config, undefined, sourceAnalysis);
+
+  assert.equal(groups.length, 1);
+  assert.deepEqual(groups[0].sourceLocations, [
+    { file: 'src/components/RuleActions.vue', line: 12 },
+    { file: 'src/components/RuleActions.vue', line: 15 }
   ]);
 });

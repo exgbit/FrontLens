@@ -596,6 +596,64 @@ test('integration mismatch suppresses unbound list responses when source-runtime
   assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), false);
 });
 
+test('integration mismatch suppresses list-empty guesses when source analysis is enabled but binding is unavailable', () => {
+  const pageModel: PageModel = {
+    ...context().pageModel,
+    tables: [
+      {
+        id: 'TABLE-1',
+        type: 'table',
+        tagName: 'table',
+        visible: true,
+        attributes: {},
+        confidence: 0.95,
+        rowCount: 0,
+        headers: ['name'],
+        selector: 'table'
+      }
+    ],
+    components: []
+  };
+  const record = networkRecord({
+    id: 'REQ-list',
+    url: 'http://example.test/v1/users/list',
+    resourceType: 'fetch',
+    status: 200,
+    ok: true,
+    contentType: 'application/json',
+    responseBodyPreview: JSON.stringify({ code: 0, data: [{ name: 'A' }, { name: 'B' }], total: 2 })
+  });
+  const ctx = context({
+    pageModel,
+    networkRecords: [record],
+    sourceAnalysis: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '',
+      root: '/repo',
+      scannedFiles: 1,
+      scannedBytes: 100,
+      summary: {
+        routeFileCount: 0,
+        routeCount: 0,
+        eagerRouteImportCount: 0,
+        heavyImportCount: 0,
+        apiCallCount: 0,
+        errorStateSignalCount: 0,
+        emptyStateSignalCount: 0
+      },
+      routeFiles: [],
+      routes: [],
+      imports: [],
+      apiCalls: [],
+      stateSignals: [],
+      findings: []
+    }
+  });
+  const issues = analyzeIntegration(ctx, new IssueFactory());
+  assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), false);
+});
+
 
 
 test('redactUrl preserves ordinary business path words while redacting real secrets', () => {

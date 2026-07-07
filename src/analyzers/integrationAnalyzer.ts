@@ -75,6 +75,10 @@ function isReliableDataTable(table: AnalyzerContext['pageModel']['tables'][numbe
   return table.visible && (semanticTable || (uiLibraryTable && structuralEvidence));
 }
 
+function sourceBindingRequired(context: AnalyzerContext): boolean {
+  return Boolean(context.config.source.root || context.sourceAnalysis?.enabled);
+}
+
 export function analyzeIntegration(context: AnalyzerContext, factory: IssueFactory): Issue[] {
   const issues: Issue[] = [];
   const bodyText = context.pageModel.stats.bodyTextSample;
@@ -137,7 +141,11 @@ export function analyzeIntegration(context: AnalyzerContext, factory: IssueFacto
         ? context.sourceRuntimeCorrelation.links.find((link) => link.networkRequestId === source.record.id)
         : undefined;
       const sourceRuntimeConfidence = context.sourceRuntimeCorrelation?.status === 'passed' ? (sourceRuntimeLink?.confidence ?? 'none') : 'unavailable';
-      const shouldSuppressUnboundListMismatch = context.sourceRuntimeCorrelation?.status === 'passed' && (sourceRuntimeConfidence === 'none' || sourceRuntimeConfidence === 'low');
+      const requiresSourceBinding = sourceBindingRequired(context);
+      const sourceRuntimePassed = context.sourceRuntimeCorrelation?.status === 'passed';
+      const shouldSuppressUnboundListMismatch =
+        (requiresSourceBinding && !sourceRuntimePassed) ||
+        (sourceRuntimePassed && (sourceRuntimeConfidence === 'none' || sourceRuntimeConfidence === 'low'));
       if (!shouldSuppressUnboundListMismatch) {
         issues.push(
           factory.create({
@@ -171,7 +179,7 @@ export function analyzeIntegration(context: AnalyzerContext, factory: IssueFacto
                   text: signal.text
                 })),
                 sourceComponentIds: sourceRuntimeLink?.componentIds,
-                guard: 'Only object arrays under list-like keys (data/records/rows/list/items/results) from XHR/fetch responses are considered. When sourceRuntimeCorrelation is available, unbound runtime responses are suppressed instead of reported.'
+                guard: 'Only object arrays under list-like keys (data/records/rows/list/items/results) from XHR/fetch responses are considered. When sourceRoot/sourceAnalysis is enabled, the finding is reported only if sourceRuntimeCorrelation passed and the response has medium/high binding; unbound or unavailable source/runtime links are suppressed instead of reported.'
               }
             },
             reproduceSteps: ['打开目标页面', '查看列表接口响应', '对比页面表格行数'],

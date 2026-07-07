@@ -154,7 +154,7 @@ For every retained or passed business requirement, include a confidence label:
 - `static-source-only`: include source/chunk evidence and state that runtime behavior/data/export was not proven.
 - `not-verified`: include the blocker, such as login state, missing storageState, branch mismatch, download not allowed, or target route not reached.
 
-Never report "business function validation passed with 100% confidence" from static source/chunk inspection alone. Runtime business validation requires the target page state, relevant API response, visible UI result, and any export/download artifact when export is part of the requirement.
+In FrontLens 1.42+, do not resurrect a suppressed API/UI list-empty mismatch when sourceRuntimeCorrelation is unavailable, none, or low; collect a medium/high source-runtime link or explicit E2E assertion first. Never report "business function validation passed with 100% confidence" from static source/chunk inspection alone. Runtime business validation requires the target page state, relevant API response, visible UI result, and any export/download artifact when export is part of the requirement.
 
 Before listing fixes, group raw browser issues by implementation root cause. For example, if `useXxx()` captures `error` but the page never renders it, group api-500/api-401/api-403/api-404/timeout no-feedback findings under one frontend fix and list the raw issue IDs / exception IDs as supporting evidence. Keep scenario-specific severity in evidence, but present one actionable fix unless separate source paths prove separate causes.
 

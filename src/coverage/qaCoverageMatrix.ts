@@ -100,12 +100,18 @@ export function buildQaCoverageMatrix(result: QaCoverageMatrixInput): QaCoverage
   add(items, {
     area: 'journey',
     title: '用户旅程 / 业务路径',
-    status: journeyCount === 0 ? 'skipped' : failedJourneys > 0 ? 'failed' : result.qaSignoff.scope.passedJourneyWithAssertionCount > 0 ? 'covered' : 'partial',
-    confidence: result.qaSignoff.scope.passedJourneyWithAssertionCount > 0 ? 'high' : journeyCount > 0 ? 'medium' : 'low',
-    evidenceRefs: ['journeyTests', 'qaSignoff.scope'],
-    covered: [`journeys: ${journeyCount}`, `passed: ${passedJourneys}`, `passed with assertion: ${result.qaSignoff.scope.passedJourneyWithAssertionCount}`],
-    gaps: journeyCount === 0 ? ['没有执行用户旅程。'] : result.qaSignoff.scope.passedJourneyWithAssertionCount === 0 ? ['没有带 expect 断言的通过旅程，不能证明业务成功。'] : [],
-    nextSteps: result.qaSignoff.scope.passedJourneyWithAssertionCount > 0 ? [] : ['录制核心业务路径并补 expectVisible/expectText/expectUrl/expectRequest。']
+    status: journeyCount === 0 ? 'skipped' : failedJourneys > 0 ? 'failed' : result.qaSignoff.scope.runtimeVerifiedJourneyCount > 0 ? 'covered' : 'partial',
+    confidence: result.qaSignoff.scope.runtimeVerifiedJourneyCount > 0 ? 'high' : journeyCount > 0 ? 'medium' : 'low',
+    evidenceRefs: ['journeyTests', 'journeyAssertionAudit', 'qaSignoff.scope'],
+    covered: [
+      `journeys: ${journeyCount}`,
+      `passed: ${passedJourneys}`,
+      `runtime-verified: ${result.qaSignoff.scope.runtimeVerifiedJourneyCount}`,
+      `weak: ${result.qaSignoff.scope.weaklyAssertedJourneyCount}`,
+      `path-only: ${result.qaSignoff.scope.pathOnlyJourneyCount}`
+    ],
+    gaps: journeyCount === 0 ? ['没有执行用户旅程。'] : result.qaSignoff.scope.runtimeVerifiedJourneyCount === 0 ? ['没有带业务专属 expect 断言的通过旅程；弱/泛化断言不能证明业务成功。'] : [],
+    nextSteps: result.qaSignoff.scope.runtimeVerifiedJourneyCount > 0 ? [] : ['录制核心业务路径并补业务专属 expectVisible/expectText/expectUrl/expectRequest。']
   });
 
   const interactionCount = result.interactionTests.length;

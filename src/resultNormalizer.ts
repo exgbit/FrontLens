@@ -52,7 +52,7 @@ import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 
-export const RESULT_SCHEMA_VERSION = '1.70.0';
+export const RESULT_SCHEMA_VERSION = '1.71.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -646,14 +646,14 @@ function normalizeJourneyAssertionAudit(raw: unknown, fallback: QaResult['journe
     status,
     checkedAt: asString(raw.checkedAt, new Date().toISOString()),
     summary: {
-      journeyCount: asNumber(summary.journeyCount),
-      passedJourneyCount: asNumber(summary.passedJourneyCount),
-      pathOnlyJourneyCount: asNumber(summary.pathOnlyJourneyCount),
-      weaklyAssertedJourneyCount: asNumber(summary.weaklyAssertedJourneyCount),
-      runtimeVerifiedJourneyCount: asNumber(summary.runtimeVerifiedJourneyCount),
-      failedJourneyCount: asNumber(summary.failedJourneyCount),
-      assertionStepCount: asNumber(summary.assertionStepCount),
-      meaningfulAssertionStepCount: asNumber(summary.meaningfulAssertionStepCount),
+      journeyCount: asNumber(summary.journeyCount, fallback.summary.journeyCount),
+      passedJourneyCount: asNumber(summary.passedJourneyCount, fallback.summary.passedJourneyCount),
+      pathOnlyJourneyCount: asNumber(summary.pathOnlyJourneyCount, fallback.summary.pathOnlyJourneyCount),
+      weaklyAssertedJourneyCount: asNumber(summary.weaklyAssertedJourneyCount, fallback.summary.weaklyAssertedJourneyCount),
+      runtimeVerifiedJourneyCount: asNumber(summary.runtimeVerifiedJourneyCount, fallback.summary.runtimeVerifiedJourneyCount),
+      failedJourneyCount: asNumber(summary.failedJourneyCount, fallback.summary.failedJourneyCount),
+      assertionStepCount: asNumber(summary.assertionStepCount, fallback.summary.assertionStepCount),
+      meaningfulAssertionStepCount: asNumber(summary.meaningfulAssertionStepCount, fallback.summary.meaningfulAssertionStepCount),
       findingCount: asNumber(summary.findingCount, findings.length),
       blockerCount: asNumber(summary.blockerCount, findings.filter((item) => item.severity === 'blocker').length),
       warningCount: asNumber(summary.warningCount, findings.filter((item) => item.severity === 'warning').length),
@@ -832,7 +832,7 @@ function normalizeTestDataAssessment(raw: unknown, fallback: TestDataAssessmentR
 function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): QaResult['qualityGate'] {
   if (!isRecord(raw)) return fallback;
   let status: QaResult['qaSignoff']['status'] = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
-  const confidence = raw.confidence === 'high' || raw.confidence === 'medium' || raw.confidence === 'low' ? raw.confidence : fallback.confidence;
+  let confidence = raw.confidence === 'high' || raw.confidence === 'medium' || raw.confidence === 'low' ? raw.confidence : fallback.confidence;
   return {
     status,
     confidence,
@@ -848,10 +848,15 @@ function normalizeQualityGate(raw: unknown, fallback: QaResult['qualityGate']): 
   };
 }
 
+function signoffStatusRank(status: QaResult['qaSignoff']['status']): number {
+  return status === 'blocked' ? 4 : status === 'fail' ? 3 : status === 'pass-with-risks' ? 2 : 1;
+}
+
 function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaResult['qaSignoff'] {
   if (!isRecord(raw)) return fallback;
   let status: QaResult['qaSignoff']['status'] = raw.status === 'pass' || raw.status === 'pass-with-risks' || raw.status === 'fail' || raw.status === 'blocked' ? raw.status : fallback.status;
-  const confidence = raw.confidence === 'high' || raw.confidence === 'medium' || raw.confidence === 'low' ? raw.confidence : fallback.confidence;
+  const rawStatus = status;
+  let confidence = raw.confidence === 'high' || raw.confidence === 'medium' || raw.confidence === 'low' ? raw.confidence : fallback.confidence;
   let businessValidationConfidence: QaResult['qaSignoff']['businessValidationConfidence'] =
     raw.businessValidationConfidence === 'runtime-verified' ||
     raw.businessValidationConfidence === 'runtime-partial' ||
@@ -884,6 +889,11 @@ function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaRe
     passedAssertionStepCount: asNumber(scope.passedAssertionStepCount, fallback.scope.passedAssertionStepCount),
     passedJourneyWithAssertionCount: asNumber(scope.passedJourneyWithAssertionCount, fallback.scope.passedJourneyWithAssertionCount),
     passedJourneyWithoutAssertionCount: asNumber(scope.passedJourneyWithoutAssertionCount, fallback.scope.passedJourneyWithoutAssertionCount),
+    runtimeVerifiedJourneyCount: asNumber(scope.runtimeVerifiedJourneyCount, fallback.scope.runtimeVerifiedJourneyCount),
+    requirementBoundRuntimeVerifiedJourneyCount: asNumber(scope.requirementBoundRuntimeVerifiedJourneyCount, fallback.scope.requirementBoundRuntimeVerifiedJourneyCount),
+    weaklyAssertedJourneyCount: asNumber(scope.weaklyAssertedJourneyCount, fallback.scope.weaklyAssertedJourneyCount),
+    pathOnlyJourneyCount: asNumber(scope.pathOnlyJourneyCount, fallback.scope.pathOnlyJourneyCount),
+    meaningfulAssertionStepCount: asNumber(scope.meaningfulAssertionStepCount, fallback.scope.meaningfulAssertionStepCount),
     interactionCount: asNumber(scope.interactionCount, fallback.scope.interactionCount),
     passedInteractionCount: asNumber(scope.passedInteractionCount, fallback.scope.passedInteractionCount),
     failedInteractionCount: asNumber(scope.failedInteractionCount, fallback.scope.failedInteractionCount),
@@ -898,11 +908,30 @@ function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaRe
     sourceHealthStatus,
     artifactIntegrityStatus
   };
-  if (businessValidationConfidence === 'runtime-verified' && normalizedScope.passedJourneyWithAssertionCount === 0) {
+  if (businessValidationConfidence === 'runtime-verified' && (normalizedScope.runtimeVerifiedJourneyCount === 0 || normalizedScope.requirementBoundRuntimeVerifiedJourneyCount === 0)) {
     businessValidationConfidence = fallback.businessValidationConfidence;
   }
+  if (businessValidationConfidence === 'runtime-verified' && fallback.businessValidationConfidence !== 'runtime-verified') {
+    businessValidationConfidence = fallback.businessValidationConfidence;
+  }
+  const escalatedByFallback = signoffStatusRank(fallback.status) > signoffStatusRank(status);
+  if (escalatedByFallback) status = fallback.status;
+  if (escalatedByFallback && (fallback.confidence === 'low' || confidence === 'high')) confidence = fallback.confidence;
   if (status === 'pass' && businessValidationConfidence !== 'runtime-verified') {
     status = 'pass-with-risks';
+  }
+  const mergeFallbackDetails = escalatedByFallback || businessValidationConfidence !== (raw.businessValidationConfidence ?? businessValidationConfidence);
+  const blockers = asArray<string>(raw.blockers).filter((item) => typeof item === 'string');
+  const risks = asArray<string>(raw.risks).filter((item) => typeof item === 'string');
+  const coverageGaps = asArray<string>(raw.coverageGaps).filter((item) => typeof item === 'string');
+  const requiredFollowups = asArray<string>(raw.requiredFollowups).filter((item) => typeof item === 'string');
+  const evidence = asArray<string>(raw.evidence).filter((item) => typeof item === 'string');
+  if (mergeFallbackDetails || rawStatus !== status) {
+    blockers.push(...fallback.blockers);
+    risks.push(...fallback.risks);
+    coverageGaps.push(...fallback.coverageGaps);
+    requiredFollowups.push(...fallback.requiredFollowups);
+    evidence.push(...fallback.evidence);
   }
   return {
     status,
@@ -911,11 +940,11 @@ function normalizeQaSignoff(raw: unknown, fallback: QaResult['qaSignoff']): QaRe
     checkedAt: asString(raw.checkedAt, fallback.checkedAt),
     summary: asString(raw.summary, fallback.summary),
     scope: normalizedScope,
-    blockers: asArray<string>(raw.blockers).filter((item) => typeof item === 'string'),
-    risks: asArray<string>(raw.risks).filter((item) => typeof item === 'string'),
-    coverageGaps: asArray<string>(raw.coverageGaps).filter((item) => typeof item === 'string'),
-    requiredFollowups: asArray<string>(raw.requiredFollowups).filter((item) => typeof item === 'string'),
-    evidence: asArray<string>(raw.evidence).filter((item) => typeof item === 'string')
+    blockers: [...new Set(blockers)],
+    risks: [...new Set(risks)],
+    coverageGaps: [...new Set(coverageGaps)],
+    requiredFollowups: [...new Set(requiredFollowups)],
+    evidence: [...new Set(evidence)]
   };
 }
 
@@ -1246,6 +1275,7 @@ export function normalizeResult(raw: unknown): QaResult {
     requirementCoverage,
     sourceHealth,
     artifactIntegrity,
+    journeyAssertionAudit,
     environment,
     pageProfile,
     testData,

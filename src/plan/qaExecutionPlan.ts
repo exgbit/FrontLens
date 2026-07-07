@@ -127,19 +127,19 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
     });
   }
 
-  const passedJourneyWithAssertion = result.qaSignoff.scope.passedJourneyWithAssertionCount;
-  if (passedJourneyWithAssertion === 0 && result.qaSignoff.businessValidationConfidence !== 'runtime-verified') {
+  const runtimeVerifiedJourneyCount = result.qaSignoff.scope.runtimeVerifiedJourneyCount;
+  if (runtimeVerifiedJourneyCount === 0 && result.qaSignoff.businessValidationConfidence !== 'runtime-verified') {
     addItem(items, {
       type: 'journey',
       priority: 'P1',
       owner: 'test',
       status: 'needs-input',
       title: '录制并补断言核心业务路径',
-      why: '没有带成功断言的 journey，点击/填写不崩溃也不能证明业务功能通过。',
+      why: '没有带业务专属成功断言的 journey，点击/填写不崩溃或 body/OK 泛化断言不能证明业务功能通过。',
       commands: [`node dist/cli.js journey record --url ${quote(result.summary.url)} --output "journeys/<flow>.json" --name "<core flow>"`, `${fullRerun} --journeys`],
       steps: ['录制真实人工业务路径。', '补 expectVisible / expectText / expectUrl / expectRequest。', '为写操作补 testData setup/cleanup。'],
-      expected: ['至少一个核心路径 journey 带断言通过。', 'qaSignoff.businessValidationConfidence 提升到 runtime-verified 或明确说明剩余缺口。'],
-      evidenceRefs: ['journeyTests', 'qaSignoff.scope', 'testData']
+      expected: ['至少一个核心路径 journey 带业务专属断言通过。', 'qaSignoff.businessValidationConfidence 提升到 runtime-verified 或明确说明剩余缺口。'],
+      evidenceRefs: ['journeyTests', 'journeyAssertionAudit', 'qaSignoff.scope', 'testData']
     });
   }
 

@@ -93,6 +93,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     requirementCoverage: result.requirementCoverage,
     sourceHealth: result.sourceHealth,
     artifactIntegrity: result.artifactIntegrity,
+    journeyAssertionAudit: result.journeyAssertionAudit,
     environment: result.environment,
     pageProfile: result.pageProfile,
     testData: result.testData,

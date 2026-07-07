@@ -756,6 +756,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     requirementCoverage,
     sourceHealth,
     artifactIntegrity: initialArtifactIntegrity,
+    journeyAssertionAudit,
     environment,
     pageProfile,
     testData,

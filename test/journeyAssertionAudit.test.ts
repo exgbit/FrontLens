@@ -102,3 +102,49 @@ test('journey assertion audit distinguishes generic body checks from meaningful 
   assert.equal(strong.journeyAssertionAudit.status, 'passed');
   assert.equal(strong.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount, 1);
 });
+
+test('journey assertion audit treats generic body OK text as weak and blocks requirement-bound overclaim', () => {
+  const weak = resultWithJourneys([
+    {
+      id: 'J-OK',
+      name: 'Generic OK',
+      status: 'passed',
+      startedAt: '',
+      endedAt: '',
+      durationMs: 10,
+      startUrl: 'https://example.com/app',
+      steps: [
+        { index: 1, action: 'click', target: '#save', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 },
+        { index: 2, action: 'expectText', target: 'body', value: 'OK', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 }
+      ]
+    }
+  ]);
+  assert.equal(weak.journeyAssertionAudit.status, 'warning');
+  assert.equal(weak.journeyAssertionAudit.summary.weaklyAssertedJourneyCount, 1);
+  assert.equal(weak.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount, 0);
+
+  const requirementBound = resultWithJourneys([
+    {
+      id: 'J-REQ-OK',
+      name: 'Requirement generic OK',
+      source: 'requirement-generated',
+      requirementIds: ['REQ-SAVE'],
+      status: 'passed',
+      startedAt: '',
+      endedAt: '',
+      durationMs: 10,
+      startUrl: 'https://example.com/app',
+      steps: [
+        { index: 1, action: 'click', target: '#save', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 },
+        { index: 2, action: 'expectText', target: 'body', value: 'OK', status: 'passed', startedAt: '', endedAt: '', durationMs: 1 }
+      ]
+    }
+  ], [
+    { id: 'REQ-SAVE', title: 'Save record', priority: 'P1', source: 'provided', journeySteps: [{ action: 'click', target: '#save' }, { action: 'expectText', target: 'body', value: 'OK' }] }
+  ]);
+
+  assert.equal(requirementBound.journeyAssertionAudit.status, 'failed');
+  assert.equal(requirementBound.journeyAssertionAudit.summary.blockerCount > 0, true);
+  assert.equal(requirementBound.journeyAssertionAudit.findings.some((item) => item.category === 'weak-assertion' && item.severity === 'blocker'), true);
+  assert.notEqual(requirementBound.qaSignoff.businessValidationConfidence, 'runtime-verified');
+});

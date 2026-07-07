@@ -258,7 +258,9 @@ function formatQaSignoff(result: QaResult): string {
 - Requirements provided / inferred：${signoff.scope.providedRequirementCount} / ${signoff.scope.inferredRequirementCount}
 - Journeys passed / total：${signoff.scope.passedJourneyCount} / ${signoff.scope.journeyCount}
 - Journey assertions passed / total：${signoff.scope.passedAssertionStepCount} / ${signoff.scope.assertionStepCount}
-- Passed journeys with / without assertions：${signoff.scope.passedJourneyWithAssertionCount} / ${signoff.scope.passedJourneyWithoutAssertionCount}
+- Runtime-verified / weak / path-only journeys：${signoff.scope.runtimeVerifiedJourneyCount} / ${signoff.scope.weaklyAssertedJourneyCount} / ${signoff.scope.pathOnlyJourneyCount}
+- Requirement-bound runtime-verified journeys：${signoff.scope.requirementBoundRuntimeVerifiedJourneyCount}
+- Meaningful assertions / total：${signoff.scope.meaningfulAssertionStepCount} / ${signoff.scope.assertionStepCount}
 - Interactions passed / total：${signoff.scope.passedInteractionCount} / ${signoff.scope.interactionCount}
 - Auth state provided：${signoff.scope.authStateProvided}
 - Destructive actions allowed：${signoff.scope.destructiveActionsAllowed}

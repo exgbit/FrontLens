@@ -2042,6 +2042,11 @@ export interface QaSignoffResult {
     passedAssertionStepCount: number;
     passedJourneyWithAssertionCount: number;
     passedJourneyWithoutAssertionCount: number;
+    runtimeVerifiedJourneyCount: number;
+    requirementBoundRuntimeVerifiedJourneyCount: number;
+    weaklyAssertedJourneyCount: number;
+    pathOnlyJourneyCount: number;
+    meaningfulAssertionStepCount: number;
     interactionCount: number;
     passedInteractionCount: number;
     failedInteractionCount: number;

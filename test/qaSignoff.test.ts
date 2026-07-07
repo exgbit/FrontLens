@@ -253,11 +253,12 @@ test('qa signoff does not runtime-verify passed recorded journeys without succes
     pageDomNodes: 100
   });
 
-  assert.equal(result.status, 'pass-with-risks');
+  assert.equal(result.status, 'blocked');
   assert.equal(result.businessValidationConfidence, 'runtime-partial');
   assert.equal(result.scope.passedJourneyWithAssertionCount, 0);
   assert.equal(result.scope.passedJourneyWithoutAssertionCount, 1);
-  assert.equal(result.coverageGaps.some((gap) => gap.includes('缺少 expectVisible/expectText/expectUrl')), true);
+  assert.equal(result.coverageGaps.some((gap) => gap.includes('缺少有意义的业务成功断言')), true);
+  assert.equal(result.blockers.some((item) => item.includes('journeyAssertionAudit failed')), true);
 });
 
 test('qa signoff fails on source health syntax blockers', () => {

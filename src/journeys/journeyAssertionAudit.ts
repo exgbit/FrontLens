@@ -4,6 +4,7 @@ import { markdownEscape, truncateMiddle } from '../utils/text.js';
 const assertionActions = new Set<JourneyStepAction>(['expectVisible', 'expectText', 'expectUrl', 'expectRequest']);
 const actionActions = new Set<JourneyStepAction>(['click', 'fill', 'press', 'select', 'check', 'uncheck']);
 const genericTargets = new Set(['body', 'html', '#app', 'css=body', 'css=html', 'css=#app']);
+const genericTextPattern = /^(ok|yes|no|true|false|submit|button|click|loading|loaded|done|success|error)$/i;
 
 function isAssertionAction(action: string): boolean {
   return assertionActions.has(action as JourneyStepAction);
@@ -15,8 +16,11 @@ function isActionStep(action: string): boolean {
 
 function isGenericAssertion(step: { action: JourneyStepAction; target?: string; value?: string }): boolean {
   const target = (step.target ?? '').trim().toLowerCase();
+  const value = (step.value ?? '').trim();
+  const genericTarget = genericTargets.has(target);
   if (step.action === 'expectVisible' && genericTargets.has(target)) return true;
-  if (step.action === 'expectText' && (!step.value || step.value.trim().length < 2)) return true;
+  if (step.action === 'expectText' && (!value || value.length < 2)) return true;
+  if (step.action === 'expectText' && genericTarget && (value.length <= 3 || genericTextPattern.test(value))) return true;
   if (step.action === 'expectUrl' && (!step.value || step.value === '*' || step.value === '/')) return true;
   return false;
 }
@@ -25,7 +29,7 @@ function add(findings: JourneyAssertionAuditFinding[], input: Omit<JourneyAssert
   findings.push({ id: `JA-${String(findings.length + 1).padStart(3, '0')}`, ...input });
 }
 
-function auditJourney(journey: JourneyTestResult): JourneyAssertionAuditItem {
+function auditJourney(journey: JourneyTestResult, linkedRequirementIds: string[] = []): JourneyAssertionAuditItem {
   const actionSteps = journey.steps.filter((step) => isActionStep(step.action));
   const assertionSteps = journey.steps.filter((step) => isAssertionAction(step.action));
   const passedAssertions = assertionSteps.filter((step) => step.status === 'passed');
@@ -33,7 +37,8 @@ function auditJourney(journey: JourneyTestResult): JourneyAssertionAuditItem {
   const weakAssertions = passedAssertions.filter(isGenericAssertion);
   const meaningfulAssertions = passedAssertions.filter((step) => !isGenericAssertion(step));
   const findings: JourneyAssertionAuditFinding[] = [];
-  const requirementBound = (journey.requirementIds?.length ?? 0) > 0 || journey.source === 'requirement-generated';
+  const requirementIds = [...new Set([...(journey.requirementIds ?? []), ...linkedRequirementIds])];
+  const requirementBound = requirementIds.length > 0 || journey.source === 'requirement-generated';
 
   if (journey.status === 'failed') {
     add(findings, {
@@ -79,12 +84,12 @@ function auditJourney(journey: JourneyTestResult): JourneyAssertionAuditItem {
 
   if (passedAssertions.length > 0 && meaningfulAssertions.length === 0) {
     add(findings, {
-      severity: 'warning',
+      severity: requirementBound ? 'blocker' : 'warning',
       category: 'weak-assertion',
       journeyId: journey.id,
       title: `Journey assertions are generic and weak: ${journey.name}`,
       evidence: weakAssertions.map((step) => `step ${step.index} ${step.action} ${step.target ?? ''}`).join('；'),
-      recommendation: 'Replace body/html/#app visibility checks with business-specific text, URL, selector, or request assertions.'
+      recommendation: 'Replace body/html/#app visibility or generic text checks with business-specific text, URL, selector, or request assertions.'
     });
   }
 
@@ -106,7 +111,7 @@ function auditJourney(journey: JourneyTestResult): JourneyAssertionAuditItem {
     source: journey.source ?? 'configured',
     status: journey.status,
     quality,
-    requirementIds: journey.requirementIds ?? [],
+    requirementIds,
     stepCount: journey.steps.length,
     actionStepCount: actionSteps.length,
     assertionStepCount: assertionSteps.length,
@@ -147,7 +152,15 @@ export function buildJourneyAssertionAudit(result: Pick<QaResult, 'journeyTests'
   if (result.journeyTests.length === 0) {
     return createSkippedJourneyAssertionAudit('No journey tests were executed. Record or configure business journeys before claiming runtime business validation.');
   }
-  const items = result.journeyTests.map(auditJourney);
+  const requirementIdsByJourney = new Map<string, string[]>();
+  for (const req of result.requirementCoverage.items.filter((item) => item.source === 'provided')) {
+    for (const journeyId of req.evidence.journeyIds) {
+      const existing = requirementIdsByJourney.get(journeyId) ?? [];
+      existing.push(req.id);
+      requirementIdsByJourney.set(journeyId, existing);
+    }
+  }
+  const items = result.journeyTests.map((journey) => auditJourney(journey, requirementIdsByJourney.get(journey.id) ?? []));
   const findings = items.flatMap((item) => item.findings);
   const hasProvidedRequirements = result.requirementCoverage.summary.providedCount > 0;
   const hasRequirementBoundVerifiedJourney = items.some((item) => item.requirementIds.length > 0 && item.quality === 'runtime-verified');

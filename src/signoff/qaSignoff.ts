@@ -1,4 +1,5 @@
-import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyStepAction, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
+import type { ArtifactIntegrityResult, EnvironmentAssessment, FrontLensConfig, InteractionTestResult, JourneyAssertionAuditResult, JourneyStepAction, JourneyTestResult, PageProfileAssessment, QaQualityGate, QaSignoffResult, RequirementCoverageResult, SourceHealthResult, TestDataAssessmentResult } from '../types.js';
+import { buildJourneyAssertionAudit } from '../journeys/journeyAssertionAudit.js';
 import { buildSourceScriptPlanNeed } from '../source/sourceScriptPlan.js';
 
 function passedCount(items: Array<{ status: string }>): number {
@@ -24,6 +25,11 @@ function journeyAssertionSummary(journeys: JourneyTestResult[]): {
   passedAssertionStepCount: number;
   passedJourneyWithAssertionCount: number;
   passedJourneyWithoutAssertionCount: number;
+  runtimeVerifiedJourneyCount: number;
+  requirementBoundRuntimeVerifiedJourneyCount: number;
+  weaklyAssertedJourneyCount: number;
+  pathOnlyJourneyCount: number;
+  meaningfulAssertionStepCount: number;
 } {
   const assertionStepCount = journeys.reduce((count, journey) => count + journey.steps.filter((step) => isAssertionAction(step.action)).length, 0);
   const passedAssertionStepCount = journeys.reduce((count, journey) => count + journey.steps.filter((step) => isAssertionAction(step.action) && step.status === 'passed').length, 0);
@@ -33,7 +39,34 @@ function journeyAssertionSummary(journeys: JourneyTestResult[]): {
     assertionStepCount,
     passedAssertionStepCount,
     passedJourneyWithAssertionCount,
-    passedJourneyWithoutAssertionCount: passedJourneys.length - passedJourneyWithAssertionCount
+    passedJourneyWithoutAssertionCount: passedJourneys.length - passedJourneyWithAssertionCount,
+    runtimeVerifiedJourneyCount: passedJourneyWithAssertionCount,
+    requirementBoundRuntimeVerifiedJourneyCount: passedJourneys.filter((journey) =>
+      (journey.requirementIds?.length ?? 0) > 0 &&
+      journey.steps.some((step) => isAssertionAction(step.action) && step.status === 'passed')
+    ).length,
+    weaklyAssertedJourneyCount: 0,
+    pathOnlyJourneyCount: passedJourneys.length - passedJourneyWithAssertionCount,
+    meaningfulAssertionStepCount: passedAssertionStepCount
+  };
+}
+
+function assertionSummaryFromAudit(audit: JourneyAssertionAuditResult, fallback: ReturnType<typeof journeyAssertionSummary>): ReturnType<typeof journeyAssertionSummary> {
+  if (audit.status === 'skipped') return fallback;
+  const runtimeVerifiedJourneyCount = audit.summary.runtimeVerifiedJourneyCount;
+  const requirementBoundRuntimeVerifiedJourneyCount = audit.items.filter((item) => item.requirementIds.length > 0 && item.quality === 'runtime-verified').length;
+  const passedJourneyWithAssertionCount = runtimeVerifiedJourneyCount;
+  const passedJourneyWithoutAssertionCount = Math.max(0, audit.summary.passedJourneyCount - passedJourneyWithAssertionCount);
+  return {
+    assertionStepCount: audit.summary.assertionStepCount,
+    passedAssertionStepCount: audit.items.reduce((count, item) => count + item.passedAssertionStepCount, 0),
+    passedJourneyWithAssertionCount,
+    passedJourneyWithoutAssertionCount,
+    runtimeVerifiedJourneyCount,
+    requirementBoundRuntimeVerifiedJourneyCount,
+    weaklyAssertedJourneyCount: audit.summary.weaklyAssertedJourneyCount,
+    pathOnlyJourneyCount: audit.summary.pathOnlyJourneyCount,
+    meaningfulAssertionStepCount: audit.summary.meaningfulAssertionStepCount
   };
 }
 
@@ -51,14 +84,15 @@ function businessValidationConfidence(input: {
   journeyTests: JourneyTestResult[];
   interactionTests: InteractionTestResult[];
   pageDomNodes: number;
-  passedJourneyWithAssertionCount: number;
+  runtimeVerifiedJourneyCount: number;
+  requirementBoundRuntimeVerifiedJourneyCount: number;
 }): QaSignoffResult['businessValidationConfidence'] {
   if (input.qualityGate.status === 'blocked' || input.pageDomNodes === 0) return 'not-verified';
   const providedRequirements = input.requirementCoverage.summary.providedCount;
   const providedAllPassed = providedRequirements > 0 && input.requirementCoverage.items
     .filter((item) => item.source === 'provided')
     .every((item) => item.status === 'passed' || item.status === 'not-applicable');
-  if (providedAllPassed && input.passedJourneyWithAssertionCount > 0) return 'runtime-verified';
+  if (providedAllPassed && input.requirementBoundRuntimeVerifiedJourneyCount > 0) return 'runtime-verified';
   if (hasAnyRuntimeEvidence(input)) return 'runtime-partial';
   return 'static-source-only';
 }
@@ -83,6 +117,7 @@ export function buildQaSignoff(input: {
   requirementCoverage: RequirementCoverageResult;
   sourceHealth: SourceHealthResult;
   artifactIntegrity: ArtifactIntegrityResult;
+  journeyAssertionAudit?: JourneyAssertionAuditResult;
   environment?: EnvironmentAssessment;
   pageProfile?: PageProfileAssessment;
   testData?: TestDataAssessmentResult;
@@ -95,7 +130,11 @@ export function buildQaSignoff(input: {
   const inferredRequirementCount = input.requirementCoverage.summary.inferredCount;
   const passedJourneyCount = passedCount(input.journeyTests);
   const failedJourneyCount = failedCount(input.journeyTests);
-  const journeyAssertions = journeyAssertionSummary(input.journeyTests);
+  const computedJourneyAssertionAudit = input.journeyAssertionAudit ?? buildJourneyAssertionAudit({
+    journeyTests: input.journeyTests,
+    requirementCoverage: input.requirementCoverage
+  });
+  const journeyAssertions = assertionSummaryFromAudit(computedJourneyAssertionAudit, journeyAssertionSummary(input.journeyTests));
   const passedInteractionCount = passedCount(input.interactionTests);
   const failedInteractionCount = failedCount(input.interactionTests);
   const failedExceptionCount = failedCount(input.exceptionSimulations);
@@ -120,7 +159,10 @@ export function buildQaSignoff(input: {
 
   if (input.pageDomNodes > 0) evidence.push(`runtime DOM captured (${input.pageDomNodes} nodes)`);
   if (passedJourneyCount > 0) evidence.push(`${passedJourneyCount} journey(s) passed`);
-  if (journeyAssertions.assertionStepCount > 0) evidence.push(`${journeyAssertions.passedAssertionStepCount}/${journeyAssertions.assertionStepCount} journey assertion step(s) passed`);
+  if (journeyAssertions.assertionStepCount > 0) evidence.push(`${journeyAssertions.meaningfulAssertionStepCount}/${journeyAssertions.assertionStepCount} meaningful journey assertion step(s)`);
+  if (computedJourneyAssertionAudit.status !== 'skipped') {
+    evidence.push(`journeyAssertionAudit ${computedJourneyAssertionAudit.status}: runtime-verified ${journeyAssertions.runtimeVerifiedJourneyCount}, weak ${journeyAssertions.weaklyAssertedJourneyCount}, path-only ${journeyAssertions.pathOnlyJourneyCount}`);
+  }
   if (passedInteractionCount > 0) evidence.push(`${passedInteractionCount} interaction check(s) passed`);
   if (input.sourceHealth.status === 'passed') evidence.push(`sourceHealth passed (${input.sourceHealth.parsedFiles} parsed files)`);
   if (passedSourceScriptChecks > 0) evidence.push(`${passedSourceScriptChecks} source script check(s) passed`);
@@ -152,12 +194,19 @@ export function buildQaSignoff(input: {
     gaps.push('未提供 PRD/验收标准；只能进行页面能力推断，不能给出完整业务通过结论。');
     followups.push('提供 PRD/验收标准，并用 selectors/expectedTexts/journeySteps 编码为 requirements。');
   }
+  if (computedJourneyAssertionAudit.status === 'failed') {
+    blockers.push(`journeyAssertionAudit failed: ${computedJourneyAssertionAudit.summary.blockerCount} blocker(s); requirement-bound journeys need meaningful business assertions before QA sign-off.`);
+    followups.push('修复 journey-assertion-audit.md 中的 blocker：为需求绑定 journey 增加业务专属 expectVisible/expectText/expectUrl/expectRequest，或把该需求标为未覆盖后复测。');
+  } else if (computedJourneyAssertionAudit.status === 'warning') {
+    gaps.push(`journeyAssertionAudit warning: ${computedJourneyAssertionAudit.summary.warningCount} warning(s); 部分旅程只有路径或弱断言证据。`);
+    followups.push('按 assertion-suggestions.md 补充业务专属断言，避免把路径回放当成业务通过。');
+  }
   if (input.journeyTests.length === 0 || passedJourneyCount === 0 || allSkipped(input.journeyTests)) {
     gaps.push('核心用户旅程没有形成 passed 的运行时证据。');
     followups.push('补充覆盖核心业务流的非破坏 journey；涉及写操作时明确授权测试环境。');
-  } else if (journeyAssertions.passedJourneyWithAssertionCount === 0) {
-    gaps.push('已通过的用户旅程缺少 expectVisible/expectText/expectUrl/expectRequest 成功断言；只能证明路径未崩溃，不能证明业务结果正确。');
-    followups.push('为录制/配置的 journey 补充 expectVisible、expectText、expectUrl 或 expectRequest 成功断言，再复测需求覆盖。');
+  } else if (journeyAssertions.runtimeVerifiedJourneyCount === 0) {
+    gaps.push('已通过的用户旅程缺少有意义的业务成功断言；body/html/#app 可见或 expectText body OK 这类弱断言只能证明路径未崩溃，不能证明业务结果正确。');
+    followups.push('为录制/配置的 journey 补充业务专属 expectVisible、expectText、expectUrl 或 expectRequest 成功断言，再复测需求覆盖。');
   }
   if (input.interactionTests.length === 0 || allSkipped(input.interactionTests)) {
     gaps.push('安全交互探索未覆盖或全部 skipped，搜索/表单/弹窗/表格等交互结论低置信。');
@@ -195,7 +244,8 @@ export function buildQaSignoff(input: {
     journeyTests: input.journeyTests,
     interactionTests: input.interactionTests,
     pageDomNodes: input.pageDomNodes,
-    passedJourneyWithAssertionCount: journeyAssertions.passedJourneyWithAssertionCount
+    runtimeVerifiedJourneyCount: journeyAssertions.runtimeVerifiedJourneyCount,
+    requirementBoundRuntimeVerifiedJourneyCount: journeyAssertions.requirementBoundRuntimeVerifiedJourneyCount
   });
 
   let status: QaSignoffResult['status'] = input.qualityGate.status;
@@ -204,6 +254,7 @@ export function buildQaSignoff(input: {
   }
   if (input.sourceHealth.status === 'failed') status = 'fail';
   if (input.testData?.status === 'failed') status = 'fail';
+  if (computedJourneyAssertionAudit.status === 'failed') status = 'blocked';
   if (input.qualityGate.status === 'blocked') status = 'blocked';
 
   const uniqueGaps = [...new Set(gaps)];
@@ -237,6 +288,11 @@ export function buildQaSignoff(input: {
       passedAssertionStepCount: journeyAssertions.passedAssertionStepCount,
       passedJourneyWithAssertionCount: journeyAssertions.passedJourneyWithAssertionCount,
       passedJourneyWithoutAssertionCount: journeyAssertions.passedJourneyWithoutAssertionCount,
+      runtimeVerifiedJourneyCount: journeyAssertions.runtimeVerifiedJourneyCount,
+      requirementBoundRuntimeVerifiedJourneyCount: journeyAssertions.requirementBoundRuntimeVerifiedJourneyCount,
+      weaklyAssertedJourneyCount: journeyAssertions.weaklyAssertedJourneyCount,
+      pathOnlyJourneyCount: journeyAssertions.pathOnlyJourneyCount,
+      meaningfulAssertionStepCount: journeyAssertions.meaningfulAssertionStepCount,
       interactionCount: input.interactionTests.length,
       passedInteractionCount,
       failedInteractionCount,

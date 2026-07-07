@@ -1,4 +1,4 @@
-import type { AnalyzerContext, InteractionTestResult, Issue, IssueCategory, Severity } from '../types.js';
+import type { AnalyzerContext, InteractionTestKind, InteractionTestResult, Issue, IssueCategory, Severity } from '../types.js';
 import { IssueFactory } from './issueFactory.js';
 
 function categoryFor(test: InteractionTestResult): IssueCategory {
@@ -43,9 +43,45 @@ function severityFor(test: InteractionTestResult): Severity {
   return 'info';
 }
 
+const productScopedWarningKinds = new Set<InteractionTestKind>(['pagination', 'refresh', 'download']);
+
+const requiredFeatureByInteraction: Record<string, string[]> = {
+  pagination: ['pagination', '分页', 'pager', 'paging'],
+  refresh: ['manual-refresh', 'refresh', 'reload', '刷新'],
+  download: ['export', 'download', '导出', '下载']
+};
+
+function normalizeFeature(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^\w\u4e00-\u9fff-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function explicitRequirementForInteraction(context: AnalyzerContext, kind: InteractionTestKind): boolean {
+  if (!context.config.requirements.enabled) return false;
+  return context.config.requirements.items.some((item) => item.source !== 'inferred' && item.interactionKinds?.includes(kind));
+}
+
+function productContextRequiresInteraction(context: AnalyzerContext, kind: InteractionTestKind): boolean {
+  if (!context.config.productContext.enabled) return false;
+  const requiredAliases = new Set((requiredFeatureByInteraction[kind] ?? [kind]).map(normalizeFeature));
+  return context.config.productContext.requiredFeatures.some((feature) => requiredAliases.has(normalizeFeature(feature)));
+}
+
+function shouldCreateIssueForInteraction(context: AnalyzerContext, test: InteractionTestResult): boolean {
+  if (test.status === 'failed') return true;
+  if (test.status !== 'warning') return false;
+  if (!productScopedWarningKinds.has(test.kind)) return true;
+  return explicitRequirementForInteraction(context, test.kind) || productContextRequiresInteraction(context, test.kind);
+}
+
 export function analyzeInteractions(context: AnalyzerContext, factory: IssueFactory): Issue[] {
   return context.interactionTests
-    .filter((test) => test.status === 'failed' || test.status === 'warning')
+    .filter((test) => shouldCreateIssueForInteraction(context, test))
     .map((test) =>
       factory.create({
         title: `安全交互测试${test.status === 'failed' ? '失败' : '异常'}：${test.kind} / ${test.target}`,

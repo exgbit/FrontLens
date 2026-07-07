@@ -4,6 +4,7 @@ import { createDefaultConfig } from '../src/defaultConfig.ts';
 import { IssueFactory } from '../src/analyzers/issueFactory.ts';
 import { analyzeNetwork } from '../src/analyzers/networkAnalyzer.ts';
 import { analyzeIntegration } from '../src/analyzers/integrationAnalyzer.ts';
+import { analyzeInteractions } from '../src/analyzers/interactionAnalyzer.ts';
 import { analyzeCompleteness } from '../src/analyzers/completenessAnalyzer.ts';
 import { analyzePageQuality } from '../src/analyzers/pageAnalyzer.ts';
 import { analyzePermissions } from '../src/analyzers/permissionAnalyzer.ts';
@@ -652,6 +653,114 @@ test('integration mismatch suppresses list-empty guesses when source analysis is
   });
   const issues = analyzeIntegration(ctx, new IssueFactory());
   assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), false);
+});
+
+test('optional product interaction warnings stay in interaction coverage instead of raw issues by default', () => {
+  const ctx = context({
+    interactionTests: [
+      {
+        id: 'IT-REFRESH',
+        kind: 'refresh',
+        target: '刷新',
+        status: 'warning',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 1,
+        actions: ['点击刷新'],
+        observations: { networkRequestIds: [] },
+        issue: '点击刷新后未观察到新的请求或页面状态变化。'
+      },
+      {
+        id: 'IT-PAGE',
+        kind: 'pagination',
+        target: '下一页',
+        status: 'warning',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 1,
+        actions: ['点击下一页'],
+        observations: { urlChanged: false, bodyTextChanged: false },
+        issue: '点击分页后未观察到 URL、页面文本或 Network 请求变化。'
+      },
+      {
+        id: 'IT-DOWNLOAD',
+        kind: 'download',
+        target: '导出',
+        status: 'warning',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 1,
+        actions: ['点击导出'],
+        observations: { networkRequestIds: [] },
+        issue: '点击下载/导出后未观察到 download 事件或新的网络请求。'
+      }
+    ]
+  });
+
+  const issues = analyzeInteractions(ctx, new IssueFactory());
+  assert.equal(issues.length, 0);
+});
+
+test('required product interaction warnings still become raw issues', () => {
+  const ctx = context({
+    interactionTests: [
+      {
+        id: 'IT-REFRESH',
+        kind: 'refresh',
+        target: '刷新',
+        status: 'warning',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 1,
+        actions: ['点击刷新'],
+        observations: { networkRequestIds: [] },
+        issue: '点击刷新后未观察到新的请求或页面状态变化。'
+      },
+      {
+        id: 'IT-DOWNLOAD',
+        kind: 'download',
+        target: '导出',
+        status: 'warning',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 1,
+        actions: ['点击导出'],
+        observations: { networkRequestIds: [] },
+        issue: '点击下载/导出后未观察到 download 事件或新的网络请求。'
+      }
+    ]
+  });
+  ctx.config.productContext.requiredFeatures = ['manual-refresh'];
+  ctx.config.requirements.items = [
+    { id: 'REQ-EXPORT', title: '支持导出当前列表', priority: 'P1', source: 'provided', interactionKinds: ['download'] }
+  ];
+
+  const issues = analyzeInteractions(ctx, new IssueFactory());
+  assert.equal(issues.length, 2);
+  assert.equal(issues.every((issue) => issue.severity === 'low'), true);
+});
+
+test('failed optional interactions still become raw issues', () => {
+  const ctx = context({
+    interactionTests: [
+      {
+        id: 'IT-PAGE',
+        kind: 'pagination',
+        target: '下一页',
+        status: 'failed',
+        startedAt: '',
+        endedAt: '',
+        durationMs: 1,
+        actions: ['点击下一页'],
+        observations: { consoleIds: ['CON-1'] },
+        issue: '点击分页后出现新的 Console/Page Error。'
+      }
+    ]
+  });
+
+  const issues = analyzeInteractions(ctx, new IssueFactory());
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].severity, 'high');
 });
 
 

@@ -40,3 +40,56 @@ test('qa intake config is a reusable reviewable FrontLens config pack', async ()
   assert.equal(config.productContext.enabled, true);
   assert.equal(config.source.root, '/repo/frontend');
 });
+
+test('qa intake config carries assertion drafts without auto-enabling business pass', () => {
+  const now = '2026-07-07T00:00:00.000Z';
+  const result = normalizeResult({
+    summary: { url: 'https://example.com/admin', title: 'Admin' },
+    pageModel: {
+      url: 'https://example.com/admin',
+      title: 'Admin',
+      headings: [{ level: 1, text: 'Admin Dashboard', selector: 'h1', visible: true }],
+      stats: { domNodes: 20, visibleTextLength: 100, bodyTextSample: 'Admin Dashboard' }
+    },
+    journeyTests: [
+      {
+        id: 'JT-001',
+        name: 'Admin smoke',
+        source: 'configured',
+        status: 'passed',
+        startedAt: now,
+        endedAt: now,
+        durationMs: 10,
+        startUrl: 'https://example.com/admin',
+        finalUrl: 'https://example.com/admin/dashboard',
+        steps: [
+          {
+            index: 0,
+            action: 'click',
+            target: 'button[type=submit]',
+            status: 'passed',
+            startedAt: now,
+            endedAt: now,
+            durationMs: 10
+          }
+        ]
+      }
+    ]
+  });
+
+  const pack = buildQaIntakeConfig(result);
+  const metadata = pack._frontlensQaIntake as {
+    assertionSuggestions: { draftAssertionStepCount: number; reviewRequired: boolean; howToUse: string };
+    draftAssertionSteps: Array<{ journeyId?: string; step: { action: string; target?: string; value?: string }; copyTo: string }>;
+  };
+
+  assert.equal(metadata.assertionSuggestions.reviewRequired, true);
+  assert.ok(metadata.assertionSuggestions.draftAssertionStepCount > 0);
+  assert.match(metadata.assertionSuggestions.howToUse, /Do not treat these drafts as passed evidence/);
+  assert.ok(metadata.draftAssertionSteps.some((item) => item.journeyId === 'JT-001' && item.step.action.startsWith('expect')));
+  assert.ok(metadata.draftAssertionSteps.every((item) => item.copyTo.includes('journeys') || item.copyTo.includes('requirements')));
+  assert.equal(
+    (pack.journeys as { journeys: unknown[] }).journeys.length,
+    result.metadata.config.journeys.journeys.length
+  );
+});

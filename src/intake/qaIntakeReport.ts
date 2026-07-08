@@ -44,7 +44,7 @@ ${rows.length ? ['| ID | Priority | Category | Question | Why | How to answer | 
 ${heading}# How to use
 
 1. 先回答 P0/P1 问题；不要把未回答的问题对应的产品/设计/API/UI 猜测转成缺陷。
-2. 编辑 \`qa-intake.config.json\` 中的 \`requirements\`、\`productContext\`、\`journeys\`、\`testData\`、\`source\` 后用 \`--config\` 重跑。
+2. 编辑 \`qa-intake.config.json\` 中的 \`requirements\`、\`productContext\`、\`journeys\`、\`testData\`、\`source\`；可从 \`_frontlensQaIntake.draftAssertionSteps[]\` 复制已确认的 expect* 到 journeySteps 后用 \`--config\` 重跑。
 3. 若没有 PRD/验收标准，保持 \`requirements.inferFromPage=false\`，避免把页面能力推断写成业务通过。
 `;
 }

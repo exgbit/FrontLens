@@ -55,7 +55,7 @@ Summarize:
 - risk-acceptance checklist from `result.json.riskAcceptance` and `risk-acceptance.md`; blocked must-mitigate items are not releasable, while needs-acceptance items require named Product/QA/Release approval and evidence before they can be treated as accepted risk.
 - generated-report content audit from `result.json.reportContentAudit` and `report-content-audit.md`; blockers mean the report text itself overclaims or violates the selected depth profile; compactness warnings mean the report should be summarized rather than copied into the final answer;
 - journey assertion audit from `result.json.journeyAssertionAudit` and `journey-assertion-audit.md`; path-only click/fill journeys are coverage gaps, not business passes;
-- assertion suggestions from `result.json.assertionSuggestions` and `assertion-suggestions.md`; suggestions are draft test improvements, not passed evidence until added to journey/requirements config and rerun;
+- assertion suggestions from `result.json.assertionSuggestions`, `assertion-suggestions.md`, and `qa-intake.config.json._frontlensQaIntake.draftAssertionSteps[]`; suggestions are draft test improvements, not passed evidence until copied into journey/requirements config and rerun;
 - skipped interaction/coverage caveats when IT-* or journeys are mostly skipped;
 - for each retained critical/high issue: issue id, severity, category, evidence reference, reproduction step summary, and suggested owner/fix.
 

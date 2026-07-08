@@ -52,7 +52,7 @@ import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 
-export const RESULT_SCHEMA_VERSION = '1.76.0';
+export const RESULT_SCHEMA_VERSION = '1.77.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));

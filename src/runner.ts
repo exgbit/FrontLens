@@ -46,6 +46,7 @@ import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
+import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
@@ -965,6 +966,15 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     riskRegister,
     qaSignoff
   });
+  const automationSpecs = buildAutomationSpecs({
+    summary,
+    requirementCoverage,
+    testCases,
+    journeyTests,
+    assertionSuggestions,
+    traceability,
+    qaSignoff
+  });
 
   const result: QaResult = {
     summary,
@@ -1022,6 +1032,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     riskAcceptance,
     defectTickets,
     traceability,
+    automationSpecs,
     reportContentAudit: createSkippedReportContentAudit(resultConfig.report.profile),
     journeyAssertionAudit,
     assertionSuggestions,

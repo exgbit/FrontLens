@@ -13,6 +13,7 @@ import { buildAssertionSuggestions } from '../journeys/assertionSuggestions.js';
 import { buildQaIntakeConfig } from '../intake/qaIntakeConfig.js';
 import { buildDefectTickets } from '../tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from '../traceability/traceabilityMatrix.js';
+import { buildAutomationSpecs } from '../automation/automationSpecs.js';
 
 export function assignJsonArtifactPaths(result: QaResult): void {
   const outputDir = result.artifacts.outputDir;
@@ -41,6 +42,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.riskAcceptanceLog = path.join(outputDir, 'risk-acceptance.json');
   result.artifacts.defectTicketsLog = path.join(outputDir, 'defect-tickets.json');
   result.artifacts.traceabilityLog = path.join(outputDir, 'traceability.json');
+  result.artifacts.automationSpecsLog = path.join(outputDir, 'automation-specs.json');
   result.artifacts.regressionPlanLog = path.join(outputDir, 'regression-plan.json');
   result.artifacts.scopeReviewLog = path.join(outputDir, 'scope-review.json');
   result.artifacts.claimGuardLog = path.join(outputDir, 'claim-guard.json');
@@ -79,6 +81,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     riskAcceptanceLog: string;
     defectTicketsLog: string;
     traceabilityLog: string;
+    automationSpecsLog: string;
     regressionPlanLog: string;
     scopeReviewLog: string;
     claimGuardLog: string;
@@ -124,6 +127,8 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   await writeJson(artifacts.defectTicketsLog, result.defectTickets);
   result.traceability = buildTraceabilityMatrix(result);
   await writeJson(artifacts.traceabilityLog, result.traceability);
+  result.automationSpecs = buildAutomationSpecs(result);
+  await writeJson(artifacts.automationSpecsLog, result.automationSpecs);
   await writeJson(artifacts.regressionPlanLog, result.regressionPlan);
   await writeJson(artifacts.scopeReviewLog, result.scopeReview);
   await writeJson(artifacts.claimGuardLog, result.claimGuard);

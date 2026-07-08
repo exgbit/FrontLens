@@ -22,6 +22,7 @@ import { buildProfessionalSuggestions } from './review/professionalSuggestions.j
 import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
+import { buildAutomationSpecs } from './automation/automationSpecs.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -230,6 +231,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_traceability',
         description: 'Read result.json and return PRD-to-test-to-defect traceability matrix for professional QA sign-off.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_automation_specs',
+        description: 'Read result.json and return review-only Playwright automation spec drafts generated from requirements, journeys, assertions, and test cases.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -596,6 +602,18 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           status: result.testCases.status,
           summary: result.testCases.summary
         },
+        defectTickets: {
+          status: result.defectTickets.status,
+          counts: result.defectTickets.counts
+        },
+        traceability: {
+          status: result.traceability.status,
+          summary: result.traceability.summary
+        },
+        automationSpecs: {
+          status: result.automationSpecs.status,
+          summary: result.automationSpecs.summary
+        },
         riskRegister: {
           status: result.riskRegister.status,
           summary: result.riskRegister.summary
@@ -677,6 +695,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         testCases: result.testCases,
         defectTickets: result.defectTickets,
         traceability: result.traceability,
+        automationSpecs: result.automationSpecs,
         riskRegister: result.riskRegister,
         riskAcceptance: result.riskAcceptance,
         qualityGate: result.qualityGate,
@@ -799,6 +818,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildTraceabilityMatrix(result));
+    }
+    case 'frontlens_automation_specs': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildAutomationSpecs(result));
     }
     case 'frontlens_report_content_audit': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

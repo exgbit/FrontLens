@@ -28,6 +28,7 @@ import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
+import { buildAutomationSpecs } from './automation/automationSpecs.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config, [], { requirementCoverage: result.requirementCoverage });
@@ -142,6 +143,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.riskAcceptance = buildRiskAcceptance(result);
   result.defectTickets = buildDefectTickets(result);
   result.traceability = buildTraceabilityMatrix(result);
+  result.automationSpecs = buildAutomationSpecs(result);
 }
 
 async function writeHumanReportsWithStableIntegrity(result: QaResult, formats: Set<string>): Promise<void> {
@@ -210,6 +212,9 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
     result.testCases = buildTestCaseMatrix(result);
     result.riskRegister = buildRiskRegister(result);
     result.riskAcceptance = buildRiskAcceptance(result);
+    result.defectTickets = buildDefectTickets(result);
+    result.traceability = buildTraceabilityMatrix(result);
+    result.automationSpecs = buildAutomationSpecs(result);
     await writeHumanReportsWithStableIntegrity(result, formats);
     await writeJsonReports(result);
   }

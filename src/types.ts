@@ -2112,6 +2112,48 @@ export interface TraceabilityMatrixResult {
   notes: string[];
 }
 
+export type AutomationSpecDraftSource = 'requirement' | 'test-case' | 'journey' | 'assertion-suggestion';
+export type AutomationSpecDraftStatus = 'ready' | 'needs-input' | 'blocked';
+
+export interface AutomationSpecDraft {
+  id: string;
+  title: string;
+  source: AutomationSpecDraftSource;
+  priority: RequirementPriority;
+  status: AutomationSpecDraftStatus;
+  confidence: 'high' | 'medium' | 'low';
+  requirementIds: string[];
+  testCaseIds: string[];
+  journeyIds: string[];
+  issueIds: string[];
+  evidenceRefs: string[];
+  preconditions: string[];
+  steps: string[];
+  expected: string[];
+  playwright: string;
+  gaps: string[];
+  nextSteps: string[];
+}
+
+export interface AutomationSpecResult {
+  generatedAt: string;
+  status: 'ready' | 'partial' | 'needs-input' | 'skipped';
+  targetUrl: string;
+  specFileName: string;
+  summary: {
+    draftCount: number;
+    readyCount: number;
+    needsInputCount: number;
+    blockedCount: number;
+    requirementLinkedCount: number;
+    runtimeAssertionCount: number;
+    sourceCounts: Record<AutomationSpecDraftSource, number>;
+  };
+  drafts: AutomationSpecDraft[];
+  specSource: string;
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -2401,6 +2443,10 @@ export interface ArtifactIndex {
   defectTickets?: string;
   /** Requirements-to-tests-to-defects traceability matrix for professional QA sign-off. */
   traceability?: string;
+  /** Review-only Playwright automation draft package generated from requirements, journeys, assertions, and test cases. */
+  automationSpecs?: string;
+  /** Generated Playwright spec draft; review before committing to the target project. */
+  automationSpecFile?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -2431,6 +2477,7 @@ export interface ArtifactIndex {
   riskAcceptanceLog?: string;
   defectTicketsLog?: string;
   traceabilityLog?: string;
+  automationSpecsLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2601,6 +2648,7 @@ export interface QaResult {
   defectProof: DefectProofResult;
   defectTickets: DefectTicketResult;
   traceability: TraceabilityMatrixResult;
+  automationSpecs: AutomationSpecResult;
   claimGuard: ClaimGuardResult;
   qaIntake: QaIntakeResult;
   qualityGate: QaQualityGate;

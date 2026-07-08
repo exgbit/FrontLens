@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend QA Security"
+  short_description: "Security QA specialty"
+  default_prompt: "Use $frontend-qa-security to run passive frontend/security-header/sensitive-data QA and separate code defects from deployment checklist items."

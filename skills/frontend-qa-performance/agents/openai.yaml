@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend QA Performance"
+  short_description: "Performance QA specialty"
+  default_prompt: "Use $frontend-qa-performance to analyze page performance, bundle/Coverage, load time, and production-preview performance risks without reading huge raw artifacts by default."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend QA Mobile"
+  short_description: "Mobile/responsive specialty"
+  default_prompt: "Use $frontend-qa-mobile to run mobile/tablet/responsive frontend QA when mobile support or touch usability is explicitly in scope."

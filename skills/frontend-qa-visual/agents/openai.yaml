@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend QA Visual"
+  short_description: "Visual regression specialty"
+  default_prompt: "Use $frontend-qa-visual to run design/baseline visual regression QA with pixel diff only when visual validation is explicitly requested."

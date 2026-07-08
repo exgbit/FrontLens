@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend QA Automation"
+  short_description: "Journey automation specialty"
+  default_prompt: "Use $frontend-qa-automation to record/replay business journeys, add meaningful assertions, and generate reviewable Playwright regression drafts."

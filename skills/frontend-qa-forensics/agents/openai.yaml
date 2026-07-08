@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend QA Forensics"
+  short_description: "Full evidence QA specialty"
+  default_prompt: "Use $frontend-qa-forensics for deliberate full/deep FrontLens forensic QA with exhaustive evidence, raw artifact drill-down, and incident-style analysis."

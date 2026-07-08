@@ -1,119 +1,111 @@
 ---
 name: frontend-qa
-description: Run FrontLens Playwright QA for live webpage testing/auditing with evidence-backed Markdown/JSON reports covering UI/interaction, journeys, assertion suggestions, business journey scenario planning, review-feedback calibration, Console, Network/API, contract drift, realtime, data mismatch, performance/P2, accessibility, passive security, root-cause grouping, finding disposition, scope review, QA strategy planning, QA coverage/test cases, release risk register/acceptance, productContext, claim guard, QA intake, defect proof, traceability-to-automation spec drafts, professional summary, regression plan, artifact integrity, source-code correlation, local build/serve, and fix suggestions. Use when the user asks to QA, test, audit, inspect, debug, security-check, compare runs, or generate frontend/UI/API/a11y/performance/security findings for a URL, or when another skill needs FrontLens result.json professional QA artifacts to drive fixes. Do not use for generic URL summarization.
+description: "Run low-token FrontLens SME-standard frontend QA for a live page with source-aware triage. Use when the user asks to test, QA, audit, inspect, or review a frontend URL/page and wants practical small/mid-size-business output: core regression checklist, release risks, historical-bug regression needs, permission matrix, defect priorities, non-fix decisions, and release acceptability. Default scope excludes deep performance, full security, visual diff, mobile matrix, SEO, realtime, automation, and forensic evidence unless explicitly requested; route those to the dedicated frontend-qa-* specialty skills."
 ---
 
 # Frontend QA
 
-Use FrontLens to analyze a target webpage end-to-end and return primary artifacts:
+Run **SME-standard QA** by default: concise, source-aware, release-decision oriented, and low-token.
 
-- `brief.md`: compact professional QA brief; maximum default shape for final user/LLM answer.
-- `report.md`: primary human QA report; default `executive` profile is the shortest decision brief, and `report.profile` / `--report-profile` controls executive, professional, or full depth.
-- `professional-audit.md`: report-contract self-audit; flags coverage-boundary violations, overclaims, non-proof-ready fix queue entries, weak-evidence actionable findings, speculative API/UI mismatches, product/style items promoted without scope, weak source evidence, scope gaps, and artifact integrity issues before another Agent trusts the report.
-- `report-content-audit.md`: generated-report content self-audit; catches forbidden overclaim wording, raw-evidence leakage or excessive detail in concise profiles, missing raw-score caveats, hidden coverage gaps, and missing artifact warnings before echoing a report conclusion.
-- `journey-assertion-audit.md`: business-journey assertion quality audit; separates path-only click/fill replay from runtime-verified journeys with meaningful `expect*` assertions.
-- `assertion-suggestions.md`: concrete `expectVisible` / `expectText` / `expectUrl` / `expectRequest` draft steps for weak or path-only journeys; use it to convert replay scaffolds into runtime-verifiable business tests.
-- `business-journeys.md` / `business-journeys.json`: business scenario pack combining PRD requirements, recorded journeys, assertion drafts, role needs, and test-data gaps; use it as a rerun plan, not passed evidence until executed.
-- `qa-plan.md`: professional QA execution/acceptance plan; converts findings, scope gaps, journeys, product context, and rerun commands into a tester worklist.
-- `qa-coverage.md`: professional coverage matrix; marks runtime/API/source/a11y/responsive/performance/security/journey/requirements as covered, partial, skipped, needs-input, or failed.
-- `test-cases.md`: professional test case execution matrix; lists generated requirement/journey/interaction/exception/a11y/responsive/performance/security/source/test-data cases with status, expected/actual, evidence, and next steps.
-- `risk-register.md`: release risk register; converts proof-ready defects, coverage gaps, environment/source/test-data/artifact issues, and sign-off blockers into an impact × likelihood matrix with release-blocking status.
-- `risk-acceptance.md`: decision checklist for release risks; separates must-mitigate items from risks that need explicit Product/QA/Release acceptance, so accepted risk is not confused with a fixed defect.
-- `defect-tickets.md`: Jira/Linear-ready proof-ready defect tickets; only includes `defectProof=proven|probable` root causes and excludes product/design/deployment/tool/needs-evidence observations.
-- `traceability.md`: PRD/acceptance traceability matrix linking requirements to test cases, journeys/interactions, defect tickets, and release risks; use it before claiming business validation.
-- `automation-specs.md` / `automation/frontlens.spec.ts`: review-only Playwright regression draft package generated from requirements, journeys, assertion suggestions, and test cases; use it as a tester-reviewed automation starter, not passed evidence until executed.
-- `evidence-bundle.md` / `evidence-bundle.json`: shareable QA handoff bundle linking proof-ready defects, failed/blocked test cases, traceability gaps, automation drafts, and artifactIntegrity so missing screenshot/video/download paths are not cited as evidence.
-- `test-strategy.md` / `test-strategy.json`: QA strategy planner that marks modules as run, run-if-input, out-of-scope, blocked, or already-covered; use it before over-testing style/product choices or trusting dev-server performance/security noise.
-- `qa-review.md`: concise professional-QA review focused on sign-off, root causes, non-defect buckets, and next actions.
-- `evidence-report.md`: full raw evidence appendix with issue details, screenshots/DOM/network references, and module sections for drill-down.
-- `scope-review.md`: product/PRD/ADR/device/a11y confirmation checklist plus a suggested `productContext` config snippet.
-- `product-context.md` / `product-context.config.json`: reviewable suggested `productContext` config and scope questions; edit/approve the config only after Product/QA confirms it, then rerun to reduce style/product false positives.
-- `review-calibration.md` / `review-calibration.config.json`: reviewer/Product/QA feedback calibration; use `frontlens review-calibration --report <result.json> --feedback-file <feedback.md>` after human feedback, then rerun with the generated config to reduce repeated style/design/dev-server/data-mismatch false positives. On schema 1.86+ reruns, `reviewCalibration.calibrationSource=config` means the prior human feedback config is already applied to `issueDisposition`, adjusted score, fix queues, and summaries, while explicit current-page required scope still wins.
-- `claim-guard.md`: explicit allowed/forbidden wording for business validation, release, production performance/security, API/UI binding, download/export, and source-health claims.
-- `qa-intake.md` / `qa-intake.config.json`: professional tester follow-up questions plus an editable rerun config pack for PRD/productContext/journey/testData/safety/source inputs; `qa-intake.config.json` also carries review-only `draftAssertionSteps[]` copied from assertion suggestions so weak journeys can be upgraded before rerun without being counted as passed evidence.
-- `defect-proof.md`: proof-strength table for each root cause; FrontLens uses it to keep needs-evidence observations out of fixTasks, must-fix/should-fix, adjustedScore, and professional CI gates until confirmed.
-- `result.json`: machine-readable contract for other skills to consume and act on.
+## Default output: exactly 7 sections
 
-## Mandatory module selection and subagent isolation
+1. Core regression checklist
+2. Pre-release risk checklist
+3. Historical bug regression checklist
+4. Permission matrix
+5. Defect priority judgment
+6. Non-fix / accepted / out-of-scope explanations
+7. Release acceptability: `可上线` / `有风险可上线` / `不建议上线` / `不可上线`
 
-For every target-page QA run:
+Do not turn this default run into an exhaustive scanner report.
 
-1. Ask the user to choose analysis modules before running FrontLens, unless the user already provided a module set or explicitly said "全选 / all / default".
-2. Do not run target-page QA in the main session. Spawn a fresh worker subagent with `fork_context=false` and let it run the CLI, read `brief.md`, `professional-audit.md`, `report-content-audit.md`, `journey-assertion-audit.md`, `assertion-suggestions.md`, `business-journeys.md`, `review-calibration.md`, `review-calibration.config.json`, `qa-plan.md`, `qa-coverage.md`, `test-cases.md`, `risk-register.md`, `risk-acceptance.md`, `defect-tickets.md`, `traceability.md`, `automation-specs.md`, `evidence-bundle.md`, `test-strategy.md`, `product-context.md`, `product-context.config.json`, `qa-intake.config.json`, `qa-review.md`, and `result.json.professionalSummary` / `result.json.riskRegister` / `result.json.riskAcceptance` / `result.json.defectTickets` / `result.json.traceability` / `result.json.automationSpecs` / `result.json.evidenceBundle` / `result.json.qaStrategy` / `result.json.businessJourneys` / `result.json.reviewCalibration` first, then `report.md` as needed, and return a concise Markdown summary plus artifact paths. The main session should only coordinate module selection and return the subagent summary to avoid context pollution.
-3. Keep the "core safe scan" mandatory: page load, screenshot/DOM snapshot, page model, Console, Network collection, non-destructive interaction discovery, JSON/Markdown report, issueDisposition, rootCauseGroups, defectProof, proof-aware fixTasks, and safety blocking. Destructive actions remain disabled unless explicitly authorized.
-4. Read `references/module-options.md` when preparing the module checklist or translating selected modules into CLI flags/config.
-5. After the run, read `references/triage-guidelines.md` and calibrate raw findings before reporting. Do not treat raw score or raw issue count as the final truth when findings are synthetic, skipped, deployment-only, or page-type mismatches.
-6. When the user provides a frontend source path, or when a known source mapping exists, source-aware triage is mandatory. Read `references/source-code-correlation.md`, pass the `sourceRoot` to the worker as `--source-root`, inspect `result.json.sourceAnalysis`, `result.json.sourceRuntimeCorrelation`, `result.json.sourceHealth`, `result.json.defectProof`, and `result.json.pageProfile`, and require file:line plus runtime/source-health evidence for every retained frontend defect. Also inspect `result.json.scopeReview`, `result.json.reviewCalibration`, `result.json.claimGuard`, and `result.json.qaIntake` when product scope is inferred, claims could overreach, or missing inputs should be asked instead of guessed; do not promote style/product assumptions or defectProof.needs-evidence items to must-fix while scope/proof questions remain unanswered, and do not use claimGuard forbidden wording. For professional sign-off, enable controlled source script checks (`--source-run-scripts`, default scripts `typecheck,lint`) when dependencies exist and the user allowed a full local QA run. In schema 1.63+, if `sourceHealth.packageScripts` detects project build/typecheck/test/e2e/lint scripts that were not executed, treat generated `qaPlan` / `regressionPlan` `source-health` items as sign-off gaps until those scripts pass or are explicitly accepted out of scope.
-7. When the target URL is local/private and the source path is available, the worker may build/start/refresh the local dev or preview server before running QA if the page is unreachable, stale, or the user asks to deploy first. Keep the server non-destructive and do not modify business code.
-8. When the user asks for professional-QA replacement, full acceptance, release sign-off, business validation, or skill quality review, read `references/qa-engineer-mode.md` and require a QA sign-off, requirement coverage matrix, defect root-cause table, non-defect observations, `result.json.professionalSummary`, `result.json.reportContentAudit`, `result.json.journeyAssertionAudit`, `result.json.assertionSuggestions`, `result.json.businessJourneys`, `result.json.reviewCalibration`, `result.json.qaPlan`, `result.json.qaCoverage`, `result.json.testCases`, `result.json.riskRegister`, `result.json.riskAcceptance`, `result.json.defectTickets`, `result.json.traceability`, `result.json.automationSpecs`, `result.json.evidenceBundle` / `result.json.qaStrategy`, `result.json.claimGuard`, `result.json.qaIntake`, `result.json.defectProof`, and `result.json.regressionPlan` regression commands/items. Never claim full business pass without requirements and runtime evidence.
-9. When PRD/acceptance criteria are provided as Markdown or natural language, first run `frontlens requirements synthesize` to create a reviewable draft, read the generated Markdown questions, then pass the reviewed JSON as `--requirements`. If the user already provided structured JSON, use it directly. Encode explicit `selectors`, `expectedTexts`, `apiPatterns`, and/or safe `journeySteps` whenever possible. FrontLens turns those fields into generated requirement journeys and links runtime evidence back to `requirementCoverage`; free-text requirements without explicit assertions remain coverage gaps, not inferred passes.
-10. When product scope, ADRs, supported devices, or “this is designed this way” feedback is available, first run/read `review-calibration` if feedback is free text, then encode the confirmed decisions in `productContext` before rerunning or triaging. Use `deviceScope`, `requiredFeatures`, `optionalFeatures`, `outOfScopeFeatures`, `decisions[]`, and `adrRefs[]` so style, export, pagination, refresh, and touch-target findings are classified by product scope rather than guesswork. If scope is missing, read `review-calibration.md`, `product-context.md`, or run `frontlens product-context --report <result.json>` to get a reviewable snippet/questions; if the QA run wrote `review-calibration.config.json` or `product-context.config.json`, edit/approve that file or the broader `qa-intake.config.json` and pass it with `--config` for the rerun. Do not treat the suggestion as confirmed until Product/QA accepts it.
-11. When multiple login roles/storage states are provided, or when the page has permission-sensitive actions, run `frontlens role-matrix` after the baseline QA; in schema 1.62+ also honor `qaPlan` / `regressionPlan` `role-matrix` follow-ups that FrontLens creates from credential/security page profiles, dangerous action labels, permission warnings, or explicit role/auth requirements. Treat role differences as permission-review evidence; only call them defects when they violate explicit requirements, expected allowed/forbidden text contracts, or source/runtime permission guards.
-12. When requirements or journeys include create/edit/delete/upload/import/submit flows, require `testData` context before claiming business validation: isolated records, setup steps, cleanup/rollback steps, environment, and production-write authorization. Missing cleanup or production mutation risk must be reported as QA sign-off risk/blocker.
-13. When the user asks for business-flow validation but no executable journey/requirements exist, offer `frontlens journey record` as the first way to capture the real manual path. Recorded journeys are replay scaffolds: require explicit `expectVisible`/`expectText`/`expectUrl`/`expectRequest`, role state, and test-data lifecycle before claiming runtime-verified business pass.
+## Module selection before every run
 
-Recommended checklist to show the user:
+Ask for module selection before running unless the user already chose modules. Prefer UI buttons/multi-select if the client supports them; otherwise show this checklist and state that **SME standard** is preselected:
 
-- API / Network / Contract / frontend-backend consistency
-- Security passive scan
-- Performance / Coverage / P2 visual pixel diff + budget + network profiles
-- Accessibility / Responsive / optional SEO
-- User journeys / recorded business flows
-- Exception simulation
-- Realtime GraphQL / WebSocket / SSE
-- Heuristic AI comprehensive analysis
-- Browser compatibility matrix
-- Role / permission matrix when storage states are available
-- Test data lifecycle for create/edit/delete/upload/import/submit flows
+- [x] SME standard QA (Recommended): page load, fatal console, API summary, exception feedback, source correlation, basic permissions, basic a11y, build/typecheck/lint when available
+- [ ] Performance specialty: route to `$frontend-qa-performance`
+- [ ] Security specialty: route to `$frontend-qa-security`
+- [ ] Visual diff specialty: route to `$frontend-qa-visual`
+- [ ] Mobile/responsive specialty: route to `$frontend-qa-mobile`
+- [ ] Automation/journey specialty: route to `$frontend-qa-automation`
+- [ ] Forensic/full evidence specialty: route to `$frontend-qa-forensics`
 
-If the user selects "all/default", run the full default QA command. If the user deselects modules, create a per-run config JSON in the output directory and pass it with `--config`.
+Interpret `全选 / all / default` as **SME standard QA only**, not every specialty. Interpret `full / forensic / 深度 / 全量证据` as `$frontend-qa-forensics`.
+
+## Default SME scope
+
+Run only what affects practical release decisions:
+
+- Page reachability, blank screen, route/runtime blocker
+- Fatal Console/Page Error
+- Network/API summary and obvious failed core requests
+- Exception feedback for 500/401/403/404/timeout: distinguish failure from true empty data
+- Source correlation when `sourceRoot` is provided: file:line for retained frontend defects
+- Basic permission matrix skeleton: unauthenticated / current role / provided roles; mark missing storage states as needs-input
+- Basic a11y only: missing accessible names/labels/focus blockers that are cheap and clear
+- Build/typecheck/lint when project scripts exist and user allowed local code checks
+- Product/requirement gaps: mark as needs-input, not as defects
+
+## Default exclusions
+
+Do not run or report these by default:
+
+- SEO for admin/internal pages
+- Full browser matrix
+- Full mobile/touch matrix
+- Visual pixel diff / design-polish checks
+- Deep bundle/Coverage/performance budgets
+- Full passive/active security audit or deployment header scoring
+- Realtime WebSocket/SSE/GraphQL checks
+- Download/export validation unless required or allowed
+- Automation specs, traceability, evidence bundle, exhaustive test-case matrix
+- Full raw evidence appendix drill-down
+
+Keep these capabilities in dedicated skills and invoke them only when explicitly requested.
+
+## Large-file/token rules
+
+Never open large raw artifacts by default:
+
+- Do **not** directly read `result.json`, `network.json`, `page-model.json`, `resources.json`, `coverage.json`, `evidence-report.md`, or large `report.md`.
+- Prefer `brief.md`, `qa-review.md`, compact helper commands, or small JSON fields extracted with `node`/`jq`.
+- If a file is over ~200KB, inspect only targeted fields or line counts first.
+- Cite raw artifact paths without loading them unless the user asks for forensic details.
 
 ## Workflow
 
-1. Resolve the target URL and output directory.
-   - Default output: `reports/frontlens/<timestamp>/`.
-   - Prefer a task-specific output directory when the user names a page or feature.
-2. Complete module selection and prepare a subagent prompt.
-   - Include URL, selected modules, output directory, safety requirements, exact command/config, known `sourceRoot`/deployment URL, any requirements/acceptance criteria file, and required Markdown summary fields.
-   - Tell the worker not to modify business code.
-3. Ensure the CLI is available inside the worker.
-   - In the FrontLens repo: run `npm ci` when dependencies are missing, then `npm run build`; use `node dist/cli.js ...` only from the repo root.
-   - Outside the repo: prefer `frontlens ...` on PATH, or ask for the FrontLens repo/CLI path.
-4. Run QA with the safest default mode:
+1. Resolve URL, source path, output directory, and whether requirements or historical bugs were provided.
+2. Ask module selection with SME standard preselected unless modules were specified.
+3. If target is local/private and source path is provided, build/start/refresh the local dev or preview server only when needed; do not modify business code.
+4. Run FrontLens from the repo root with the safest compact profile:
 
    ```bash
-   node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>-<timestamp>" --no-trace --json
+   node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>" --report-profile executive --no-trace --json
    ```
 
-   Add `--source-root`, `--source-run-scripts --source-scripts "typecheck,lint"`, reviewed `--requirements`, storage state, or config files only when the task scope requires them. If the generated plan asks for unexecuted build/test/e2e scripts, either rerun with an expanded `--source-scripts` list or attach CI evidence before release-style sign-off. Read `references/commands.md` for exact command variants and JSON snippets for `requirements`, `productContext`, and `testData`.
-5. If browser binaries are missing, run `npx playwright install chromium`; if the sandbox blocks Chromium on macOS, rerun the same QA command with escalated execution.
-6. If source-aware analysis is enabled, verify the target page is reachable from the intended deployment URL first. If not, follow `references/source-code-correlation.md` to build/start the local app, then rerun the reachability check before QA.
-7. Read outputs in this order: `brief.md` or `frontlens brief --report <result.json>` (fallback: `qa-review.md` / `professionalSummary`), then `professional-audit.md` or `frontlens audit --report <result.json>` for report-contract/coverage-boundary/disposition-quality self-check, then `claim-guard.md` / `frontlens claim-guard --report <result.json>` for allowed/forbidden conclusion wording, then `defect-proof.md` / `frontlens defect-proof --report <result.json>` for proof-ready versus needs-evidence root causes, then `defect-tickets.md` / `frontlens defect-tickets --report <result.json>` for bug-filing-ready implementation tickets, then `traceability.md` / `frontlens traceability --report <result.json>` for PRD-to-test-to-defect linkage, then `automation-specs.md` / `frontlens automation-specs --report <result.json>` / `automation/frontlens.spec.ts` for review-only Playwright draft regression assets, then `report-content-audit.md` / `frontlens report-content-audit --report <result.json>` / `result.json.reportContentAudit` for generated Markdown wording/depth checks, then `qa-intake.md` / `qa-intake.config.json` / `frontlens qa-intake --report <result.json>` for missing PRD/product/source/test-data inputs, then `journey-assertion-audit.md` / `frontlens journey-assertion-audit --report <result.json>` / `result.json.journeyAssertionAudit` for business-flow assertion quality, then `assertion-suggestions.md` / `frontlens assertion-suggestions --report <result.json>` for concrete expect* steps that upgrade weak/path-only journeys, then `business-journeys.md` / `frontlens business-journeys --report <result.json>` / `result.json.businessJourneys` for scenario plans that bind requirements, actions, assertions, roles, and test data without claiming pass, then `review-calibration.md` / `frontlens review-calibration --report <result.json>` / `result.json.reviewCalibration` for human-feedback calibration before promoting style/product/dev/data-mismatch findings; if `calibrationSource=config`, treat the prior feedback config as applied to machine disposition/score/fix queues, then `qa-plan.md` / `frontlens qa-plan --report <result.json>` for the tester execution worklist, then `qa-coverage.md` / `frontlens qa-coverage --report <result.json>` for covered/skipped/needs-input scope, then `test-cases.md` / `frontlens test-cases --report <result.json>` for formal test cases and expected/actual status, then `risk-register.md` / `frontlens risk-register --report <result.json>` / `result.json.riskRegister` for release-blocking risk exposure, then `risk-acceptance.md` / `frontlens risk-acceptance --report <result.json>` / `result.json.riskAcceptance` for must-mitigate versus accepted-risk decisions, then `frontlens artifact-integrity --report <result.json>` / `frontlens evidence-bundle --report <result.json>` / `result.json.artifactIntegrity` / `result.json.evidenceBundle` before citing screenshot/video/download paths, then `test-strategy.md` / `frontlens test-strategy --report <result.json>` / `result.json.qaStrategy` for run/defer/out-of-scope/block decisions, then `product-context.md` / `product-context.config.json` / `frontlens product-context --report <result.json>` for scope suggestions and rerun config, then inspect `issueDisposition`, `scopeReview`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `environment`, and only then raw `evidence-report.md` details.
-8. Apply the professional QA actionability gate from `references/triage-guidelines.md`: retain only proof-ready, user-impacting, reproducible defects with owner/fix surface; move style/product choices, deployment security config, dev-server artifacts, skipped checks, single-signal guesses, and `reviewCalibration` downgrade/out-of-scope/needs-evidence actions to non-defect or needs-evidence buckets; do not re-ask the same product-scope question when `reviewCalibration.calibrationSource=config`, and trust the calibrated `issueDisposition` unless current requirements/page type contradict the old calibration. If PRD/acceptance criteria or product/page scope is missing, lead with `QA intake needed` and `qaIntake` questions before any defect list.
-9. For source-aware triage, use `rootCauseGroups[].sourceLocations`, medium/high `sourceRuntimeCorrelation.links[]`, and source findings (`ui-accessibility`, `error-state-gap`, route/static-import performance) before manual grep. Do not schedule frontend fixes whose `defectProof` remains `needs-evidence`. For downstream implementation queues, use `frontlens suggestions --report <result.json>` (proof-aware default) and reserve `--all` for auditing suppressed rows.
-10. For API/UI data mismatch, require the four-part data-binding proof gate before calling it a defect: explicit product/PRD requirement, exact list-like Network response (`networkRequestId` + response path/count), visible empty UI/DOM/screenshot state for the target table/list/card region, and source API/state/render binding via file:line or medium/high `sourceRuntimeCorrelation`. In schema 1.75+, FrontLens should not emit raw data-mismatch unless an explicit provided requirement and medium/high source-runtime binding exist; if an older report does, downgrade it to QA evidence collection. Otherwise keep it conditional/insufficient-evidence and assign evidence collection to QA/test, not implementation.
-11. For business journey validation, require meaningful assertions. Treat click/fill-only replay, generic body/html/#app visibility, or generic `expectText body OK/Done` checks as weak/path-only evidence; use `businessJourneys`, `assertionSuggestions`, or `qa-intake.config.json._frontlensQaIntake.draftAssertionSteps[]` to add business-specific text/selector/URL/API assertions and rerun.
-12. For production-readiness claims on local/dev targets, run build/preview or `env-compare`; dev-source mode is valid for functional/source correlation but not production bundle/security conclusions.
-13. Return a concise summary with report paths, selected modules, report profile, QA sign-off, assertion-suggestion status, business-journey scenario status, test-case status, risk-register/risk-acceptance status, defect-ticket status/count, traceability status/high-priority gaps, evidence-bundle status/missing-artifact count, test-strategy status/risk/run-if-input count, release-blocking/must-mitigate count, adjusted vs raw score, proof-ready root-cause count, non-defect buckets, skipped coverage caveats, source-correlation status, top fixes, and required follow-ups. For before/after runs, lead with `frontlens diff` Professional QA Diff rather than raw issue deltas. Prefer the deterministic `brief` output as the shape, then add only user-requested detail. Read `references/reporting.md` for the full reporting checklist.
+   Add `--source-root <path>` when provided. Add `--source-run-scripts --source-scripts "typecheck,lint"` only when dependencies exist and the user allowed local checks.
+5. Read `brief.md` first. If missing, use `qa-review.md` or helper output. Read only small targeted fields from `result.json` if needed.
+6. Combine runtime evidence, source evidence, product/requirement context, and review calibration. Do not promote style/product assumptions, dev-server artifacts, deployment headers, skipped modules, or weak API/UI mismatch into must-fix.
+7. Return the 7-section SME report. Keep selector-level/raw network detail out of the final answer unless requested.
 
-## Safety Rules
+## Triage rules
 
-- Keep default non-destructive behavior.
-- Do not enable create/edit/delete/upload/submit actions unless the user explicitly requests destructive testing.
-- Do not click download/export unless the user explicitly allows it or sets `safety.allowDownload=true`. When allowed, require a saved `downloadPath`, non-zero size, hash, content summary (`downloadContent`), and passing `artifactIntegrity` before calling export/download runtime-verified.
-- Keep `safety.blockMutatingRequests=true` for production or unknown URLs. If a report shows safety-blocked writes, treat them as evidence of potential side effects, not backend failures.
-- Treat successful `POST`, `PUT`, `PATCH`, or `DELETE` requests during page load as suspicious unless known to be analytics/heartbeat.
-- Keep `security.mode=passive` by default. Enable `security.mode=active` and `security.activeProbing=true` only for explicitly authorized security regression tests.
-- Every issue must have evidence: screenshot, DOM selector, network request id, console id, `evidence.details`, phase error, or artifact path.
+- With no requirements: validate obvious functionality and risks, but do not invent product expectations such as export, pagination, refresh, SEO, mobile support, or exact style.
+- With basic requirements: test only explicit or strongly implied requirements; vague text becomes needs-input.
+- API/UI data mismatch requires four-part proof before becoming a defect: explicit requirement, exact list response/path/count, visible empty target UI, and source API/state/render binding.
+- Dev server metrics, Vite HMR/WebSocket, `/src/*`, and `/@vite/client` are environment noise for production performance/security.
+- Security headers/TLS/server fingerprint are deployment checklist items unless this repo owns deployment config.
+- Login is not a standalone default section; treat auth as setup and permissions matrix evidence.
+- Count work by proof-ready root cause, not raw issue IDs.
 
-## Command Reference
+## Specialty routing
 
-Use the default QA command from the workflow for normal runs. Read `references/commands.md` when exact syntax is needed for auth save, journey record/replay, requirements synthesize, env-compare, matrix, role-matrix, CI gates, security/coverage toggles, result-inspection commands, plugin examples, or MCP startup.
+When the user asks for a specialty, invoke the dedicated skill instead of expanding this one:
 
-## Output Contract for Other Skills
-
-Read `references/result-schema.md` before consuming `result.json`, filtering issues, or driving code/backend fixes. Prioritize `professional-audit.md` / `professionalAudit`, `claim-guard.md` / `frontlens claim-guard` / `claimGuard`, `defect-proof.md` / `frontlens defect-proof` / `defectProof`, `defect-tickets.md` / `frontlens defect-tickets` / `defectTickets`, `traceability.md` / `frontlens traceability` / `traceability`, `automation-specs.md` / `frontlens automation-specs` / `automationSpecs`, `evidence-bundle.md` / `frontlens evidence-bundle` / `evidenceBundle`, `test-strategy.md` / `frontlens test-strategy` / `qaStrategy`, `report-content-audit.md` / `frontlens report-content-audit` / `reportContentAudit`, `qa-intake.md` / `frontlens qa-intake` / `qaIntake` / `qa-intake.config.json`, `journey-assertion-audit.md` / `frontlens journey-assertion-audit` / `journeyAssertionAudit`, `assertion-suggestions.md` / `assertionSuggestions`, `business-journeys.md` / `frontlens business-journeys` / `businessJourneys`, `review-calibration.md` / `frontlens review-calibration` / `reviewCalibration`, `qa-plan.md` / `qaPlan`, `qa-coverage.md` / `qaCoverage`, `test-cases.md` / `testCases`, `risk-register.md` / `riskRegister`, `risk-acceptance.md` / `riskAcceptance`, `product-context.md` / `productContext` / `product-context.config.json`, `professionalSummary`, `qaSignoff`, `issueDisposition`, `rootCauseGroups`, `regressionPlan`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `environment`, and `artifactIntegrity` over raw issue count. Read `references/ci-mcp.md` for GitHub Action, CI, or MCP integration and `references/commands.md` for stable result-consumption commands.
-
-## Reporting Back
-
-Return the path, key findings, assertion-suggestion status, business-journey status, review-calibration status, test-case status, automation-spec draft status, evidence-bundle status, test-strategy status, risk-register and risk-acceptance status, release-blocking/must-mitigate items, explicit false-positive/downgrade decisions, and next verification steps; do not paste the whole Markdown report unless the user asks. Default to an executive QA answer: proof-ready fixes first, bucket/count product or style observations instead of listing selector-level polish, and keep unsupported API/UI or business claims conditional. Use `references/reporting.md` for the complete summary checklist.
+- `$frontend-qa-performance`: slow page, bundle, Coverage, Core Web Vitals, P2 budgets
+- `$frontend-qa-security`: CSP/HTTPS/Cookie/sensitive data/security checklist
+- `$frontend-qa-visual`: design baseline, pixel diff, UI regression
+- `$frontend-qa-mobile`: mobile/tablet/responsive/touch matrix
+- `$frontend-qa-automation`: journey record/replay, Playwright specs, regression automation
+- `$frontend-qa-forensics`: full/deep/incident evidence, raw network, exhaustive artifacts

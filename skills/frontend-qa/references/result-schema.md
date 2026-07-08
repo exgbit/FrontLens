@@ -1892,7 +1892,7 @@ interface Issue {
 
 1. Read `result.json` or use helper commands.
 2. Sort `issues` by severity: critical, high, medium, low, info.
-3. Read `professionalAudit` / `professional-audit.md`, `reportContentAudit` / `report-content-audit.md`, `journeyAssertionAudit` / `journey-assertion-audit.md`, `qaIntake` / `qa-intake.md` / `qa-intake.config.json`, `qaPlan` / `qa-plan.md`, `qaCoverage` / `qa-coverage.md`, `testCases` / `test-cases.md`, `riskRegister` / `risk-register.md`, `riskAcceptance` / `risk-acceptance.md`, `defectTickets` / `defect-tickets.md`, `productContextSuggestion` / `product-context.md` / `product-context.config.json`, `professionalSummary`, `claimGuard`, `defectProof`, `qaSignoff`, `qualityGate`, `regressionPlan`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, missing input questions, coverage boundary, formal test ledger, release-risk matrix, risk-acceptance decision checklist, bug-filing ticket queue, professional worklist, post-fix verification steps, business-validation confidence, requirement gaps, static/runtime source binding, syntax/source-health status, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
+3. Read `professionalAudit` / `professional-audit.md`, `reportContentAudit` / `report-content-audit.md`, `journeyAssertionAudit` / `journey-assertion-audit.md`, `qaIntake` / `qa-intake.md` / `qa-intake.config.json`, `qaPlan` / `qa-plan.md`, `qaCoverage` / `qa-coverage.md`, `testCases` / `test-cases.md`, `riskRegister` / `risk-register.md`, `riskAcceptance` / `risk-acceptance.md`, `defectTickets` / `defect-tickets.md`, `traceability` / `traceability.md`, `productContextSuggestion` / `product-context.md` / `product-context.config.json`, `professionalSummary`, `claimGuard`, `defectProof`, `qaSignoff`, `qualityGate`, `regressionPlan`, `requirementCoverage`, `environment`, `pageProfile`, `scopeReview`, `sourceAnalysis`, `sourceRuntimeCorrelation`, `sourceHealth`, `artifactIntegrity`, `rootCauseGroups`, and `issueDisposition` for machine-readable QA status, missing input questions, coverage boundary, formal test ledger, release-risk matrix, risk-acceptance decision checklist, bug-filing ticket queue, PRD-to-test-to-defect traceability, professional worklist, post-fix verification steps, business-validation confidence, requirement gaps, static/runtime source binding, syntax/source-health status, evidence-path reliability, root-cause workload, and raw-finding actionability; do not use them as a substitute for source/PRD triage.
 4. Filter by skill responsibility:
    - frontend fix skill: `category` starts with `frontend`, plus `console-error`, `resource-*`, `integration-*`.
    - backend/API skill: `category` starts with `backend`, plus integration issues with backend suggestions.
@@ -1900,7 +1900,7 @@ interface Issue {
    - permission skill: `frontend-permission`, `backend-api-auth`, and `permissionChecks[]`.
    - security/backend hardening skill: `category === 'security'`, `security.checks[]`, plus backend suggestions on `headers`, `cookies`, `api-leak`, `csrf`.
    - API/realtime skill: `apiContract.endpoints[]`, `realtime.graphql[]`, `realtime.webSockets[]`, `realtime.sse[]`, and `backend-api-contract` / `backend-realtime` issues.
-   - downstream fixing skill: prefer `professionalSummary.mustFix/shouldFix`, `riskRegister.items[blocksRelease=true]`, `riskAcceptance.items[decision=must-mitigate]`, `defectTickets.items[]`, or `defectProof.items[status=proven|probable]` plus `rootCauseGroups[]` for prioritization/workload, `fixTasks[]` when it needs proof-aware machine-executable owner/type/expectedChange/verificationCommand records, and `regressionPlan.items[]` when it needs post-fix rerun/verification scheduling.
+   - downstream fixing skill: prefer `professionalSummary.mustFix/shouldFix`, `riskRegister.items[blocksRelease=true]`, `riskAcceptance.items[decision=must-mitigate]`, `defectTickets.items[]`, `traceability.requirements[]` for requirement mapping, or `defectProof.items[status=proven|probable]` plus `rootCauseGroups[]` for prioritization/workload, `fixTasks[]` when it needs proof-aware machine-executable owner/type/expectedChange/verificationCommand records, and `regressionPlan.items[]` when it needs post-fix rerun/verification scheduling.
 5. Use `rootCauseGroups[].issueIds` to gather supporting raw issues, then use `rootCauseGroups[].sourceLocations` for the first source file:line fix surface when present. Use `issueDisposition` to decide whether each raw issue is actionable, conditional, or non-actionable before using `evidence.selector`, `evidence.dom`, `networkRequestId`, `consoleId`, `pageErrorId`, or `evidence.details` to locate root cause.
 6. Apply code/API changes.
 7. Rerun FrontLens using `regressionPlan.commands[]` / `regressionPlan.items[].commands[]`. Prefer `issues[].fingerprint`; otherwise compare `category + title + evidence`; treat `issues[].id` as run-local display ID.
@@ -1928,6 +1928,7 @@ node dist/cli.js claim-guard --report result.json
 node dist/cli.js qa-intake --report result.json
 node dist/cli.js defect-proof --report result.json
 node dist/cli.js defect-tickets --report result.json
+node dist/cli.js traceability --report result.json
 node dist/cli.js report-content-audit --report result.json
 node dist/cli.js journey-assertion-audit --report result.json
 node dist/cli.js qa-plan --report result.json
@@ -1967,3 +1968,7 @@ export function analyze(context) {
 ```
 
 Reporter plugin modules may export a default function or `report(result)`. Reporter plugins can write extra files to `result.artifacts.outputDir` and attach paths under `result.artifacts`.
+
+## traceability / traceability.md/json
+
+Schema 1.79+ adds `result.json.traceability` plus `traceability.md/json` to link requirements to test cases, runtime evidence, defect tickets, and risks before business-validation claims.

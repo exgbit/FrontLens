@@ -20,6 +20,7 @@ import { formatQaIntake } from '../intake/qaIntakeReport.js';
 import { formatClaimGuard } from '../claims/claimGuardReport.js';
 import { formatDefectProof } from '../proof/defectProofReport.js';
 import { buildDefectTickets, formatDefectTickets } from '../tickets/defectTickets.js';
+import { buildTraceabilityMatrix, formatTraceabilityMatrix } from '../traceability/traceabilityMatrix.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1019,6 +1020,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Fix queue：${actionableGroups.length} proof-ready root cause(s) / ${blockerGroups.length} P0-P1 blocker(s)
 - Defect proof：**${result.defectProof.status}** / proven ${result.defectProof.counts.proven} / needs-evidence ${result.defectProof.counts.needsEvidence}
 - Defect tickets：**${result.defectTickets.status}** / tickets ${result.defectTickets.counts.total} / source-located ${result.defectTickets.counts.sourceLocated} / artifact ${artifactPath(result.artifacts.defectTickets)}
+- Traceability：**${result.traceability.status}** / requirements ${result.traceability.summary.requirementCount} / high-priority gaps ${result.traceability.summary.highPriorityGapCount} / artifact ${artifactPath(result.artifacts.traceability)}
 - Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
 - Assertion suggestions：**${result.assertionSuggestions.status}** / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount} / artifact ${artifactPath(result.artifacts.assertionSuggestions)}
@@ -1051,6 +1053,14 @@ ${rootRows.length ? ['| Priority | Severity | Owner | Root cause | Raw issues | 
 - Rule：只为 defectProof=proven/probable 的 root cause 生成工单；产品/部署/工具局限/needs-evidence 不进入工单队列。
 
 ${result.defectTickets.items.length ? ['| Ticket | Priority | Owner | Proof | Title | Verify |', '| --- | --- | --- | --- | --- | --- |', ...result.defectTickets.items.slice(0, 6).map((item) => `| ${markdownEscape(item.id)} | ${item.priority} | ${item.owner} | ${item.proofStatus}/${item.proofScore} | ${markdownEscape(truncateMiddle(item.title, 100))} | ${markdownEscape(truncateMiddle(item.verificationCommand, 120))} |`), ''].join('\n') : '当前没有 proof-ready 缺陷工单；先按 qa-intake/defect-proof 补证据。'}
+
+## 需求追踪矩阵 / Traceability
+
+- Traceability：**${result.traceability.status}**
+- Artifact：${artifactPath(result.artifacts.traceability)}
+- Rule：用 PRD/验收项 → testCases/journeys/interactions → defectTickets/risk 的链路支撑专业 QA 签核；没有 requirement 映射的缺陷不等同业务验收失败。
+
+${result.traceability.requirements.length ? ['| Requirement | Pri | Status | Tests | Defects | Next |', '| --- | --- | --- | --- | --- | --- |', ...result.traceability.requirements.slice(0, 8).map((item) => `| ${markdownEscape(item.id)} | ${item.priority} | ${item.status} | ${markdownEscape(item.testCaseIds.join(', ') || '-')} | ${markdownEscape(item.defectTicketIds.join(', ') || '-')} | ${markdownEscape(truncateMiddle(item.nextSteps[0] ?? '-', 120))} |`), ''].join('\n') : '当前没有可追踪的需求；先补 PRD/验收标准后再声明业务验证。'}
 
 ## 缺陷证明强度
 
@@ -1140,6 +1150,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const riskRegisterPath = path.join(result.artifacts.outputDir, 'risk-register.md');
   const riskAcceptancePath = path.join(result.artifacts.outputDir, 'risk-acceptance.md');
   const defectTicketsPath = path.join(result.artifacts.outputDir, 'defect-tickets.md');
+  const traceabilityPath = path.join(result.artifacts.outputDir, 'traceability.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
@@ -1160,6 +1171,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.riskRegister = riskRegisterPath;
   result.artifacts.riskAcceptance = riskAcceptancePath;
   result.artifacts.defectTickets = defectTicketsPath;
+  result.artifacts.traceability = traceabilityPath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
@@ -1208,6 +1220,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Risk Register：${result.riskRegister.status} / risks ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}
 - Risk Acceptance：${result.riskAcceptance.status} / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}
 - Defect Tickets：${result.defectTickets.status} / tickets ${result.defectTickets.counts.total} / suppressed needs-evidence ${result.defectTickets.counts.suppressedNeedsEvidence}
+- Traceability：${result.traceability.status} / requirements ${result.traceability.summary.requirementCount} / high-priority gaps ${result.traceability.summary.highPriorityGapCount}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
@@ -1373,6 +1386,8 @@ ${formatArtifacts(result)}
   await writeText(riskAcceptancePath, formatRiskAcceptance(result.riskAcceptance));
   result.defectTickets = buildDefectTickets(result);
   await writeText(defectTicketsPath, formatDefectTickets(result.defectTickets));
+  result.traceability = buildTraceabilityMatrix(result);
+  await writeText(traceabilityPath, formatTraceabilityMatrix(result.traceability));
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);

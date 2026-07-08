@@ -2057,6 +2057,61 @@ export interface DefectTicketResult {
   notes: string[];
 }
 
+
+export type TraceabilityRequirementStatus = 'covered' | 'partial' | 'failed' | 'not-covered' | 'not-applicable' | 'needs-input';
+
+export interface TraceabilityRequirementRow {
+  id: string;
+  title: string;
+  priority: RequirementPriority;
+  source: RequirementSource;
+  coverageStatus: RequirementCoverageStatus;
+  status: TraceabilityRequirementStatus;
+  confidence: 'high' | 'medium' | 'low';
+  testCaseIds: string[];
+  journeyIds: string[];
+  interactionTestIds: string[];
+  issueIds: string[];
+  rootCauseGroupIds: string[];
+  defectTicketIds: string[];
+  riskIds: string[];
+  evidenceRefs: string[];
+  gaps: string[];
+  nextSteps: string[];
+}
+
+export interface TraceabilityOrphanItem {
+  id: string;
+  kind: 'defect-ticket' | 'test-case' | 'risk';
+  title: string;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  evidenceRefs: string[];
+  reason: string;
+  nextStep: string;
+}
+
+export interface TraceabilityMatrixResult {
+  generatedAt: string;
+  status: 'ready' | 'partial' | 'needs-input' | 'blocked';
+  summary: {
+    requirementCount: number;
+    providedRequirementCount: number;
+    coveredCount: number;
+    partialCount: number;
+    failedCount: number;
+    notCoveredCount: number;
+    notApplicableCount: number;
+    needsInputCount: number;
+    defectLinkedCount: number;
+    orphanDefectCount: number;
+    highPriorityGapCount: number;
+  };
+  requirements: TraceabilityRequirementRow[];
+  orphanItems: TraceabilityOrphanItem[];
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -2344,6 +2399,8 @@ export interface ArtifactIndex {
   riskAcceptance?: string;
   /** Jira-ready proof-ready defect tickets; excludes product/design/deployment/tool/needs-evidence observations. */
   defectTickets?: string;
+  /** Requirements-to-tests-to-defects traceability matrix for professional QA sign-off. */
+  traceability?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -2373,6 +2430,7 @@ export interface ArtifactIndex {
   riskRegisterLog?: string;
   riskAcceptanceLog?: string;
   defectTicketsLog?: string;
+  traceabilityLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2542,6 +2600,7 @@ export interface QaResult {
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
   defectTickets: DefectTicketResult;
+  traceability: TraceabilityMatrixResult;
   claimGuard: ClaimGuardResult;
   qaIntake: QaIntakeResult;
   qualityGate: QaQualityGate;

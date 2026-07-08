@@ -21,6 +21,7 @@ import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildProfessionalSuggestions } from './review/professionalSuggestions.js';
 import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
+import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -224,6 +225,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_defect_tickets',
         description: 'Read result.json and return Jira/Linear-ready proof-ready defect tickets; excludes product/design/deployment/tool/needs-evidence observations.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_traceability',
+        description: 'Read result.json and return PRD-to-test-to-defect traceability matrix for professional QA sign-off.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -670,6 +676,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         assertionSuggestions: result.assertionSuggestions,
         testCases: result.testCases,
         defectTickets: result.defectTickets,
+        traceability: result.traceability,
         riskRegister: result.riskRegister,
         riskAcceptance: result.riskAcceptance,
         qualityGate: result.qualityGate,
@@ -787,6 +794,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildDefectTickets(result));
+    }
+    case 'frontlens_traceability': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildTraceabilityMatrix(result));
     }
     case 'frontlens_report_content_audit': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

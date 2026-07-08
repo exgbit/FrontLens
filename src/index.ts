@@ -25,6 +25,8 @@ export { formatClaimGuard } from './claims/claimGuardReport.js';
 export { buildQaIntake, createEmptyQaIntake } from './intake/qaIntake.js';
 export { buildDefectProof, createEmptyDefectProof } from './proof/defectProof.js';
 export { formatDefectProof } from './proof/defectProofReport.js';
+export { buildDefectTickets, formatDefectTickets } from './tickets/defectTickets.js';
+export { buildTraceabilityMatrix, formatTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 export { evaluateDataMismatchProof } from './proof/dataMismatchProof.js';
 export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 export { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';

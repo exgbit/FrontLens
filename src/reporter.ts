@@ -26,6 +26,8 @@ import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildDefectTickets } from './tickets/defectTickets.js';
+import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config, [], { requirementCoverage: result.requirementCoverage });
@@ -138,6 +140,8 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.testCases = buildTestCaseMatrix(result);
   result.riskRegister = buildRiskRegister(result);
   result.riskAcceptance = buildRiskAcceptance(result);
+  result.defectTickets = buildDefectTickets(result);
+  result.traceability = buildTraceabilityMatrix(result);
 }
 
 async function writeHumanReportsWithStableIntegrity(result: QaResult, formats: Set<string>): Promise<void> {

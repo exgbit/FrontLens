@@ -8,7 +8,7 @@ Use this reference when preparing the final user-facing summary after a `fronten
 
 ## Reporting Back
 
-Default to a concise, decision-oriented answer. In FrontLens 1.73+, treat `brief.md` as the maximum default shape. In FrontLens 1.74+, include `qa-intake.config.json` in next steps when missing inputs block professional sign-off. In FrontLens 1.75+, treat `frontlens suggestions` as proof-aware implementation guidance and use `--all` only for raw audit. In FrontLens 1.76+, prefer the helper commands `claim-guard`, `defect-proof`, `report-content-audit`, and `journey-assertion-audit` when another Agent needs guardrail fields without parsing full Markdown. In FrontLens 1.78+, use `defect-tickets.md/json` or `frontlens defect-tickets` as the bug-filing queue because it excludes needs-evidence/product/deployment/tool observations. Respect `report.profile`: executive is the default shortest decision brief, professional is a fuller QA-lead decision report, and full is for exhaustive audits only. The normal user-facing summary should lead with proof-ready fixes and QA sign-off, then bucket non-defects/coverage gaps. Do not enumerate every style/touch-target/optional-feature selector unless the user asks for exhaustive polish detail.
+Default to a concise, decision-oriented answer. In FrontLens 1.73+, treat `brief.md` as the maximum default shape. In FrontLens 1.74+, include `qa-intake.config.json` in next steps when missing inputs block professional sign-off. In FrontLens 1.75+, treat `frontlens suggestions` as proof-aware implementation guidance and use `--all` only for raw audit. In FrontLens 1.76+, prefer the helper commands `claim-guard`, `defect-proof`, `report-content-audit`, and `journey-assertion-audit` when another Agent needs guardrail fields without parsing full Markdown. In FrontLens 1.78+, use `defect-tickets.md/json` or `frontlens defect-tickets` as the bug-filing queue because it excludes needs-evidence/product/deployment/tool observations. In FrontLens 1.79+, use `traceability.md/json` or `frontlens traceability` to verify PRD → test case → runtime evidence → defect ticket linkage before business-validation claims. Respect `report.profile`: executive is the default shortest decision brief, professional is a fuller QA-lead decision report, and full is for exhaustive audits only. The normal user-facing summary should lead with proof-ready fixes and QA sign-off, then bucket non-defects/coverage gaps. Do not enumerate every style/touch-target/optional-feature selector unless the user asks for exhaustive polish detail.
 
 Do not report “API has data but UI is empty” as an implementation defect unless the four-part data-binding proof gate passes: explicit requirement, exact list-like Network response, visible empty UI/DOM/screenshot for the target region, and source API/state/render binding. Missing any part is a QA evidence gap or scope question. For schema 1.75+ results, raw data-mismatch should already require explicit provided requirement + medium/high source-runtime binding; if reviewing older reports, apply that stricter gate manually.
 
@@ -20,6 +20,7 @@ Summarize:
 - testCases status, total/passed/failed/blocked/needs-input counts, `test-cases.md` path, and whether failures are runtime defects or manual-required coverage gaps;
 - riskRegister status, release-blocking count, top high/critical risks, `risk-register.md` path, riskAcceptance status, must-mitigate/needs-acceptance counts, and `risk-acceptance.md` path; if blocked/at-risk, report it before raw issue totals;
 - defectTickets status/count, `defect-tickets.md` path, and whether any needs-evidence root causes were intentionally suppressed from bug filing;
+- traceability status, `traceability.md` path, high-priority requirement gaps, and orphan proof-ready defects not mapped to requirements;
 - adjusted score, raw score, and issue counts;
 - in FrontLens 1.45+, lead with adjusted score/proof-ready root causes and mention raw score only as scanner trend context;
 - critical/high issues first;
@@ -37,6 +38,7 @@ Summarize:
 - qaIntake status, top questions, and missing inputs; ask these before turning product/design assumptions into defects;
 - defectProof status and needs-evidence root causes; confirm they are excluded from must-fix/fixTasks and list evidence-collection next steps;
 - defectTickets status and `defect-tickets.md` path; use tickets for Jira/Linear filing and keep raw issues as evidence appendix only;
+- traceability status and `traceability.md` path; use it to state whether business coverage is requirement-backed or still conditional;
 - adjustedScore plus raw score and confidence/adjusted-risk note when raw score is distorted by skipped/synthetic/deployment-only findings;
 - raw issue count separated from implementation root-cause count;
 - requirement coverage / business-validation confidence when the user asks for acceptance or professional QA;

@@ -52,8 +52,9 @@ import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
+import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 
-export const RESULT_SCHEMA_VERSION = '1.78.0';
+export const RESULT_SCHEMA_VERSION = '1.79.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1455,6 +1456,14 @@ export function normalizeResult(raw: unknown): QaResult {
     artifactIntegrity
   });
   const riskAcceptance = buildRiskAcceptance({ riskRegister });
+  const traceability = buildTraceabilityMatrix({
+    requirementCoverage,
+    testCases,
+    rootCauseGroups,
+    defectTickets,
+    riskRegister,
+    qaSignoff
+  });
   const reportContentAudit = normalizeReportContentAudit(raw.reportContentAudit, metadataConfig.report.profile);
 
   return {
@@ -1500,6 +1509,7 @@ export function normalizeResult(raw: unknown): QaResult {
     professionalSummary,
     defectProof,
     defectTickets,
+    traceability,
     claimGuard,
     qaIntake,
     qualityGate,

@@ -32,9 +32,10 @@ import { formatDefectProof } from './proof/defectProofReport.js';
 import { formatReportContentAudit } from './audit/reportContentAudit.js';
 import { formatJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 import { buildDefectTickets, formatDefectTickets } from './tickets/defectTickets.js';
+import { buildTraceabilityMatrix, formatTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'traceability', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -56,6 +57,7 @@ Usage:
   frontlens qa-intake --report <result.json>
   frontlens defect-proof --report <result.json>
   frontlens defect-tickets --report <result.json>
+  frontlens traceability --report <result.json>
   frontlens report-content-audit --report <result.json>
   frontlens journey-assertion-audit --report <result.json>
   frontlens qa-plan --report <result.json>
@@ -102,7 +104,7 @@ Options:
   --role <name=storageState[|sessionStorageState]>
                               Role matrix entry. Use name= for anonymous/no storage. Repeatable.
   --roles <path>              Role matrix JSON file: [{name, storageState, sessionStorageState, expectedAllowedTexts, expectedForbiddenTexts}].
-  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/claim-guard/qa-intake/defect-proof/defect-tickets/report-content-audit/journey-assertion-audit/qa-plan/qa-coverage/assertion-suggestions/test-cases/risk-register/risk-acceptance/artifact-integrity/suggestions.
+  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/claim-guard/qa-intake/defect-proof/defect-tickets/traceability/report-content-audit/journey-assertion-audit/qa-plan/qa-coverage/assertion-suggestions/test-cases/risk-register/risk-acceptance/artifact-integrity/suggestions.
   --severity <level>          Filter issues by severity.
   --trace                     Enable Playwright trace.
   --no-trace                  Disable Playwright trace.
@@ -160,6 +162,7 @@ Examples:
   frontlens qa-intake --report reports/frontlens/users/result.json
   frontlens defect-proof --report reports/frontlens/users/result.json
   frontlens defect-tickets --report reports/frontlens/users/result.json
+  frontlens traceability --report reports/frontlens/users/result.json
   frontlens report-content-audit --report reports/frontlens/users/result.json
   frontlens journey-assertion-audit --report reports/frontlens/users/result.json
   frontlens qa-plan --report reports/frontlens/users/result.json
@@ -295,6 +298,7 @@ Exposed tools:
   frontlens_qa_intake
   frontlens_defect_proof
   frontlens_defect_tickets
+  frontlens_traceability
   frontlens_report_content_audit
   frontlens_journey_assertion_audit
   frontlens_qa_plan
@@ -317,7 +321,7 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'claim-guard' | 'qa-intake' | 'defect-proof' | 'defect-tickets' | 'report-content-audit' | 'journey-assertion-audit' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'test-cases' | 'risk-register' | 'risk-acceptance' | 'artifact-integrity' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'claim-guard' | 'qa-intake' | 'defect-proof' | 'defect-tickets' | 'traceability' | 'report-content-audit' | 'journey-assertion-audit' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'test-cases' | 'risk-register' | 'risk-acceptance' | 'artifact-integrity' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
@@ -355,6 +359,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
             assertionSuggestions: result.assertionSuggestions,
             testCases: result.testCases,
             defectTickets: result.defectTickets,
+            traceability: result.traceability,
             qaSignoff: result.qaSignoff,
             claimGuard: result.claimGuard,
             defectProof: result.defectProof,
@@ -433,6 +438,15 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
       console.log(JSON.stringify(tickets, null, 2));
     } else {
       console.log(formatDefectTickets(tickets));
+    }
+    return;
+  }
+  if (command === 'traceability') {
+    const traceability = buildTraceabilityMatrix(result);
+    if (parsed.values.json) {
+      console.log(JSON.stringify(traceability, null, 2));
+    } else {
+      console.log(formatTraceabilityMatrix(traceability));
     }
     return;
   }
@@ -575,6 +589,7 @@ ${skippedRows.length ? ['| Source | Kind | Path | Message |', '| --- | --- | ---
           assertionSuggestions: result.assertionSuggestions,
           testCases: result.testCases,
           defectTickets: result.defectTickets,
+          traceability: result.traceability,
           regressionPlan: result.regressionPlan,
           qualityGate: result.qualityGate,
           qaSignoff: result.qaSignoff
@@ -707,7 +722,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'claim-guard' || argv[0] === 'qa-intake' || argv[0] === 'defect-proof' || argv[0] === 'report-content-audit' || argv[0] === 'journey-assertion-audit' || argv[0] === 'qa-plan' || argv[0] === 'qa-coverage' || argv[0] === 'assertion-suggestions' || argv[0] === 'test-cases' || argv[0] === 'risk-register' || argv[0] === 'risk-acceptance' || argv[0] === 'artifact-integrity' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
+  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'claim-guard' || argv[0] === 'qa-intake' || argv[0] === 'defect-proof' || argv[0] === 'defect-tickets' || argv[0] === 'traceability' || argv[0] === 'report-content-audit' || argv[0] === 'journey-assertion-audit' || argv[0] === 'qa-plan' || argv[0] === 'qa-coverage' || argv[0] === 'assertion-suggestions' || argv[0] === 'test-cases' || argv[0] === 'risk-register' || argv[0] === 'risk-acceptance' || argv[0] === 'artifact-integrity' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
     await handleResultCommand(argv[0], argv.slice(1));
     return;
   }
@@ -1413,6 +1428,14 @@ async function main(): Promise<void> {
             status: result.testCases.status,
             summary: result.testCases.summary
           },
+          defectTickets: {
+            status: result.defectTickets.status,
+            counts: result.defectTickets.counts
+          },
+          traceability: {
+            status: result.traceability.status,
+            summary: result.traceability.summary
+          },
           regressionPlan: {
             status: result.regressionPlan.status,
             summary: result.regressionPlan.summary
@@ -1457,6 +1480,8 @@ async function main(): Promise<void> {
     console.log(`Regression Plan: ${result.regressionPlan.status}, items ${result.regressionPlan.summary.itemCount}, blocked ${result.regressionPlan.summary.blockedCount}`);
     console.log(`Assertion Suggestions: ${result.assertionSuggestions.status}, suggestions ${result.assertionSuggestions.summary.totalCount}, weak journeys ${result.assertionSuggestions.summary.weakJourneyCount}`);
     console.log(`Test Cases: ${result.testCases.status}, total ${result.testCases.summary.totalCount}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}`);
+    console.log(`Defect Tickets: ${result.defectTickets.status}, tickets ${result.defectTickets.counts.total}, suppressed needs-evidence ${result.defectTickets.counts.suppressedNeedsEvidence}`);
+    console.log(`Traceability: ${result.traceability.status}, requirements ${result.traceability.summary.requirementCount}, high-priority gaps ${result.traceability.summary.highPriorityGapCount}`);
     console.log(`Risk Register: ${result.riskRegister.status}, risks ${result.riskRegister.summary.totalCount}, release-blocking ${result.riskRegister.summary.releaseBlockingCount}`);
     console.log(`Risk Acceptance: ${result.riskAcceptance.status}, must-mitigate ${result.riskAcceptance.summary.mustMitigateCount}, needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}`);
     console.log(`QA Gate: ${result.qualityGate.status}, confidence ${result.qualityGate.confidence}`);
@@ -1474,6 +1499,8 @@ async function main(): Promise<void> {
     console.log(`Test Cases: ${result.artifacts.testCases ?? '(disabled)'}`);
     console.log(`Risk Register: ${result.artifacts.riskRegister ?? '(disabled)'}`);
     console.log(`Risk Acceptance: ${result.artifacts.riskAcceptance ?? '(disabled)'}`);
+    console.log(`Defect Tickets: ${result.artifacts.defectTickets ?? '(disabled)'}`);
+    console.log(`Traceability: ${result.artifacts.traceability ?? '(disabled)'}`);
     console.log(`JSON: ${result.artifacts.jsonReport ?? '(disabled)'}`);
     if (result.artifacts.htmlReport) {
       console.log(`HTML: ${result.artifacts.htmlReport}`);

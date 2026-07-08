@@ -51,13 +51,14 @@ import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildBusinessJourneys } from './journeys/businessJourneys.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy } from './strategy/qaStrategy.js';
 
-export const RESULT_SCHEMA_VERSION = '1.82.0';
+export const RESULT_SCHEMA_VERSION = '1.83.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1376,6 +1377,24 @@ export function normalizeResult(raw: unknown): QaResult {
     journeyTests,
     journeyAssertionAudit
   });
+  const businessJourneys = buildBusinessJourneys({
+    summary,
+    metadata: {
+      config: metadataConfig,
+      durationMs: asNumber(metadataRaw.durationMs, 0),
+      version: asString(metadataRaw.version, 'unknown'),
+      schemaVersion: asString(metadataRaw.schemaVersion, 'pre-1.1.0'),
+      phaseErrors
+    },
+    pageModel,
+    network,
+    pageProfile,
+    requirementCoverage,
+    journeyTests,
+    journeyAssertionAudit,
+    assertionSuggestions,
+    testData
+  });
   const qaPlan = buildQaExecutionPlan({
     summary,
     requirementCoverage,
@@ -1572,6 +1591,7 @@ export function normalizeResult(raw: unknown): QaResult {
     reportContentAudit,
     journeyAssertionAudit,
     assertionSuggestions,
+    businessJourneys,
     professionalSummary,
     defectProof,
     defectTickets,

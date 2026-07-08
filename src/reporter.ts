@@ -26,6 +26,7 @@ import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildBusinessJourneys } from './journeys/businessJourneys.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
@@ -140,6 +141,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.qaPlan = buildQaExecutionPlan(result);
   result.qaCoverage = buildQaCoverageMatrix(result);
   result.assertionSuggestions = buildAssertionSuggestions(result);
+  result.businessJourneys = buildBusinessJourneys(result);
   result.testCases = buildTestCaseMatrix(result);
   result.riskRegister = buildRiskRegister(result);
   result.riskAcceptance = buildRiskAcceptance(result);
@@ -213,6 +215,7 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
     result.qaPlan = buildQaExecutionPlan(result);
     result.qaCoverage = buildQaCoverageMatrix(result);
     result.assertionSuggestions = buildAssertionSuggestions(result);
+    result.businessJourneys = buildBusinessJourneys(result);
     result.testCases = buildTestCaseMatrix(result);
     result.riskRegister = buildRiskRegister(result);
     result.riskAcceptance = buildRiskAcceptance(result);

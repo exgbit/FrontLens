@@ -15,6 +15,7 @@ import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildBusinessJourneys } from './journeys/businessJourneys.js';
 import { buildQaIntakeConfig } from './intake/qaIntakeConfig.js';
 import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
@@ -248,6 +249,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_test_strategy',
         description: 'Read result.json and return the QA test strategy planner: modules to run, run-if-input, out-of-scope, blocked, environment plan, questions, and next commands.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_business_journeys',
+        description: 'Read result.json and return business journey scenarios that combine requirements, recorded journeys, assertion drafts, role needs, and test-data gaps without claiming pass until rerun.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -610,6 +616,10 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           status: result.assertionSuggestions.status,
           summary: result.assertionSuggestions.summary
         },
+        businessJourneys: {
+          status: result.businessJourneys.status,
+          summary: result.businessJourneys.summary
+        },
         testCases: {
           status: result.testCases.status,
           summary: result.testCases.summary
@@ -712,6 +722,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         qaPlan: result.qaPlan,
         qaCoverage: result.qaCoverage,
         assertionSuggestions: result.assertionSuggestions,
+        businessJourneys: result.businessJourneys,
         testCases: result.testCases,
         defectTickets: result.defectTickets,
         traceability: result.traceability,
@@ -855,6 +866,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildQaStrategy(result));
+    }
+    case 'frontlens_business_journeys': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildBusinessJourneys(result));
     }
     case 'frontlens_report_content_audit': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

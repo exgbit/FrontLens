@@ -44,6 +44,7 @@ import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildBusinessJourneys } from './journeys/businessJourneys.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
@@ -921,6 +922,30 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     journeyTests,
     journeyAssertionAudit
   });
+  const businessJourneys = buildBusinessJourneys({
+    summary,
+    metadata: {
+      config: resultConfig,
+      durationMs: Date.now() - started,
+      version: VERSION,
+      schemaVersion: RESULT_SCHEMA_VERSION,
+      phaseErrors
+    },
+    pageModel,
+    network: {
+      requests: networkCollector.list(),
+      failedRequests: analysis.network.failedRequests,
+      slowRequests: analysis.network.slowRequests,
+      duplicatedRequests: analysis.network.duplicatedRequests,
+      suspiciousRequests: analysis.network.suspiciousRequests
+    },
+    pageProfile,
+    requirementCoverage,
+    journeyTests,
+    journeyAssertionAudit,
+    assertionSuggestions,
+    testData
+  });
   const testCases = buildTestCaseMatrix({
     summary,
     requirementCoverage,
@@ -1100,6 +1125,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     reportContentAudit: createSkippedReportContentAudit(resultConfig.report.profile),
     journeyAssertionAudit,
     assertionSuggestions,
+    businessJourneys,
     professionalSummary,
     defectProof,
     claimGuard,

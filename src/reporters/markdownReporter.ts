@@ -9,6 +9,7 @@ import { formatProfessionalAudit, runProfessionalAudit } from '../audit/professi
 import { formatReportContentAudit, runReportContentAudit } from '../audit/reportContentAudit.js';
 import { formatJourneyAssertionAudit } from '../journeys/journeyAssertionAudit.js';
 import { buildAssertionSuggestions, formatAssertionSuggestions } from '../journeys/assertionSuggestions.js';
+import { buildBusinessJourneys, formatBusinessJourneys } from '../journeys/businessJourneys.js';
 import { buildProductContextSuggestion, formatProductContextSuggestion } from '../product/productContextSuggestion.js';
 import { buildQaExecutionPlan, formatQaExecutionPlan } from '../plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix, formatQaCoverageMatrix } from '../coverage/qaCoverageMatrix.js';
@@ -1030,6 +1031,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
 - Assertion suggestions：**${result.assertionSuggestions.status}** / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount} / artifact ${artifactPath(result.artifacts.assertionSuggestions)}
+- Business journeys：**${result.businessJourneys.status}** / scenarios ${result.businessJourneys.summary.scenarioCount} / ready ${result.businessJourneys.summary.readyCount} / needs-input ${result.businessJourneys.summary.needsInputCount} / artifact ${artifactPath(result.artifacts.businessJourneys)}
 - Test cases：**${result.testCases.status}** / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount} / artifact ${artifactPath(result.artifacts.testCases)}
 - Risk register：**${result.riskRegister.status}** / total ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount} / artifact ${artifactPath(result.artifacts.riskRegister)}
 - Risk acceptance：**${result.riskAcceptance.status}** / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount} / artifact ${artifactPath(result.artifacts.riskAcceptance)}
@@ -1076,6 +1078,15 @@ ${result.traceability.requirements.length ? ['| Requirement | Pri | Status | Tes
 - Rule：这是专业测试工程师可审阅的自动化初稿，不等同“已通过”；只有人工确认 selectors、角色态、测试数据和安全边界并实际执行后，才可作为回归证据。
 
 ${result.automationSpecs.drafts.length ? ['| Draft | Pri | Source | Status | Requirements | Next |', '| --- | --- | --- | --- | --- | --- |', ...result.automationSpecs.drafts.slice(0, 8).map((item) => `| ${markdownEscape(item.id)} | ${item.priority} | ${item.source} | ${item.status} | ${markdownEscape(item.requirementIds.join(', ') || '-')} | ${markdownEscape(truncateMiddle(item.nextSteps[0] ?? '-', 120))} |`), ''].join('\n') : '当前没有自动化草案；先补需求断言、业务旅程或 assertion-suggestions。'}
+
+## 业务旅程场景 / Business Journeys
+
+- Business journeys：**${result.businessJourneys.status}**
+- Artifact：${artifactPath(result.artifacts.businessJourneys)}
+- Scenarios：${result.businessJourneys.summary.scenarioCount}（ready ${result.businessJourneys.summary.readyCount} / needs-input ${result.businessJourneys.summary.needsInputCount} / manual-required ${result.businessJourneys.summary.manualRequiredCount}）
+- Rule：这是把 PRD、录制旅程、断言草案合并后的专业测试场景清单；generated/needs-input 场景必须补角色、测试数据和 expect* 后复跑，不能直接当业务通过证据。
+
+${result.businessJourneys.scenarios.length ? ['| Scenario | Pri | Source | Status | Requirements | Assertions | Next/gap |', '| --- | --- | --- | --- | --- | --- | --- |', ...result.businessJourneys.scenarios.slice(0, 8).map((item) => `| ${markdownEscape(item.id)} | ${item.priority} | ${item.source} | ${item.status}/${item.confidence} | ${markdownEscape(item.requirementIds.join(', ') || '-')} | ${item.assertions.length} | ${markdownEscape(truncateMiddle(item.gaps[0] ?? item.nextSteps[0] ?? '-', 120))} |`), ''].join('\n') : '当前没有业务旅程场景；先补 PRD/验收标准或录制 journey。'}
 
 ## 证据交付包 / Evidence Bundle
 
@@ -1177,6 +1188,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const journeyAssertionAuditPath = path.join(result.artifacts.outputDir, 'journey-assertion-audit.md');
   const assertionSuggestionsPath = path.join(result.artifacts.outputDir, 'assertion-suggestions.md');
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
+  const businessJourneysPath = path.join(result.artifacts.outputDir, 'business-journeys.md');
   const qaIntakeConfigPath = path.join(result.artifacts.outputDir, 'qa-intake.config.json');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
   const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
@@ -1201,6 +1213,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.reportContentAudit = reportContentAuditPath;
   result.artifacts.journeyAssertionAudit = journeyAssertionAuditPath;
   result.artifacts.assertionSuggestions = assertionSuggestionsPath;
+  result.artifacts.businessJourneys = businessJourneysPath;
   result.artifacts.productContext = productContextPath;
   result.artifacts.qaIntakeConfig = qaIntakeConfigPath;
   result.artifacts.qaPlan = qaPlanPath;
@@ -1258,6 +1271,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Test Data：${result.testData.status} / records ${result.testData.summary.recordCount} / cleanup gaps ${result.testData.summary.missingCleanupCount}
 - Regression Plan：${result.regressionPlan.status} / items ${result.regressionPlan.summary.itemCount} / blocked ${result.regressionPlan.summary.blockedCount}
 - Assertion Suggestions：${result.assertionSuggestions.status} / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount}
+- Business Journeys：${result.businessJourneys.status} / scenarios ${result.businessJourneys.summary.scenarioCount} / ready ${result.businessJourneys.summary.readyCount} / needs-input ${result.businessJourneys.summary.needsInputCount}
 - Test Cases：${result.testCases.status} / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount}
 - Risk Register：${result.riskRegister.status} / risks ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}
 - Risk Acceptance：${result.riskAcceptance.status} / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}
@@ -1397,6 +1411,7 @@ ${formatArtifacts(result)}
 `;
 
   result.assertionSuggestions = buildAssertionSuggestions(result);
+  result.businessJourneys = buildBusinessJourneys(result);
   const buildHumanMarkdown = (): { reviewMarkdown: string; reportMarkdown: string } => {
     const review = formatProfessionalReview(result);
     const professionalReportMarkdown = review.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
@@ -1417,6 +1432,7 @@ ${formatArtifacts(result)}
   await writeText(reportContentAuditPath, formatReportContentAudit(result.reportContentAudit));
   await writeText(journeyAssertionAuditPath, formatJourneyAssertionAudit(result.journeyAssertionAudit));
   await writeText(assertionSuggestionsPath, formatAssertionSuggestions(result.assertionSuggestions));
+  await writeText(businessJourneysPath, formatBusinessJourneys(result.businessJourneys));
   await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));
   await writeText(qaIntakeConfigPath, `${JSON.stringify(buildQaIntakeConfig(result), null, 2)}\n`);
   result.qaPlan = buildQaExecutionPlan(result);

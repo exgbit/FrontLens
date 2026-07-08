@@ -901,6 +901,51 @@ export interface AssertionSuggestionResult {
   notes: string[];
 }
 
+export type BusinessJourneySource = 'requirement' | 'journey' | 'assertion-suggestion' | 'page-model';
+export type BusinessJourneyStatus = 'ready' | 'needs-input' | 'manual-required' | 'skipped';
+
+export interface BusinessJourneyScenario {
+  id: string;
+  title: string;
+  source: BusinessJourneySource;
+  priority: RequirementPriority;
+  status: Exclude<BusinessJourneyStatus, 'skipped'>;
+  confidence: 'high' | 'medium' | 'low';
+  requirementIds: string[];
+  journeyIds: string[];
+  assertionSuggestionIds: string[];
+  networkRequestIds: string[];
+  preconditions: string[];
+  actions: string[];
+  assertions: JourneyStepConfig[];
+  expectedOutcome: string[];
+  roleNeeds: string[];
+  testDataNeeds: string[];
+  gaps: string[];
+  evidenceRefs: string[];
+  nextSteps: string[];
+}
+
+export interface BusinessJourneyResult {
+  generatedAt: string;
+  status: BusinessJourneyStatus;
+  targetUrl: string;
+  summary: {
+    scenarioCount: number;
+    readyCount: number;
+    needsInputCount: number;
+    manualRequiredCount: number;
+    requirementLinkedCount: number;
+    runtimeVerifiedCount: number;
+    assertionStepCount: number;
+    apiAssertionCount: number;
+    roleNeedCount: number;
+    testDataNeedCount: number;
+  };
+  scenarios: BusinessJourneyScenario[];
+  notes: string[];
+}
+
 export interface ResponsiveCheckResult {
   name: string;
   width: number;
@@ -2543,6 +2588,8 @@ export interface ArtifactIndex {
   journeyAssertionAudit?: string;
   /** Concrete expect* assertion suggestions for weak/path-only journeys. */
   assertionSuggestions?: string;
+  /** Business journey scenario plan that combines requirements, recorded journeys, and assertion drafts without claiming pass until rerun. */
+  businessJourneys?: string;
   /** Reviewable productContext suggestion Markdown. */
   productContext?: string;
   /** Direct FrontLens config JSON containing the suggested/reviewed productContext snippet. */
@@ -2593,6 +2640,7 @@ export interface ArtifactIndex {
   reportContentAuditLog?: string;
   journeyAssertionAuditLog?: string;
   assertionSuggestionsLog?: string;
+  businessJourneysLog?: string;
   productContextLog?: string;
   qaPlanLog?: string;
   qaCoverageLog?: string;
@@ -2770,6 +2818,7 @@ export interface QaResult {
   reportContentAudit: ReportContentAuditResult;
   journeyAssertionAudit: JourneyAssertionAuditResult;
   assertionSuggestions: AssertionSuggestionResult;
+  businessJourneys: BusinessJourneyResult;
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
   defectTickets: DefectTicketResult;

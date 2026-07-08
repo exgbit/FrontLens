@@ -117,6 +117,7 @@ export function buildQaIntakeConfig(result: QaResult): Record<string, unknown> {
         qaIntake: result.artifacts.qaIntake,
         productContext: result.artifacts.productContext,
         assertionSuggestions: result.artifacts.assertionSuggestions,
+        businessJourneys: result.artifacts.businessJourneys,
         qaPlan: result.artifacts.qaPlan,
         qaCoverage: result.artifacts.qaCoverage,
         testCases: result.artifacts.testCases,

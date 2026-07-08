@@ -48,6 +48,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   const reportContentAudit = await readFile(result.artifacts.reportContentAudit!, 'utf8');
   const journeyAssertionAudit = await readFile(result.artifacts.journeyAssertionAudit!, 'utf8');
   const assertionSuggestions = await readFile(result.artifacts.assertionSuggestions!, 'utf8');
+  const businessJourneys = await readFile(result.artifacts.businessJourneys!, 'utf8');
   const productContext = await readFile(result.artifacts.productContext!, 'utf8');
   const qaIntakeConfig = await readFile(result.artifacts.qaIntakeConfig!, 'utf8');
   const review = await readFile(result.artifacts.qaReview!, 'utf8');
@@ -73,6 +74,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(reportContentAudit, /Status: \*\*(passed|warning|failed)\*\*/);
   assert.match(journeyAssertionAudit, /FrontLens Journey Assertion Audit/);
   assert.match(assertionSuggestions, /FrontLens Assertion Suggestions/);
+  assert.match(businessJourneys, /FrontLens Business Journeys/);
   assert.match(productContext, /FrontLens Product Context Suggestion/);
   assert.match(brief, /Core fixes/);
   assert.match(brief, /Professional audit:/);
@@ -82,6 +84,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(brief, /Journey assertion audit:/);
   assert.match(brief, /journey-assertion-audit\.md/);
   assert.match(brief, /assertion-suggestions\.md/);
+  assert.match(brief, /business-journeys\.md/);
   assert.match(brief, /product-context\.md/);
   assert.match(brief, /product-context\.config\.json/);
   assert.match(brief, /qa-intake\.config\.json/);
@@ -104,6 +107,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(report, /缺陷证明强度/);
   assert.match(report, /需求追踪矩阵 \/ Traceability/);
   assert.match(report, /自动化草案 \/ Automation Specs/);
+  assert.match(report, /业务旅程场景 \/ Business Journeys/);
   assert.match(report, /证据交付包 \/ Evidence Bundle/);
   assert.match(report, /测试策略 \/ QA Test Strategy/);
   assert.match(report, /Adjusted score：\*\*.*专业排期口径/);
@@ -231,6 +235,8 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.journeyAssertionAuditLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.assertionSuggestions' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.assertionSuggestionsLog' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.businessJourneys' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.businessJourneysLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContext' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextConfig' && entry.exists), true);

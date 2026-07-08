@@ -75,11 +75,12 @@ export function formatProfessionalBrief(result: QaResult): string {
     .slice(0, 2)
     .map((item) => `- audit/${item.severity}/${item.category}: ${markdownEscape(truncate(item.title, 150))}`);
   const forbidden = result.claimGuard.forbiddenClaims.slice(0, 3).map((item) => `- ${markdownEscape(item)}`);
-  const riskSummary = `risk ${result.riskRegister.status} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}; acceptance ${result.riskAcceptance.status} / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}`;
-  const ticketSummary = `defectTickets ${result.defectTickets.status} / tickets ${result.defectTickets.counts.total} / suppressed-needs-evidence ${result.defectTickets.counts.suppressedNeedsEvidence}`;
-  const traceabilitySummary = `traceability ${result.traceability.status} / requirements ${result.traceability.summary.requirementCount} / high-priority gaps ${result.traceability.summary.highPriorityGapCount}`;
+  const riskSummary = `risk ${result.riskRegister.status} / block ${result.riskRegister.summary.releaseBlockingCount}; acceptance ${result.riskAcceptance.status} / must ${result.riskAcceptance.summary.mustMitigateCount} / accept ${result.riskAcceptance.summary.acceptanceRequiredCount}`;
+  const ticketSummary = `defectTickets ${result.defectTickets.status} / tickets ${result.defectTickets.counts.total} / suppressed ${result.defectTickets.counts.suppressedNeedsEvidence}`;
+  const traceabilitySummary = `traceability ${result.traceability.status} / req ${result.traceability.summary.requirementCount} / P gaps ${result.traceability.summary.highPriorityGapCount}`;
   const automationSummary = `automationSpecs ${result.automationSpecs.status} / drafts ${result.automationSpecs.summary.draftCount} / ready ${result.automationSpecs.summary.readyCount} / needs-input ${result.automationSpecs.summary.needsInputCount}`;
   const evidenceBundleSummary = `evidenceBundle ${result.evidenceBundle.status} / items ${result.evidenceBundle.summary.itemCount} / missing-artifact ${result.evidenceBundle.summary.missingArtifactCount}`;
+  const businessJourneySummary = `businessJourneys ${result.businessJourneys.status} / ${result.businessJourneys.summary.scenarioCount} / ready ${result.businessJourneys.summary.readyCount} / needs ${result.businessJourneys.summary.needsInputCount}`;
   const strategySummary = `testStrategy ${result.qaStrategy.status} / risk ${result.qaStrategy.summary.riskLevel} / mode ${result.qaStrategy.summary.recommendedRunMode} / run-if-input ${result.qaStrategy.summary.runIfInputCount}`;
   const artifactSummary = `${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}, skipped/non-portable ${result.artifactIntegrity.skippedCount}）`;
   const coverageSummary = `qaCoverage ${result.qaCoverage.status}/${result.qaCoverage.confidence}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}; testCases ${result.testCases.status}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}`;
@@ -94,6 +95,7 @@ export function formatProfessionalBrief(result: QaResult): string {
     `report-content-audit.md: \`${markdownEscape(artifactPath(result, 'reportContentAudit'))}\``,
     `journey-assertion-audit.md: \`${markdownEscape(artifactPath(result, 'journeyAssertionAudit'))}\``,
     `assertion-suggestions.md: \`${markdownEscape(artifactPath(result, 'assertionSuggestions'))}\``,
+    `business-journeys.md: \`${markdownEscape(artifactPath(result, 'businessJourneys'))}\``,
     `product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\``,
     `product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\``,
     `qa-intake.config.json: \`${markdownEscape(artifactPath(result, 'qaIntakeConfig'))}\``,
@@ -124,7 +126,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Fix queue: Proof-ready root causes: **${result.professionalSummary.counts.proofReadyRootCauseCount}** / actionable ${result.professionalSummary.counts.actionableRootCauseCount}; must/should **${result.professionalSummary.mustFix.length}/${result.professionalSummary.shouldFix.length}**; defectProof **${result.defectProof.status}**
 - Coverage: ${coverageSummary}
 - Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）；Report content audit: **${result.reportContentAudit.status}**（blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}）
-- Journey assertion audit: **${result.journeyAssertionAudit.status}**（runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}）；Assertion suggestions: **${result.assertionSuggestions.status}**（suggestions ${result.assertionSuggestions.summary.totalCount}）
+- Journey assertion audit: **${result.journeyAssertionAudit.status}**（runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}）；Assertion suggestions: **${result.assertionSuggestions.status}**（suggestions ${result.assertionSuggestions.summary.totalCount}）；${businessJourneySummary}
 - Release risk: ${riskSummary}; ${ticketSummary}; ${traceabilitySummary}; ${automationSummary}; ${evidenceBundleSummary}; ${strategySummary}; artifacts **${artifactSummary}**
 
 ## Core fixes

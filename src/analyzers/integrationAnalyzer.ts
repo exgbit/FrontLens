@@ -75,10 +75,6 @@ function isReliableDataTable(table: AnalyzerContext['pageModel']['tables'][numbe
   return table.visible && (semanticTable || (uiLibraryTable && structuralEvidence));
 }
 
-function sourceBindingRequired(context: AnalyzerContext): boolean {
-  return Boolean(context.config.source.root || context.sourceAnalysis?.enabled);
-}
-
 function patternMatches(pattern: string, value: string): boolean {
   if (!pattern) return false;
   if (value.includes(pattern)) return true;
@@ -169,13 +165,12 @@ export function analyzeIntegration(context: AnalyzerContext, factory: IssueFacto
         ? context.sourceRuntimeCorrelation.links.find((link) => link.networkRequestId === source.record.id)
         : undefined;
       const sourceRuntimeConfidence = context.sourceRuntimeCorrelation?.status === 'passed' ? (sourceRuntimeLink?.confidence ?? 'none') : 'unavailable';
-      const requiresSourceBinding = sourceBindingRequired(context);
       const sourceRuntimePassed = context.sourceRuntimeCorrelation?.status === 'passed';
-      const shouldSuppressUnboundListMismatch =
-        (requiresSourceBinding && !sourceRuntimePassed) ||
-        (sourceRuntimePassed && (sourceRuntimeConfidence === 'none' || sourceRuntimeConfidence === 'low'));
+      const requirementIds = source ? providedRequirementIdsForListResponse(context, source.record, tables) : [];
+      const hasExplicitRequirement = requirementIds.length > 0;
+      const hasStrongSourceBinding = sourceRuntimePassed && (sourceRuntimeConfidence === 'medium' || sourceRuntimeConfidence === 'high');
+      const shouldSuppressUnboundListMismatch = !hasExplicitRequirement || !hasStrongSourceBinding;
       if (!shouldSuppressUnboundListMismatch) {
-        const requirementIds = source ? providedRequirementIdsForListResponse(context, source.record, tables) : [];
         issues.push(
           factory.create({
             title: '接口返回疑似有列表数据，但页面表格为空',
@@ -213,7 +208,7 @@ export function analyzeIntegration(context: AnalyzerContext, factory: IssueFacto
                   text: signal.text
                 })),
                 sourceComponentIds: sourceRuntimeLink?.componentIds,
-                guard: 'Only object arrays under list-like keys (data/records/rows/list/items/results) from XHR/fetch responses are considered. When sourceRoot/sourceAnalysis is enabled, the finding is reported only if sourceRuntimeCorrelation passed and the response has medium/high binding; unbound or unavailable source/runtime links are suppressed instead of reported.'
+                guard: 'Only object arrays under list-like keys (data/records/rows/list/items/results) from XHR/fetch responses are considered. A raw API/UI data-mismatch issue is emitted only when an explicit provided requirement binds the API/table and sourceRuntimeCorrelation has a medium/high source API/state/render link. Missing requirement or source binding is treated as a QA evidence gap rather than a defect to avoid "API has data but UI empty" speculation.'
               }
             },
             reproduceSteps: ['打开目标页面', '查看列表接口响应', '对比页面表格行数'],

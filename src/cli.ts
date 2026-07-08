@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { runQa } from './runner.js';
 import { runCompatibility } from './matrix.js';
@@ -9,7 +10,7 @@ import { runEnvironmentComparison } from './compare/environmentComparison.js';
 import { synthesizeRequirements } from './requirements/requirementWizard.js';
 import { loadRoleMatrixRoles, parseRoleSpec, runRoleMatrix } from './roles/roleMatrix.js';
 import { recordJourney } from './journeys/journeyRecorder.js';
-import type { BrowserName, Issue, QaResult, QaRunInput, ReportProfile, RoleMatrixRoleConfig, Severity } from './types.js';
+import type { BrowserName, QaResult, QaRunInput, ReportProfile, RoleMatrixRoleConfig, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 import { evaluateMatrixItemCiGate, evaluateQaCiGate, type CiGateMode } from './gates/ciGate.js';
@@ -20,9 +21,15 @@ import { buildQaExecutionPlan, formatQaExecutionPlan } from './plan/qaExecutionP
 import { buildQaCoverageMatrix, formatQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildTestCaseMatrix, formatTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions, formatAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildQaIntakeConfig } from './intake/qaIntakeConfig.js';
+import { formatQaIntake } from './intake/qaIntakeReport.js';
+import { buildRiskRegister, formatRiskRegister } from './risk/riskRegister.js';
+import { buildRiskAcceptance, formatRiskAcceptance } from './risk/riskAcceptance.js';
+import { buildProfessionalSuggestions } from './review/professionalSuggestions.js';
+import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'test-cases', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'qa-intake', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -40,10 +47,14 @@ Usage:
   frontlens brief --report <result.json>
   frontlens audit --report <result.json>
   frontlens product-context --report <result.json>
+  frontlens qa-intake --report <result.json>
   frontlens qa-plan --report <result.json>
   frontlens qa-coverage --report <result.json>
   frontlens assertion-suggestions --report <result.json>
   frontlens test-cases --report <result.json>
+  frontlens risk-register --report <result.json>
+  frontlens risk-acceptance --report <result.json>
+  frontlens artifact-integrity --report <result.json>
   frontlens inspect --report <result.json>
   frontlens issues --report <result.json> [--severity high]
   frontlens root-causes --report <result.json>
@@ -81,7 +92,7 @@ Options:
   --role <name=storageState[|sessionStorageState]>
                               Role matrix entry. Use name= for anonymous/no storage. Repeatable.
   --roles <path>              Role matrix JSON file: [{name, storageState, sessionStorageState, expectedAllowedTexts, expectedForbiddenTexts}].
-  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/qa-plan/qa-coverage/assertion-suggestions/test-cases/suggestions.
+  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/qa-intake/qa-plan/qa-coverage/assertion-suggestions/test-cases/risk-register/risk-acceptance/artifact-integrity/suggestions.
   --severity <level>          Filter issues by severity.
   --trace                     Enable Playwright trace.
   --no-trace                  Disable Playwright trace.
@@ -107,6 +118,7 @@ Options:
   --allow-mutating-requests   Do not abort mutating requests; report successful writes as suspicious instead.
   --json                      Print machine-readable JSON summary.
   --full                      For issues command, print full Issue objects.
+  --all                       For suggestions command, include raw suppressed product/style/deployment/needs-evidence suggestions.
   --gate-mode <mode>          CI gate mode: professional (default) | raw.
   --fail-on <severity>        Exit non-zero if issues at severity or above exist. In professional mode, only actionable + defectProof proven/probable findings count, and report/sign-off contract blockers also fail.
   --min-score <number>        Exit non-zero if score is lower. In professional mode, uses adjustedScore.
@@ -134,8 +146,11 @@ Examples:
   frontlens brief --report reports/frontlens/users/result.json
   frontlens audit --report reports/frontlens/users/result.json
   frontlens product-context --report reports/frontlens/users/result.json
+  frontlens qa-intake --report reports/frontlens/users/result.json
   frontlens qa-plan --report reports/frontlens/users/result.json
   frontlens qa-coverage --report reports/frontlens/users/result.json
+  frontlens risk-register --report reports/frontlens/users/result.json
+  frontlens risk-acceptance --report reports/frontlens/users/result.json
   frontlens issues --report reports/frontlens/users/result.json --severity high
   frontlens root-causes --report reports/frontlens/users/result.json
   frontlens disposition --report reports/frontlens/users/result.json
@@ -156,7 +171,17 @@ function normalizeBrowser(value: unknown): BrowserName | undefined {
 }
 
 async function readResult(reportPath: string): Promise<QaResult> {
-  return normalizeResult(JSON.parse(await readFile(reportPath, 'utf8')));
+  const raw = JSON.parse(await readFile(reportPath, 'utf8')) as unknown;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const record = raw as Record<string, unknown>;
+    const artifacts = record.artifacts && typeof record.artifacts === 'object' && !Array.isArray(record.artifacts)
+      ? record.artifacts as Record<string, unknown>
+      : {};
+    if (typeof artifacts.outputDir !== 'string' || artifacts.outputDir.length === 0) {
+      record.artifacts = { ...artifacts, outputDir: path.dirname(reportPath) };
+    }
+  }
+  return normalizeResult(raw);
 }
 
 function severityRank(severity: Severity): number {
@@ -251,10 +276,14 @@ Exposed tools:
   frontlens_fix_tasks
   frontlens_audit
   frontlens_product_context
+  frontlens_qa_intake
   frontlens_qa_plan
   frontlens_qa_coverage
   frontlens_assertion_suggestions
   frontlens_test_cases
+  frontlens_risk_register
+  frontlens_risk_acceptance
+  frontlens_artifact_integrity
   frontlens_diff
   frontlens_suggestions
 `);
@@ -268,7 +297,7 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'test-cases' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'qa-intake' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'test-cases' | 'risk-register' | 'risk-acceptance' | 'artifact-integrity' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
@@ -277,6 +306,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
       severity: { type: 'string' },
       json: { type: 'boolean' },
       full: { type: 'boolean' },
+      all: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' }
     }
   });
@@ -337,6 +367,29 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
     }
     return;
   }
+  if (command === 'qa-intake') {
+    if (parsed.values.json) {
+      console.log(
+        JSON.stringify(
+          {
+            qaIntake: result.qaIntake,
+            qaIntakeConfig: buildQaIntakeConfig(result),
+            artifacts: {
+              qaIntake: result.artifacts.qaIntake,
+              qaIntakeConfig: result.artifacts.qaIntakeConfig,
+              productContext: result.artifacts.productContext,
+              qaPlan: result.artifacts.qaPlan
+            }
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.log(formatQaIntake(result));
+    }
+    return;
+  }
   if (command === 'qa-plan') {
     const plan = buildQaExecutionPlan(result);
     if (parsed.values.json) {
@@ -370,6 +423,51 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
       console.log(JSON.stringify(cases, null, 2));
     } else {
       console.log(formatTestCaseMatrix(cases));
+    }
+    return;
+  }
+  if (command === 'risk-register') {
+    const riskRegister = buildRiskRegister(result);
+    if (parsed.values.json) {
+      console.log(JSON.stringify(riskRegister, null, 2));
+    } else {
+      console.log(formatRiskRegister(riskRegister));
+    }
+    return;
+  }
+  if (command === 'risk-acceptance') {
+    const riskAcceptance = buildRiskAcceptance({ riskRegister: buildRiskRegister(result) });
+    if (parsed.values.json) {
+      console.log(JSON.stringify(riskAcceptance, null, 2));
+    } else {
+      console.log(formatRiskAcceptance(riskAcceptance));
+    }
+    return;
+  }
+  if (command === 'artifact-integrity') {
+    const artifactIntegrity = await buildArtifactIntegrity(result);
+    if (parsed.values.json) {
+      console.log(JSON.stringify(artifactIntegrity, null, 2));
+    } else {
+      const missingRows = artifactIntegrity.missing.slice(0, 30).map((entry) => `| ${entry.source} | ${entry.kind} | ${entry.path} | ${entry.message ?? '-'} |`);
+      const skippedRows = artifactIntegrity.entries
+        .filter((entry) => !entry.expected || !entry.absolutePath)
+        .slice(0, 30)
+        .map((entry) => `| ${entry.source} | ${entry.kind} | ${entry.path} | ${entry.message ?? '-'} |`);
+      console.log(`# FrontLens Artifact Integrity
+
+- Status: **${artifactIntegrity.status}**
+- Present / Missing / Skipped: ${artifactIntegrity.presentCount} / ${artifactIntegrity.missingCount} / ${artifactIntegrity.skippedCount}
+- Summary: ${artifactIntegrity.summary}
+
+## Missing
+
+${missingRows.length ? ['| Source | Kind | Path | Message |', '| --- | --- | --- | --- |', ...missingRows].join('\n') : 'No missing local artifacts.'}
+
+## Skipped / non-portable
+
+${skippedRows.length ? ['| Source | Kind | Path | Message |', '| --- | --- | --- | --- |', ...skippedRows].join('\n') : 'No unchecked or non-portable artifact paths.'}
+`);
     }
     return;
   }
@@ -454,6 +552,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
               backend: issue.suggestion.backend,
               product: issue.suggestion.product,
               test: issue.suggestion.test,
+              disposition: result.issueDisposition.items.find((item) => item.issueId === issue.id),
               reproduceSteps: issue.reproduceSteps,
               evidence: issue.evidence
             }
@@ -514,15 +613,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
     return;
   }
 
-  const suggestions = result.issues
-    .filter((issue: Issue) => issue.suggestion.frontend || issue.suggestion.backend || issue.suggestion.test || issue.suggestion.product)
-    .map((issue) => ({
-      id: issue.id,
-      title: issue.title,
-      severity: issue.severity,
-      category: issue.category,
-      suggestion: issue.suggestion
-    }));
+  const suggestions = buildProfessionalSuggestions(result, { includeAll: Boolean(parsed.values.all) });
   console.log(JSON.stringify(suggestions, null, 2));
 }
 
@@ -553,7 +644,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'qa-plan' || argv[0] === 'qa-coverage' || argv[0] === 'assertion-suggestions' || argv[0] === 'test-cases' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
+  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'qa-intake' || argv[0] === 'qa-plan' || argv[0] === 'qa-coverage' || argv[0] === 'assertion-suggestions' || argv[0] === 'test-cases' || argv[0] === 'risk-register' || argv[0] === 'risk-acceptance' || argv[0] === 'artifact-integrity' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
     await handleResultCommand(argv[0], argv.slice(1));
     return;
   }

@@ -92,13 +92,17 @@ Tools exposed:
 - `frontlens_fix_tasks`: return machine-executable fix tasks for downstream repair skills.
 - `frontlens_audit`: run professional report-contract self-check for overclaiming, proof-ready fix queue, source evidence, artifact integrity, and scope alignment.
 - `frontlens_product_context`: return a reviewable suggested productContext config plus scope questions so product/design/style/device findings can be downgraded consistently on rerun.
+- `frontlens_qa_intake`: return professional QA intake questions plus the editable rerun config pack; use it before guessing PRD/product/source/test-data intent.
 - `frontlens_qa_plan`: return the professional QA execution/acceptance worklist: PRD, journey, product-context, environment, test-data, proof, and rerun items.
 - `frontlens_qa_coverage`: return the professional QA coverage matrix, including covered, partial, skipped, needs-input, and failed dimensions.
 - `frontlens_assertion_suggestions`: return concrete expectVisible/expectText/expectUrl/expectRequest drafts for weak/path-only journeys.
 - `frontlens_test_cases`: return the formal professional test case matrix, including requirement, journey, interaction, exception, a11y, responsive, performance, security, source-health, test-data, artifact, and triage cases with expected/actual/evidence.
+- `frontlens_risk_register`: return the release-risk matrix.
+- `frontlens_risk_acceptance`: return must-mitigate versus explicit risk-acceptance decisions.
+- `frontlens_artifact_integrity`: verify local artifact paths before screenshots/videos/downloads are cited as proof.
 - `frontlens_diff`: compare two `result.json` files by stable fingerprints.
 - `frontlens_env_compare`: run dev/source-module and build/preview QA, then classify persistent, dev-only, preview-only, and dev-artifact findings.
-- `frontlens_suggestions`: return frontend/backend/product/test suggestions.
+- `frontlens_suggestions`: return proof-aware frontend/backend/product/test suggestions by default; pass `all=true` only for raw audit of suppressed product/style/deployment/tool/needs-evidence rows.
 
 `frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `journeyAssertionAudit`, `assertionSuggestions` summary, `testCases` summary, `testData` lifecycle status, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, `rootCauseGroups`, `regressionPlan` summary, `riskRegister`/`riskAcceptance` summary, and `professionalSummary`; use `professionalSummary.status`, `qaSignoff` plus `journeyAssertionAudit.status`, `assertionSuggestions.status`, `testCases.status`, `testData.status`, `environment.trust`, `pageProfile.status`, `riskRegister.status`, `riskAcceptance.status`, and `regressionPlan.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
 
@@ -138,8 +142,13 @@ node dist/cli.js network --report "$OUTPUT_DIR/result.json"
 node dist/cli.js coverage --report "$OUTPUT_DIR/result.json"
 node dist/cli.js security --report "$OUTPUT_DIR/result.json"
 node dist/cli.js fix-tasks --report "$OUTPUT_DIR/result.json"
+node dist/cli.js qa-intake --report "$OUTPUT_DIR/result.json"
 node dist/cli.js assertion-suggestions --report "$OUTPUT_DIR/result.json"
 node dist/cli.js test-cases --report "$OUTPUT_DIR/result.json"
+node dist/cli.js risk-register --report "$OUTPUT_DIR/result.json"
+node dist/cli.js risk-acceptance --report "$OUTPUT_DIR/result.json"
+node dist/cli.js artifact-integrity --report "$OUTPUT_DIR/result.json"
 node dist/cli.js diff --before "$OLD_OUTPUT_DIR/result.json" --after "$OUTPUT_DIR/result.json"
 node dist/cli.js suggestions --report "$OUTPUT_DIR/result.json"
+node dist/cli.js suggestions --report "$OUTPUT_DIR/result.json" --all
 ```

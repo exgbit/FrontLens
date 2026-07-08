@@ -149,14 +149,22 @@ function auditCoverageBoundary(result: QaResult, markdown: string, findings: Rep
 }
 
 function auditArtifactReference(result: QaResult, markdown: string, findings: ReportContentAuditFinding[]): void {
-  if (result.artifactIntegrity.status !== 'failed') return;
-  if (!markdown.includes('missing artifact') && !markdown.includes('missing ') && !markdown.includes('缺失')) {
+  if (result.artifactIntegrity.status === 'failed' && !markdown.includes('missing artifact') && !markdown.includes('missing ') && !markdown.includes('缺失')) {
     add(findings, {
       severity: 'warning',
       category: 'artifact-reference',
       title: 'Artifact integrity failed but the report does not visibly warn about missing evidence paths.',
       evidence: result.artifactIntegrity.summary,
       recommendation: 'Surface missing artifact paths inline or in the artifact integrity section before citing screenshots/videos/DOM as proof.'
+    });
+  }
+  if (result.artifactIntegrity.status === 'warning' && result.artifactIntegrity.skippedCount > 0 && !/skipped|non-portable|unchecked|未检查|不可移植/.test(markdown)) {
+    add(findings, {
+      severity: 'warning',
+      category: 'artifact-reference',
+      title: 'Artifact integrity has unchecked/non-portable paths but the report does not surface them.',
+      evidence: `skipped=${result.artifactIntegrity.skippedCount}; ${result.artifactIntegrity.summary}`,
+      recommendation: 'Mention skipped/non-portable artifact paths so copied reports do not cite screenshots/videos/downloads that cannot be verified on this machine.'
     });
   }
 }

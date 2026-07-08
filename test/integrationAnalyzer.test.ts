@@ -38,25 +38,29 @@ function table(overrides: Partial<ComponentRecord>): ComponentRecord {
   };
 }
 
-function context(tables: ComponentRecord[]): AnalyzerContext {
+function context(tables: ComponentRecord[], options: Partial<AnalyzerContext> = {}): AnalyzerContext {
+  const config = createDefaultConfig('https://example.com/users');
+  if (options.config) Object.assign(config, options.config);
+  const pageModel = {
+    url: 'https://example.com/users',
+    title: 'Users',
+    meta: {},
+    breadcrumbs: [],
+    headings: [],
+    components: tables,
+    forms: [],
+    tables,
+    buttons: [],
+    inputs: [],
+    links: [],
+    structureTree: 'Users',
+    stats: { domNodes: 10, visibleTextLength: 20, bodyTextSample: 'Users' },
+    ...(options.pageModel ?? {})
+  };
   return {
-    config: createDefaultConfig('https://example.com/users'),
+    config,
     artifacts: { outputDir: '/tmp/frontlens', screenshot: '/tmp/frontlens/page.png' },
-    pageModel: {
-      url: 'https://example.com/users',
-      title: 'Users',
-      meta: {},
-      breadcrumbs: [],
-      headings: [],
-      components: tables,
-      forms: [],
-      tables,
-      buttons: [],
-      inputs: [],
-      links: [],
-      structureTree: 'Users',
-      stats: { domNodes: 10, visibleTextLength: 20, bodyTextSample: 'Users' }
-    },
+    pageModel,
     networkRecords: [network()],
     consoleRecords: [],
     pageErrors: [],
@@ -72,7 +76,10 @@ function context(tables: ComponentRecord[]): AnalyzerContext {
     responsiveChecks: [],
     exceptionSimulations: [],
     security: {} as AnalyzerContext['security'],
-    p2: {} as AnalyzerContext['p2']
+    p2: {} as AnalyzerContext['p2'],
+    ...options,
+    config,
+    pageModel
   };
 }
 
@@ -84,10 +91,51 @@ test('integration mismatch ignores card/list containers misclassified as table w
   assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), false);
 });
 
-test('integration mismatch still reports semantic empty tables with list-like API data', () => {
+test('integration mismatch reports only when requirement and source-runtime binding are strong', () => {
+  const record = network();
   const issues = analyzeIntegration(context([
-    table({ id: 'CMP-TABLE', tagName: 'table', confidence: 0.95 })
-  ]), new IssueFactory());
+    table({ id: 'CMP-TABLE', tagName: 'table', confidence: 0.95, selector: '#users-table', rowCount: 0, headers: ['name'] })
+  ], {
+    networkRecords: [record],
+    config: {
+      requirements: {
+        enabled: true,
+        inferFromPage: false,
+        items: [
+          {
+            id: 'REQ-USERS-LIST',
+            title: '用户列表展示接口数据',
+            source: 'provided',
+            selectors: ['#users-table'],
+            apiPatterns: ['/api/users/list']
+          }
+        ]
+      }
+    } as AnalyzerContext['config'],
+    sourceRuntimeCorrelation: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '',
+      summary: { networkRequestCount: 1, linkedRequestCount: 1, strongLinkCount: 1, unlinkedRequestCount: 0, listResponseLinkCount: 1 },
+      links: [
+        {
+          id: 'SRC-LINK-001',
+          networkRequestId: record.id,
+          method: record.method,
+          url: record.url,
+          path: '/api/users/list',
+          status: record.status,
+          sourceMatches: [{ file: 'src/views/UsersView.vue', line: 12, column: 1, method: 'GET', path: '/api/users/list', expression: 'listUsers()' }],
+          stateSignals: [{ file: 'src/views/UsersView.vue', line: 20, column: 1, kind: 'list-state', text: 'rows = data' }],
+          componentIds: ['CMP-TABLE'],
+          responseListHints: [{ path: '$.data', length: 1, sampleKeys: ['id', 'name'] }],
+          confidence: 'high',
+          notes: []
+        }
+      ],
+      gaps: []
+    }
+  }), new IssueFactory());
 
   assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), true);
 });

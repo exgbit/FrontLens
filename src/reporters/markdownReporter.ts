@@ -16,6 +16,7 @@ import { buildRiskRegister, formatRiskRegister } from '../risk/riskRegister.js';
 import { buildRiskAcceptance, formatRiskAcceptance } from '../risk/riskAcceptance.js';
 import { buildTestCaseMatrix, formatTestCaseMatrix } from '../cases/testCases.js';
 import { buildQaIntakeConfig } from '../intake/qaIntakeConfig.js';
+import { formatQaIntake } from '../intake/qaIntakeReport.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -377,30 +378,6 @@ ${rows.length ? ['| ID | Claim | Status | Confidence | Allowed wording | Forbidd
 ### Forbidden claims
 
 ${guard.forbiddenClaims.length ? guard.forbiddenClaims.map((item) => `- ${markdownEscape(item)}`).join('\n') : '-'}
-`;
-}
-
-function formatQaIntake(result: QaResult): string {
-  const intake = result.qaIntake;
-  const rows = intake.questions.slice(0, 40).map((item) => {
-    const blocks = item.blocksClaims.length ? item.blocksClaims.join(', ') : '-';
-    const refs = item.evidenceRefs.length ? item.evidenceRefs.slice(0, 6).join(', ') : '-';
-    return `| ${markdownEscape(item.id)} | ${item.priority} | ${markdownEscape(item.category)} | ${markdownEscape(truncateMiddle(item.question, 120))} | ${markdownEscape(truncateMiddle(item.why, 150))} | ${markdownEscape(truncateMiddle(item.howToAnswer, 150))} | ${markdownEscape(blocks)} | ${markdownEscape(refs)} |`;
-  });
-  const topRows = intake.topQuestions.map((item) => `- **${item.priority} ${markdownEscape(item.category)}**：${markdownEscape(item.question)}`);
-  return `## QA Intake / 专业测试待补输入
-
-- Status：**${intake.status}**
-- Summary：${markdownEscape(intake.summary)}
-- Top questions：${intake.topQuestions.length}
-- Total questions：${intake.questions.length}
-- Config hints：${intake.configHints.length ? markdownEscape(intake.configHints.join('；')) : '-'}
-- Intake config：${result.artifacts.qaIntakeConfig ? `\`${reportPath(result, result.artifacts.qaIntakeConfig)}\`` : '-'}
-- Ready to proceed：${intake.readyToProceed.length ? markdownEscape(intake.readyToProceed.join('；')) : '-'}
-
-${topRows.length ? topRows.join('\n') : '当前没有必须追问的输入项。'}
-
-${rows.length ? ['| ID | Priority | Category | Question | Why | How to answer | Blocks claims | Evidence refs |', '| --- | --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '当前 QA intake 已就绪。'}
 `;
 }
 
@@ -1274,7 +1251,7 @@ ${formatScopeReview(result)}
 
 ${formatClaimGuard(result)}
 
-${formatQaIntake(result)}
+${formatQaIntake(result, { headingLevel: 2 })}
 
 ${formatDefectProof(result)}
 
@@ -1383,14 +1360,20 @@ ${formatArtifacts(result)}
 `;
 
   result.assertionSuggestions = buildAssertionSuggestions(result);
-  const reviewMarkdown = formatProfessionalReview(result);
-  const professionalReportMarkdown = reviewMarkdown.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
-  const executiveReportMarkdown = formatProfessionalBrief(result).replace('# FrontLens QA Brief', '# FrontLens Executive QA Report');
-  const reportMarkdown = result.metadata.config.report.profile === 'executive'
-    ? executiveReportMarkdown
-    : result.metadata.config.report.profile === 'full'
-      ? `${professionalReportMarkdown}\n\n---\n\n${evidenceMarkdown}`
-      : professionalReportMarkdown;
+  const buildHumanMarkdown = (): { reviewMarkdown: string; reportMarkdown: string } => {
+    const review = formatProfessionalReview(result);
+    const professionalReportMarkdown = review.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
+    const executiveReportMarkdown = formatProfessionalBrief(result).replace('# FrontLens QA Brief', '# FrontLens Executive QA Report');
+    const report = result.metadata.config.report.profile === 'executive'
+      ? executiveReportMarkdown
+      : result.metadata.config.report.profile === 'full'
+        ? `${professionalReportMarkdown}\n\n---\n\n${evidenceMarkdown}`
+        : professionalReportMarkdown;
+    return { reviewMarkdown: review, reportMarkdown: report };
+  };
+  let { reviewMarkdown, reportMarkdown } = buildHumanMarkdown();
+  result.reportContentAudit = runReportContentAudit(result, reportMarkdown);
+  ({ reviewMarkdown, reportMarkdown } = buildHumanMarkdown());
   result.reportContentAudit = runReportContentAudit(result, reportMarkdown);
   await writeText(briefPath, formatProfessionalBrief(result));
   await writeText(auditPath, formatProfessionalAudit(runProfessionalAudit(result)));

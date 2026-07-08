@@ -1,11 +1,12 @@
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { stdin, stdout } from 'node:process';
 import { runQa } from './runner.js';
 import { runCompatibility } from './matrix.js';
 import { runEnvironmentComparison } from './compare/environmentComparison.js';
 import { synthesizeRequirements } from './requirements/requirementWizard.js';
 import { runRoleMatrix } from './roles/roleMatrix.js';
-import type { BrowserName, Issue, QaResult, QaRunInput, ReportProfile, Severity } from './types.js';
+import type { BrowserName, QaResult, QaRunInput, ReportProfile, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
 import { runProfessionalAudit } from './audit/professionalAudit.js';
@@ -14,6 +15,11 @@ import { buildQaExecutionPlan } from './plan/qaExecutionPlan.js';
 import { buildQaCoverageMatrix } from './coverage/qaCoverageMatrix.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildQaIntakeConfig } from './intake/qaIntakeConfig.js';
+import { buildRiskRegister } from './risk/riskRegister.js';
+import { buildRiskAcceptance } from './risk/riskAcceptance.js';
+import { buildProfessionalSuggestions } from './review/professionalSuggestions.js';
+import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -62,7 +68,17 @@ function severityRank(severity: Severity): number {
 }
 
 async function readResult(reportPath: string): Promise<QaResult> {
-  return normalizeResult(JSON.parse(await readFile(reportPath, 'utf8')));
+  const raw = JSON.parse(await readFile(reportPath, 'utf8')) as unknown;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const record = raw as Record<string, unknown>;
+    const artifacts = record.artifacts && typeof record.artifacts === 'object' && !Array.isArray(record.artifacts)
+      ? record.artifacts as Record<string, unknown>
+      : {};
+    if (typeof artifacts.outputDir !== 'string' || artifacts.outputDir.length === 0) {
+      record.artifacts = { ...artifacts, outputDir: path.dirname(reportPath) };
+    }
+  }
+  return normalizeResult(raw);
 }
 
 function textContent(data: unknown, isError = false): { content: Array<{ type: 'text'; text: string }>; isError?: boolean } {
@@ -190,6 +206,11 @@ function listTools(): Record<string, unknown> {
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
+        name: 'frontlens_qa_intake',
+        description: 'Read result.json and return professional QA intake questions plus the editable qa-intake.config.json rerun pack; use this before guessing product/PRD/source/test-data intent.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
         name: 'frontlens_qa_plan',
         description: 'Read result.json and return a professional QA execution/acceptance plan: reruns, requirements, journeys, product scope, evidence gaps, and blockers.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
@@ -210,14 +231,29 @@ function listTools(): Record<string, unknown> {
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
+        name: 'frontlens_risk_register',
+        description: 'Read result.json and return the professional release risk register.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_risk_acceptance',
+        description: 'Read result.json and return the must-mitigate vs risk-acceptance decision checklist.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_artifact_integrity',
+        description: 'Read result.json and verify local report artifact paths so screenshots/videos/downloads are not cited when missing or non-portable.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
         name: 'frontlens_diff',
         description: 'Compare two FrontLens result.json files by stable fingerprints and return added/resolved/persistent issues.',
         inputSchema: schema({ before: { type: 'string' }, after: { type: 'string' }, outputDir: { type: 'string' } }, ['before', 'after'])
       },
       {
         name: 'frontlens_suggestions',
-        description: 'Read result.json and return frontend/backend/product/test fix suggestions.',
-        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+        description: 'Read result.json and return proof-aware frontend/backend/product/test suggestions. By default suppresses product/style/deployment/tool/needs-evidence rows; set all=true to inspect raw suggestions.',
+        inputSchema: schema({ report: { type: 'string' }, all: { type: 'boolean' } }, ['report'])
       },
       {
         name: 'frontlens_env_compare',
@@ -635,6 +671,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
                 backend: issue.suggestion.backend,
                 product: issue.suggestion.product,
                 test: issue.suggestion.test,
+                disposition: result.issueDisposition.items.find((item) => item.issueId === issue.id),
                 reproduceSteps: issue.reproduceSteps,
                 evidence: issue.evidence
               }
@@ -695,6 +732,20 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildProductContextSuggestion(result));
     }
+    case 'frontlens_qa_intake': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent({
+        qaIntake: result.qaIntake,
+        qaIntakeConfig: buildQaIntakeConfig(result),
+        artifacts: {
+          qaIntake: result.artifacts.qaIntake,
+          qaIntakeConfig: result.artifacts.qaIntakeConfig,
+          productContext: result.artifacts.productContext,
+          qaPlan: result.artifacts.qaPlan
+        }
+      });
+    }
     case 'frontlens_qa_plan': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
@@ -715,6 +766,21 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildTestCaseMatrix(result));
     }
+    case 'frontlens_risk_register': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildRiskRegister(result));
+    }
+    case 'frontlens_risk_acceptance': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildRiskAcceptance({ riskRegister: buildRiskRegister(result) }));
+    }
+    case 'frontlens_artifact_integrity': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(await buildArtifactIntegrity(result));
+    }
     case 'frontlens_diff': {
       const args = validateArgs(params.arguments ?? {}, ['before', 'after', 'outputDir'], ['before', 'after']);
       const diff = createResultDiff(await readResult(requireString(args, 'before')), await readResult(requireString(args, 'after')));
@@ -722,18 +788,9 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent({ ...diff, artifacts });
     }
     case 'frontlens_suggestions': {
-      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const args = validateArgs(params.arguments ?? {}, ['report', 'all'], ['report']);
       const result = await readResult(requireString(args, 'report'));
-      const suggestions = result.issues
-        .filter((issue: Issue) => issue.suggestion.frontend || issue.suggestion.backend || issue.suggestion.test || issue.suggestion.product)
-        .map((issue) => ({
-          id: issue.id,
-          title: issue.title,
-          severity: issue.severity,
-          category: issue.category,
-          suggestion: issue.suggestion
-        }));
-      return textContent(suggestions);
+      return textContent(buildProfessionalSuggestions(result, { includeAll: args.all === true }));
     }
     case 'frontlens_env_compare': {
       const args = validateArgs(params.arguments ?? {}, ['devUrl', 'previewUrl', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['devUrl', 'previewUrl']);

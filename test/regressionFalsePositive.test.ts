@@ -677,19 +677,53 @@ test('integration mismatch can report strong list response bound to a list-like 
     ],
     components: []
   };
+  const ctxConfig = createDefaultConfig('http://example.test/credentials');
+  ctxConfig.requirements.inferFromPage = false;
+  ctxConfig.requirements.items = [
+    {
+      id: 'REQ-USERS',
+      title: '用户列表展示接口数据',
+      source: 'provided',
+      selectors: ['table'],
+      apiPatterns: ['/v1/users/list']
+    }
+  ];
+  const record = networkRecord({
+    id: 'REQ-list',
+    url: 'http://example.test/v1/users/list',
+    resourceType: 'fetch',
+    status: 200,
+    ok: true,
+    contentType: 'application/json',
+    responseBodyPreview: JSON.stringify({ code: 0, data: [{ name: 'A' }, { name: 'B' }], total: 2 })
+  });
   const ctx = context({
+    config: ctxConfig,
     pageModel,
-    networkRecords: [
-      networkRecord({
-        id: 'REQ-list',
-        url: 'http://example.test/v1/users/list',
-        resourceType: 'fetch',
-        status: 200,
-        ok: true,
-        contentType: 'application/json',
-        responseBodyPreview: JSON.stringify({ code: 0, data: [{ name: 'A' }, { name: 'B' }], total: 2 })
-      })
-    ]
+    networkRecords: [record],
+    sourceRuntimeCorrelation: {
+      enabled: true,
+      status: 'passed',
+      checkedAt: '',
+      summary: { networkRequestCount: 1, linkedRequestCount: 1, strongLinkCount: 1, unlinkedRequestCount: 0, listResponseLinkCount: 1 },
+      links: [
+        {
+          id: 'SRC-LINK-001',
+          networkRequestId: record.id,
+          method: record.method,
+          url: record.url,
+          path: '/v1/users/list',
+          status: record.status,
+          sourceMatches: [{ file: 'src/views/UsersView.vue', line: 10, column: 1, method: 'GET', path: '/v1/users/list', expression: 'fetchUsers()' }],
+          stateSignals: [{ file: 'src/views/UsersView.vue', line: 20, column: 1, kind: 'list-state', text: 'users = data' }],
+          componentIds: ['TABLE-1'],
+          responseListHints: [{ path: '$.data', length: 2, sampleKeys: ['name'] }],
+          confidence: 'high',
+          notes: []
+        }
+      ],
+      gaps: []
+    }
   });
   const issues = analyzeIntegration(ctx, new IssueFactory());
   assert.equal(issues.some((issue) => issue.category === 'integration-data-mismatch'), true);

@@ -10,6 +10,7 @@ import { buildRiskRegister } from '../risk/riskRegister.js';
 import { buildRiskAcceptance } from '../risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from '../cases/testCases.js';
 import { buildAssertionSuggestions } from '../journeys/assertionSuggestions.js';
+import { buildQaIntakeConfig } from '../intake/qaIntakeConfig.js';
 
 export function assignJsonArtifactPaths(result: QaResult): void {
   const outputDir = result.artifacts.outputDir;
@@ -30,6 +31,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.assertionSuggestionsLog = path.join(outputDir, 'assertion-suggestions.json');
   result.artifacts.productContextLog = path.join(outputDir, 'product-context.json');
   result.artifacts.productContextConfig = path.join(outputDir, 'product-context.config.json');
+  result.artifacts.qaIntakeConfig = path.join(outputDir, 'qa-intake.config.json');
   result.artifacts.qaPlanLog = path.join(outputDir, 'qa-plan.json');
   result.artifacts.qaCoverageLog = path.join(outputDir, 'qa-coverage.json');
   result.artifacts.testCasesLog = path.join(outputDir, 'test-cases.json');
@@ -65,6 +67,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     assertionSuggestionsLog: string;
     productContextLog: string;
     productContextConfig: string;
+    qaIntakeConfig: string;
     qaPlanLog: string;
     qaCoverageLog: string;
     testCasesLog: string;
@@ -100,6 +103,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   const productContextSuggestion = buildProductContextSuggestion(result);
   await writeJson(artifacts.productContextLog, productContextSuggestion);
   await writeJson(artifacts.productContextConfig, productContextSuggestion.usage.configSnippet);
+  await writeJson(artifacts.qaIntakeConfig, buildQaIntakeConfig(result));
   result.qaPlan = buildQaExecutionPlan(result);
   await writeJson(artifacts.qaPlanLog, result.qaPlan);
   result.qaCoverage = buildQaCoverageMatrix(result);

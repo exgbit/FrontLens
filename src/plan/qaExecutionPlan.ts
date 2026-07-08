@@ -88,6 +88,10 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
   });
   const sourceScriptNeed = buildSourceScriptPlanNeed(result.sourceHealth);
   const productContextConfig = typeof result.artifacts.productContextConfig === 'string' ? result.artifacts.productContextConfig : undefined;
+  const qaIntakeConfig = typeof result.artifacts.qaIntakeConfig === 'string' ? result.artifacts.qaIntakeConfig : undefined;
+  const qaIntakeRerun = qaIntakeConfig
+    ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(qaIntakeConfig)} --output ${quote('reports/frontlens/qa-plan-with-intake')} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
+    : undefined;
   const productContextRerun = productContextConfig
     ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(productContextConfig)} --output ${quote('reports/frontlens/qa-plan-product-context')} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
     : undefined;
@@ -119,7 +123,12 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
       status: 'needs-input',
       title: '补充 PRD / 验收标准并转换为可执行 requirements',
       why: '缺少显式验收标准时，业务通过只能算未验证或推断覆盖，不能给 100% 结论。',
-      commands: ['node dist/cli.js requirements synthesize --input "<prd.md>" --output "requirements.json"', `${fullRerun} --requirements "requirements.json"`],
+      commands: [
+        'node dist/cli.js requirements synthesize --input "<prd.md>" --output "requirements.json"',
+        qaIntakeConfig
+          ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(qaIntakeConfig)} --requirements "requirements.json" --output ${quote('reports/frontlens/qa-plan-with-requirements')} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
+          : `${fullRerun} --requirements "requirements.json"`
+      ],
       steps: ['提供 PRD、用户故事或验收标准。', '把自然语言要求转成 selectors / expectedTexts / apiPatterns / journeySteps。', '用 --requirements 复跑并核对 requirementCoverage。'],
       expected: ['关键 P0/P1 需求有 runtime evidence。', 'free-text 需求被标记为待复核，而不是自动通过。'],
       evidenceRefs: ['requirementCoverage', 'qaSignoff'],
@@ -151,10 +160,10 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
       status: 'needs-input',
       title: '确认 productContext，冻结产品/设计取舍',
       why: '样式、分页、导出、刷新、触控目标等问题需要产品范围合同，避免每轮由 LLM 猜测。',
-      commands: productContextRerun ? [productContextRerun] : [fullRerun],
-      steps: ['阅读 product-context.md 的问题。', '审核/编辑 product-context.config.json。', '用确认后的 --config 重跑 QA。'],
+      commands: qaIntakeRerun ? [qaIntakeRerun] : productContextRerun ? [productContextRerun] : [fullRerun],
+      steps: ['阅读 product-context.md / qa-intake.md 的问题。', '优先审核/编辑 qa-intake.config.json；只需产品范围时可编辑 product-context.config.json。', '用确认后的 --config 重跑 QA。'],
       expected: ['pageProfile.status 为 configured。', '产品取舍类 findings 稳定进入 product-decision / non-actionable 桶。'],
-      evidenceRefs: ['product-context.md', 'product-context.config.json', 'scopeReview', 'pageProfile'],
+      evidenceRefs: ['product-context.md', 'product-context.config.json', 'qa-intake.config.json', 'scopeReview', 'pageProfile'],
       notes: result.scopeReview?.questions?.slice(0, 5).map((item) => item.question) ?? result.pageProfile.questions.slice(0, 5)
     });
   }

@@ -90,6 +90,7 @@ export function formatProfessionalBrief(result: QaResult): string {
     `assertion-suggestions.md: \`${markdownEscape(artifactPath(result, 'assertionSuggestions'))}\``,
     `product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\``,
     `product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\``,
+    `qa-intake.config.json: \`${markdownEscape(artifactPath(result, 'qaIntakeConfig'))}\``,
     `qa-plan.md: \`${markdownEscape(artifactPath(result, 'qaPlan'))}\``,
     `qa-coverage.md: \`${markdownEscape(artifactPath(result, 'qaCoverage'))}\``,
     `test-cases.md: \`${markdownEscape(artifactPath(result, 'testCases'))}\``,

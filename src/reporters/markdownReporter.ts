@@ -15,6 +15,7 @@ import { buildQaCoverageMatrix, formatQaCoverageMatrix } from '../coverage/qaCov
 import { buildRiskRegister, formatRiskRegister } from '../risk/riskRegister.js';
 import { buildRiskAcceptance, formatRiskAcceptance } from '../risk/riskAcceptance.js';
 import { buildTestCaseMatrix, formatTestCaseMatrix } from '../cases/testCases.js';
+import { buildQaIntakeConfig } from '../intake/qaIntakeConfig.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -394,6 +395,7 @@ function formatQaIntake(result: QaResult): string {
 - Top questions：${intake.topQuestions.length}
 - Total questions：${intake.questions.length}
 - Config hints：${intake.configHints.length ? markdownEscape(intake.configHints.join('；')) : '-'}
+- Intake config：${result.artifacts.qaIntakeConfig ? `\`${reportPath(result, result.artifacts.qaIntakeConfig)}\`` : '-'}
 - Ready to proceed：${intake.readyToProceed.length ? markdownEscape(intake.readyToProceed.join('；')) : '-'}
 
 ${topRows.length ? topRows.join('\n') : '当前没有必须追问的输入项。'}
@@ -1178,6 +1180,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const journeyAssertionAuditPath = path.join(result.artifacts.outputDir, 'journey-assertion-audit.md');
   const assertionSuggestionsPath = path.join(result.artifacts.outputDir, 'assertion-suggestions.md');
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
+  const qaIntakeConfigPath = path.join(result.artifacts.outputDir, 'qa-intake.config.json');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
   const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
   const testCasesPath = path.join(result.artifacts.outputDir, 'test-cases.md');
@@ -1196,6 +1199,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.journeyAssertionAudit = journeyAssertionAuditPath;
   result.artifacts.assertionSuggestions = assertionSuggestionsPath;
   result.artifacts.productContext = productContextPath;
+  result.artifacts.qaIntakeConfig = qaIntakeConfigPath;
   result.artifacts.qaPlan = qaPlanPath;
   result.artifacts.qaCoverage = qaCoveragePath;
   result.artifacts.testCases = testCasesPath;
@@ -1394,6 +1398,7 @@ ${formatArtifacts(result)}
   await writeText(journeyAssertionAuditPath, formatJourneyAssertionAudit(result.journeyAssertionAudit));
   await writeText(assertionSuggestionsPath, formatAssertionSuggestions(result.assertionSuggestions));
   await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));
+  await writeText(qaIntakeConfigPath, `${JSON.stringify(buildQaIntakeConfig(result), null, 2)}\n`);
   result.qaPlan = buildQaExecutionPlan(result);
   await writeText(qaPlanPath, formatQaExecutionPlan(result.qaPlan));
   result.qaCoverage = buildQaCoverageMatrix(result);

@@ -8,7 +8,7 @@ Use this reference when preparing the final user-facing summary after a `fronten
 
 ## Reporting Back
 
-Default to a concise, decision-oriented answer. In FrontLens 1.73+, treat `brief.md` as the maximum default shape. Respect `report.profile`: executive is the default shortest decision brief, professional is a fuller QA-lead decision report, and full is for exhaustive audits only. The normal user-facing summary should lead with proof-ready fixes and QA sign-off, then bucket non-defects/coverage gaps. Do not enumerate every style/touch-target/optional-feature selector unless the user asks for exhaustive polish detail.
+Default to a concise, decision-oriented answer. In FrontLens 1.73+, treat `brief.md` as the maximum default shape. In FrontLens 1.74+, include `qa-intake.config.json` in next steps when missing inputs block professional sign-off. Respect `report.profile`: executive is the default shortest decision brief, professional is a fuller QA-lead decision report, and full is for exhaustive audits only. The normal user-facing summary should lead with proof-ready fixes and QA sign-off, then bucket non-defects/coverage gaps. Do not enumerate every style/touch-target/optional-feature selector unless the user asks for exhaustive polish detail.
 
 Do not report “API has data but UI is empty” as an implementation defect unless the four-part data-binding proof gate passes: explicit requirement, exact list-like Network response, visible empty UI/DOM/screenshot for the target region, and source API/state/render binding. Missing any part is a QA evidence gap or scope question.
 

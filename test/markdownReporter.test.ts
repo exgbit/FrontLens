@@ -49,6 +49,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   const journeyAssertionAudit = await readFile(result.artifacts.journeyAssertionAudit!, 'utf8');
   const assertionSuggestions = await readFile(result.artifacts.assertionSuggestions!, 'utf8');
   const productContext = await readFile(result.artifacts.productContext!, 'utf8');
+  const qaIntakeConfig = await readFile(result.artifacts.qaIntakeConfig!, 'utf8');
   const review = await readFile(result.artifacts.qaReview!, 'utf8');
   const evidence = await readFile(result.artifacts.evidenceReport!, 'utf8');
   const scopeReview = await readFile(result.artifacts.scopeReview!, 'utf8');
@@ -77,6 +78,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(brief, /assertion-suggestions\.md/);
   assert.match(brief, /product-context\.md/);
   assert.match(brief, /product-context\.config\.json/);
+  assert.match(brief, /qa-intake\.config\.json/);
   assert.match(brief, /qa-plan\.md/);
   assert.match(brief, /qa-coverage\.md/);
   assert.match(brief, /test-cases\.md/);
@@ -103,6 +105,10 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(claimGuard, /业务功能验证通过可信度 100%/);
   assert.match(qaIntake, /QA Intake \/ 专业测试待补输入/);
   assert.match(qaIntake, /Top questions/);
+  assert.match(qaIntake, /qa-intake\.config\.json/);
+  assert.match(qaIntakeConfig, /"_frontlensQaIntake"/);
+  assert.match(qaIntakeConfig, /"requirements"/);
+  assert.match(qaIntakeConfig, /"productContext"/);
   assert.match(defectProof, /Defect Proof \/ 缺陷证明强度/);
   assert.match(defectProof, /Proof status/);
   assert.match(report, /Assertion suggestions/);
@@ -205,6 +211,7 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContext' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.productContextConfig' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaIntakeConfig' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaPlan' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaPlanLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.qaCoverage' && entry.exists), true);

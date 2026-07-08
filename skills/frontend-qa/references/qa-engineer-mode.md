@@ -97,7 +97,7 @@ Default final answers should fit in one decision screen unless the user asks for
 - Summarize product/style/device-scope observations as bucket counts plus one representative example, not per-selector tasks.
 - Never restate every raw issue when `issueDisposition`, `professionalSummary`, or `qa-review.md` already downgraded it.
 - If `reportContentAudit` raises a profile-depth/compactness warning, use `brief.md` or `qa-review.md` as the answer shape and link to `evidence-report.md` for raw selector/network detail.
-- If there are no proof-ready defects, say that explicitly and provide the missing inputs needed to turn conditional observations into defects. In FrontLens 1.72+, prefer the intake-first `professionalSummary.headline` when PRD/product scope is missing. In FrontLens 1.73+, treat `brief.md` as the maximum default answer shape; do not expand selector/module detail unless the user asks.
+- If there are no proof-ready defects, say that explicitly and provide the missing inputs needed to turn conditional observations into defects. In FrontLens 1.72+, prefer the intake-first `professionalSummary.headline` when PRD/product scope is missing. In FrontLens 1.73+, treat `brief.md` as the maximum default answer shape; do not expand selector/module detail unless the user asks. In FrontLens 1.74+, prefer `qa-intake.config.json` as the editable answer sheet for missing PRD/product/test-data/source inputs before rerun.
 - Expand raw evidence only for retained core defects or when the user explicitly requests deep drill-down.
 
 ## Anti-overclaim rules

@@ -11,6 +11,7 @@ const FILE_ARTIFACT_KEYS = [
   'journeyAssertionAudit',
   'assertionSuggestions',
   'productContext',
+  'qaIntakeConfig',
   'qaPlan',
   'qaCoverage',
   'testCases',

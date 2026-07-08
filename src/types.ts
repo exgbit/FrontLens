@@ -2280,6 +2280,8 @@ export interface ArtifactIndex {
   productContext?: string;
   /** Direct FrontLens config JSON containing the suggested/reviewed productContext snippet. */
   productContextConfig?: string;
+  /** Reviewable FrontLens config JSON that combines QA intake questions, productContext, requirements, journeys, testData, safety, and source settings for reruns. */
+  qaIntakeConfig?: string;
   /** Professional QA execution/acceptance plan Markdown. */
   qaPlan?: string;
   /** Professional QA coverage matrix Markdown. */

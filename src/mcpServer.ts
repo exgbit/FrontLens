@@ -20,6 +20,7 @@ import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildProfessionalSuggestions } from './review/professionalSuggestions.js';
 import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
+import { buildDefectTickets } from './tickets/defectTickets.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -218,6 +219,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_defect_proof',
         description: 'Read result.json and return root-cause proof strength; use it before scheduling implementation work.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_defect_tickets',
+        description: 'Read result.json and return Jira/Linear-ready proof-ready defect tickets; excludes product/design/deployment/tool/needs-evidence observations.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -663,6 +669,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         qaCoverage: result.qaCoverage,
         assertionSuggestions: result.assertionSuggestions,
         testCases: result.testCases,
+        defectTickets: result.defectTickets,
         riskRegister: result.riskRegister,
         riskAcceptance: result.riskAcceptance,
         qualityGate: result.qualityGate,
@@ -775,6 +782,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(result.defectProof);
+    }
+    case 'frontlens_defect_tickets': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildDefectTickets(result));
     }
     case 'frontlens_report_content_audit': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

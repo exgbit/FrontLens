@@ -76,6 +76,7 @@ export function formatProfessionalBrief(result: QaResult): string {
     .map((item) => `- audit/${item.severity}/${item.category}: ${markdownEscape(truncate(item.title, 150))}`);
   const forbidden = result.claimGuard.forbiddenClaims.slice(0, 3).map((item) => `- ${markdownEscape(item)}`);
   const riskSummary = `risk ${result.riskRegister.status} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}; acceptance ${result.riskAcceptance.status} / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}`;
+  const ticketSummary = `defectTickets ${result.defectTickets.status} / tickets ${result.defectTickets.counts.total} / suppressed-needs-evidence ${result.defectTickets.counts.suppressedNeedsEvidence}`;
   const artifactSummary = `${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}, skipped/non-portable ${result.artifactIntegrity.skippedCount}）`;
   const coverageSummary = `qaCoverage ${result.qaCoverage.status}/${result.qaCoverage.confidence}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}; testCases ${result.testCases.status}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}`;
   const artifactLine = [
@@ -96,7 +97,8 @@ export function formatProfessionalBrief(result: QaResult): string {
     `qa-coverage.md: \`${markdownEscape(artifactPath(result, 'qaCoverage'))}\``,
     `test-cases.md: \`${markdownEscape(artifactPath(result, 'testCases'))}\``,
     `risk-register.md: \`${markdownEscape(artifactPath(result, 'riskRegister'))}\``,
-    `risk-acceptance.md: \`${markdownEscape(artifactPath(result, 'riskAcceptance'))}\``
+    `risk-acceptance.md: \`${markdownEscape(artifactPath(result, 'riskAcceptance'))}\``,
+    `defect-tickets.md: \`${markdownEscape(artifactPath(result, 'defectTickets'))}\``
   ].join('；');
 
   const suggestedFixQueue = summaryFixRows.length && rootRows.length === 0
@@ -114,7 +116,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Coverage: ${coverageSummary}
 - Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）；Report content audit: **${result.reportContentAudit.status}**（blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}）
 - Journey assertion audit: **${result.journeyAssertionAudit.status}**（runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}）；Assertion suggestions: **${result.assertionSuggestions.status}**（suggestions ${result.assertionSuggestions.summary.totalCount}）
-- Release risk: ${riskSummary}; artifacts **${artifactSummary}**
+- Release risk: ${riskSummary}; ${ticketSummary}; artifacts **${artifactSummary}**
 
 ## Core fixes
 

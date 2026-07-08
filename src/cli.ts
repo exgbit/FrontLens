@@ -31,9 +31,10 @@ import { formatClaimGuard } from './claims/claimGuardReport.js';
 import { formatDefectProof } from './proof/defectProofReport.js';
 import { formatReportContentAudit } from './audit/reportContentAudit.js';
 import { formatJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
+import { buildDefectTickets, formatDefectTickets } from './tickets/defectTickets.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'claim-guard', 'qa-intake', 'defect-proof', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -54,6 +55,7 @@ Usage:
   frontlens claim-guard --report <result.json>
   frontlens qa-intake --report <result.json>
   frontlens defect-proof --report <result.json>
+  frontlens defect-tickets --report <result.json>
   frontlens report-content-audit --report <result.json>
   frontlens journey-assertion-audit --report <result.json>
   frontlens qa-plan --report <result.json>
@@ -100,7 +102,7 @@ Options:
   --role <name=storageState[|sessionStorageState]>
                               Role matrix entry. Use name= for anonymous/no storage. Repeatable.
   --roles <path>              Role matrix JSON file: [{name, storageState, sessionStorageState, expectedAllowedTexts, expectedForbiddenTexts}].
-  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/claim-guard/qa-intake/defect-proof/report-content-audit/journey-assertion-audit/qa-plan/qa-coverage/assertion-suggestions/test-cases/risk-register/risk-acceptance/artifact-integrity/suggestions.
+  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/claim-guard/qa-intake/defect-proof/defect-tickets/report-content-audit/journey-assertion-audit/qa-plan/qa-coverage/assertion-suggestions/test-cases/risk-register/risk-acceptance/artifact-integrity/suggestions.
   --severity <level>          Filter issues by severity.
   --trace                     Enable Playwright trace.
   --no-trace                  Disable Playwright trace.
@@ -157,6 +159,7 @@ Examples:
   frontlens claim-guard --report reports/frontlens/users/result.json
   frontlens qa-intake --report reports/frontlens/users/result.json
   frontlens defect-proof --report reports/frontlens/users/result.json
+  frontlens defect-tickets --report reports/frontlens/users/result.json
   frontlens report-content-audit --report reports/frontlens/users/result.json
   frontlens journey-assertion-audit --report reports/frontlens/users/result.json
   frontlens qa-plan --report reports/frontlens/users/result.json
@@ -291,6 +294,7 @@ Exposed tools:
   frontlens_claim_guard
   frontlens_qa_intake
   frontlens_defect_proof
+  frontlens_defect_tickets
   frontlens_report_content_audit
   frontlens_journey_assertion_audit
   frontlens_qa_plan
@@ -313,7 +317,7 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'claim-guard' | 'qa-intake' | 'defect-proof' | 'report-content-audit' | 'journey-assertion-audit' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'test-cases' | 'risk-register' | 'risk-acceptance' | 'artifact-integrity' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'claim-guard' | 'qa-intake' | 'defect-proof' | 'defect-tickets' | 'report-content-audit' | 'journey-assertion-audit' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'test-cases' | 'risk-register' | 'risk-acceptance' | 'artifact-integrity' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
@@ -350,6 +354,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
             qaCoverage: result.qaCoverage,
             assertionSuggestions: result.assertionSuggestions,
             testCases: result.testCases,
+            defectTickets: result.defectTickets,
             qaSignoff: result.qaSignoff,
             claimGuard: result.claimGuard,
             defectProof: result.defectProof,
@@ -419,6 +424,15 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
       console.log(JSON.stringify(result.defectProof, null, 2));
     } else {
       console.log(formatDefectProof(result));
+    }
+    return;
+  }
+  if (command === 'defect-tickets') {
+    const tickets = buildDefectTickets(result);
+    if (parsed.values.json) {
+      console.log(JSON.stringify(tickets, null, 2));
+    } else {
+      console.log(formatDefectTickets(tickets));
     }
     return;
   }
@@ -560,6 +574,7 @@ ${skippedRows.length ? ['| Source | Kind | Path | Message |', '| --- | --- | ---
           qaCoverage: result.qaCoverage,
           assertionSuggestions: result.assertionSuggestions,
           testCases: result.testCases,
+          defectTickets: result.defectTickets,
           regressionPlan: result.regressionPlan,
           qualityGate: result.qualityGate,
           qaSignoff: result.qaSignoff

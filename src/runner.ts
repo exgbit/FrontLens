@@ -44,6 +44,7 @@ import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildDefectTickets } from './tickets/defectTickets.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
@@ -949,6 +950,12 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   });
 
   const riskAcceptance = buildRiskAcceptance({ riskRegister });
+  const defectTickets = buildDefectTickets({
+    rootCauseGroups,
+    issues,
+    defectProof,
+    requirementCoverage
+  });
 
   const result: QaResult = {
     summary,
@@ -1004,6 +1011,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     testCases,
     riskRegister,
     riskAcceptance,
+    defectTickets,
     reportContentAudit: createSkippedReportContentAudit(resultConfig.report.profile),
     journeyAssertionAudit,
     assertionSuggestions,

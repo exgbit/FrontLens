@@ -44,6 +44,8 @@ const FILE_ARTIFACT_KEYS = [
   'riskRegisterLog',
   'riskAcceptance',
   'riskAcceptanceLog',
+  'defectTickets',
+  'defectTicketsLog',
   'regressionPlanLog',
   'scopeReview',
   'scopeReviewLog',

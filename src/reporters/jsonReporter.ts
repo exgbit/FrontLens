@@ -11,6 +11,7 @@ import { buildRiskAcceptance } from '../risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from '../cases/testCases.js';
 import { buildAssertionSuggestions } from '../journeys/assertionSuggestions.js';
 import { buildQaIntakeConfig } from '../intake/qaIntakeConfig.js';
+import { buildDefectTickets } from '../tickets/defectTickets.js';
 
 export function assignJsonArtifactPaths(result: QaResult): void {
   const outputDir = result.artifacts.outputDir;
@@ -37,6 +38,7 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.testCasesLog = path.join(outputDir, 'test-cases.json');
   result.artifacts.riskRegisterLog = path.join(outputDir, 'risk-register.json');
   result.artifacts.riskAcceptanceLog = path.join(outputDir, 'risk-acceptance.json');
+  result.artifacts.defectTicketsLog = path.join(outputDir, 'defect-tickets.json');
   result.artifacts.regressionPlanLog = path.join(outputDir, 'regression-plan.json');
   result.artifacts.scopeReviewLog = path.join(outputDir, 'scope-review.json');
   result.artifacts.claimGuardLog = path.join(outputDir, 'claim-guard.json');
@@ -73,6 +75,7 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     testCasesLog: string;
     riskRegisterLog: string;
     riskAcceptanceLog: string;
+    defectTicketsLog: string;
     regressionPlanLog: string;
     scopeReviewLog: string;
     claimGuardLog: string;
@@ -114,6 +117,8 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   await writeJson(artifacts.riskRegisterLog, result.riskRegister);
   result.riskAcceptance = buildRiskAcceptance(result);
   await writeJson(artifacts.riskAcceptanceLog, result.riskAcceptance);
+  result.defectTickets = buildDefectTickets(result);
+  await writeJson(artifacts.defectTicketsLog, result.defectTickets);
   await writeJson(artifacts.regressionPlanLog, result.regressionPlan);
   await writeJson(artifacts.scopeReviewLog, result.scopeReview);
   await writeJson(artifacts.claimGuardLog, result.claimGuard);

@@ -5,7 +5,7 @@ Use this reference before every target-page QA run to ask the user which modules
 ## Selection rules
 
 - Ask before running QA unless the user already selected modules or said `全选`, `all`, or `default`.
-- Keep core safe scan mandatory: page load, screenshot/DOM snapshot, page model, Console/Network collection, safe interaction discovery, reports, issue fingerprints, issueDisposition, rootCauseGroups, defectProof, proof-aware fixTasks, and mutating request blocking.
+- Keep core safe scan mandatory: page load, screenshot/DOM snapshot, page model, Console/Network collection, safe interaction discovery, reports, issue fingerprints, issueDisposition, rootCauseGroups, defectProof, defectTickets, proof-aware fixTasks, and mutating request blocking.
 - Run target-page QA only in a fresh worker subagent (`fork_context=false`). The main session coordinates selection and returns the worker's Markdown summary.
 - If a module has a direct `--no-*` flag, use that flag when disabled. If not, create a per-run config JSON and pass `--config`.
 
@@ -51,7 +51,7 @@ Read `<OUTPUT_DIR>/requirements.md` and treat low-confidence or `needsReview` it
 
 If requirements or journeys include create/edit/delete/upload/import/submit flows, add `testData` to the run config before claiming business validation. Missing isolated records, missing cleanup/rollback, sensitive fixture use, or unapproved production writes must downgrade QA sign-off even when UI smoke checks pass.
 
-This default enables security, contract, realtime, safe smoke journey, exception simulation, heuristic AI, coverage, P2 visual capture/pixel baseline diff, P2 budgets, P2 offline + slow-3g profiles, accessibility, responsive, performance, resource, integration, Console, Network, reports, issueDisposition, rootCauseGroups, defectProof, and proof-aware fixTasks. It keeps destructive actions disabled.
+This default enables security, contract, realtime, safe smoke journey, exception simulation, heuristic AI, coverage, P2 visual capture/pixel baseline diff, P2 budgets, P2 offline + slow-3g profiles, accessibility, responsive, performance, resource, integration, Console, Network, reports, issueDisposition, rootCauseGroups, defectProof, defectTickets, and proof-aware fixTasks. It keeps destructive actions disabled.
 
 Use browser matrix only when the user selected module 9 or explicitly asked compatibility:
 
@@ -163,7 +163,7 @@ Use a fresh worker prompt like:
 如果 Chromium 或私网访问被沙箱限制，使用 escalated 执行；仍失败则输出诊断。
 优先读取 qa-review.md 作为已收敛的专业 QA 摘要，再读取 result.json/report.md 补证据；结构化判断优先查看 qaSignoff、qualityGate、requirementCoverage、environment、pageProfile、sourceHealth、artifactIntegrity、issueDisposition 和 rootCauseGroups，并按 skills/frontend-qa/references/triage-guidelines.md 做二次校准。若有源码路径，逐项核对相关 router/view/composable/store/api/component/vite/ADR 文件，为每个保留的前端问题给出 file:line 证据；若 sourceHealth 发现语法错误或 `scriptChecks` 失败/超时，优先作为 source-confirmed 阻断处理；对误报给出被源码、部署归属、环境可信度、异常模拟或扫描阶段反驳的理由。降级 dev/synthetic raw issue 后仍要继续做源码归因；若源码或 dev 模块图揭示真实设计缺陷（如路由静态导入导致非当前页面代码进入首屏），必须以 source-discovered/frontend fix 单独保留。
 若需求/旅程包含新增、编辑、删除、上传、导入、提交，必须检查 `result.json.testData`：没有隔离 records/setup/cleanup 时只能给 runtime-partial 或 blocked/pass-with-risks；生产环境写操作未显式授权时必须作为 QA blocker。
-优先使用 `result.json.issueDisposition` 过滤可执行/条件性/非缺陷项，再用 `result.json.defectProof` + `result.json.rootCauseGroups` 合并 proof-ready 工作量，并按源码复核补充/修正；必须按“实现根因”合并 raw issue：同一视图/组件/组合函数导致的 500/401/403/404/timeout 无反馈，只作为一个可执行前端修复输出，并列出支持它的 raw issue / EX-*；不要把 raw issue 数量或 needs-evidence 项当成实现工作量；fixTasks 已过滤证据不足项，但仍需人工复核根因。若报告建议与问题类别不匹配（例如触控尺寸却建议表格分页接口），标记为模板噪音并改写建议。
+优先使用 `result.json.issueDisposition` 过滤可执行/条件性/非缺陷项，再优先用 `result.json.defectTickets` 作为人类工单队列，并用 `result.json.defectProof` + `result.json.rootCauseGroups` 复核 proof-ready 工作量，并按源码复核补充/修正；必须按“实现根因”合并 raw issue：同一视图/组件/组合函数导致的 500/401/403/404/timeout 无反馈，只作为一个可执行前端修复输出，并列出支持它的 raw issue / EX-*；不要把 raw issue 数量或 needs-evidence 项当成实现工作量；fixTasks 已过滤证据不足项，但仍需人工复核根因。若报告建议与问题类别不匹配（例如触控尺寸却建议表格分页接口），标记为模板噪音并改写建议。
 必须做可执行性过滤：核心问题只保留运行时错误、核心旅程失败、真实接口失败无反馈、硬性 a11y、源码确认的数据绑定/性能问题；样式密度、按钮层级、刷新/导出/分页/SEO 等默认放“产品决策/参考观察”，不要生成修复任务。不要展开大量参考项的逐 selector 细节。
 “接口有数据但页面为空”属于高风险推断：只有同时具备明确需求/PRD、具体列表响应及路径/数量、当前目标表格/列表/卡片 DOM 或截图为空、源码/E2E 能证明该响应绑定该 UI 这四层证据时才保留为缺陷；否则写成未验证/证据不足/误报，不要猜测字段映射错误。
 业务功能/需求验证必须标注证据置信度：runtime-verified / runtime-partial / static-source-only / not-verified。除非有完整运行时页面、DOM/截图、API 响应和必要下载文件证据，否则不要写“业务功能验证 100% 通过”。样式风格、按钮层级、是否需要刷新/导出等默认归为产品决策/可选，除非有 ADR、a11y 或核心任务阻塞证据。

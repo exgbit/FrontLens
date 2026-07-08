@@ -51,8 +51,9 @@ import { buildRiskRegister } from './risk/riskRegister.js';
 import { buildRiskAcceptance } from './risk/riskAcceptance.js';
 import { buildTestCaseMatrix } from './cases/testCases.js';
 import { buildAssertionSuggestions } from './journeys/assertionSuggestions.js';
+import { buildDefectTickets } from './tickets/defectTickets.js';
 
-export const RESULT_SCHEMA_VERSION = '1.77.0';
+export const RESULT_SCHEMA_VERSION = '1.78.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1252,6 +1253,12 @@ export function normalizeResult(raw: unknown): QaResult {
     scopeReview,
     environment
   });
+  const defectTickets = buildDefectTickets({
+    rootCauseGroups,
+    issues,
+    defectProof,
+    requirementCoverage
+  });
   applyAdjustedScore(summary, issues, issueDisposition, defectProof);
   const fixTasks = generateFixTasks(issues, metadataConfig, rootCauseGroups, defectProof);
   const qualityGateFallback = buildQualityGate({
@@ -1492,6 +1499,7 @@ export function normalizeResult(raw: unknown): QaResult {
     assertionSuggestions,
     professionalSummary,
     defectProof,
+    defectTickets,
     claimGuard,
     qaIntake,
     qualityGate,

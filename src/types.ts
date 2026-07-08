@@ -2007,6 +2007,56 @@ export interface DefectProofResult {
   notes: string[];
 }
 
+export interface DefectTicketRequirementRef {
+  id: string;
+  title: string;
+  priority: RequirementPriority;
+  status: RequirementCoverageStatus;
+}
+
+export interface DefectTicketItem {
+  id: string;
+  rootCauseGroupId: string;
+  proofId?: string;
+  proofStatus: DefectProofItem['status'];
+  proofScore: number;
+  confidence: DefectProofItem['confidence'];
+  issueIds: string[];
+  owner: RootCauseGroup['owner'];
+  priority: RootCauseGroup['priority'];
+  severity: Severity;
+  title: string;
+  impact: string;
+  actualBehavior: string;
+  expectedBehavior: string;
+  reproduceSteps: string[];
+  sourceLocations: SourceLocation[];
+  requirements: DefectTicketRequirementRef[];
+  evidenceRefs: string[];
+  artifactRefs: string[];
+  fixRecommendation: string;
+  acceptanceCriteria: string[];
+  verificationCommand: string;
+  notes: string[];
+}
+
+export interface DefectTicketResult {
+  generatedAt: string;
+  status: 'ready' | 'empty' | 'needs-evidence';
+  summary: string;
+  counts: {
+    total: number;
+    proven: number;
+    probable: number;
+    sourceLocated: number;
+    requirementLinked: number;
+    suppressedNeedsEvidence: number;
+    suppressedNotDefect: number;
+  };
+  items: DefectTicketItem[];
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -2292,6 +2342,8 @@ export interface ArtifactIndex {
   riskRegister?: string;
   /** Risk acceptance / must-mitigate decision checklist Markdown. */
   riskAcceptance?: string;
+  /** Jira-ready proof-ready defect tickets; excludes product/design/deployment/tool/needs-evidence observations. */
+  defectTickets?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -2320,6 +2372,7 @@ export interface ArtifactIndex {
   testCasesLog?: string;
   riskRegisterLog?: string;
   riskAcceptanceLog?: string;
+  defectTicketsLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2488,6 +2541,7 @@ export interface QaResult {
   assertionSuggestions: AssertionSuggestionResult;
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
+  defectTickets: DefectTicketResult;
   claimGuard: ClaimGuardResult;
   qaIntake: QaIntakeResult;
   qualityGate: QaQualityGate;

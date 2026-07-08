@@ -92,7 +92,11 @@ Tools exposed:
 - `frontlens_fix_tasks`: return machine-executable fix tasks for downstream repair skills.
 - `frontlens_audit`: run professional report-contract self-check for overclaiming, proof-ready fix queue, source evidence, artifact integrity, and scope alignment.
 - `frontlens_product_context`: return a reviewable suggested productContext config plus scope questions so product/design/style/device findings can be downgraded consistently on rerun.
+- `frontlens_claim_guard`: return allowed/forbidden QA wording so other agents do not overclaim business pass, production readiness, or source/API proof.
 - `frontlens_qa_intake`: return professional QA intake questions plus the editable rerun config pack; use it before guessing PRD/product/source/test-data intent.
+- `frontlens_defect_proof`: return proof strength for each root cause before implementation work is scheduled.
+- `frontlens_report_content_audit`: return generated-report wording/depth/artifact-reference self-checks.
+- `frontlens_journey_assertion_audit`: return journey assertion quality so path-only replay is not treated as business validation.
 - `frontlens_qa_plan`: return the professional QA execution/acceptance worklist: PRD, journey, product-context, environment, test-data, proof, and rerun items.
 - `frontlens_qa_coverage`: return the professional QA coverage matrix, including covered, partial, skipped, needs-input, and failed dimensions.
 - `frontlens_assertion_suggestions`: return concrete expectVisible/expectText/expectUrl/expectRequest drafts for weak/path-only journeys.
@@ -142,7 +146,11 @@ node dist/cli.js network --report "$OUTPUT_DIR/result.json"
 node dist/cli.js coverage --report "$OUTPUT_DIR/result.json"
 node dist/cli.js security --report "$OUTPUT_DIR/result.json"
 node dist/cli.js fix-tasks --report "$OUTPUT_DIR/result.json"
+node dist/cli.js claim-guard --report "$OUTPUT_DIR/result.json"
 node dist/cli.js qa-intake --report "$OUTPUT_DIR/result.json"
+node dist/cli.js defect-proof --report "$OUTPUT_DIR/result.json"
+node dist/cli.js report-content-audit --report "$OUTPUT_DIR/result.json"
+node dist/cli.js journey-assertion-audit --report "$OUTPUT_DIR/result.json"
 node dist/cli.js assertion-suggestions --report "$OUTPUT_DIR/result.json"
 node dist/cli.js test-cases --report "$OUTPUT_DIR/result.json"
 node dist/cli.js risk-register --report "$OUTPUT_DIR/result.json"

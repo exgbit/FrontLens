@@ -17,6 +17,8 @@ import { buildRiskAcceptance, formatRiskAcceptance } from '../risk/riskAcceptanc
 import { buildTestCaseMatrix, formatTestCaseMatrix } from '../cases/testCases.js';
 import { buildQaIntakeConfig } from '../intake/qaIntakeConfig.js';
 import { formatQaIntake } from '../intake/qaIntakeReport.js';
+import { formatClaimGuard } from '../claims/claimGuardReport.js';
+import { formatDefectProof } from '../proof/defectProofReport.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -360,42 +362,6 @@ ${questionRows.length ? ['| ID | Category | Question | Impact | Default disposit
 \`\`\`json
 ${configJson}
 \`\`\`
-`;
-}
-
-function formatClaimGuard(result: QaResult): string {
-  const guard = result.claimGuard;
-  const rows = guard.items.map((item) => `| ${markdownEscape(item.id)} | ${markdownEscape(item.claim)} | ${markdownEscape(item.status)} | ${markdownEscape(item.confidence)} | ${markdownEscape(truncateMiddle(item.allowedWording, 120))} | ${markdownEscape(truncateMiddle(item.forbiddenWording.join('；'), 140))} |`);
-  return `## Claim Guard / 结论护栏
-
-- Status：**${guard.status}**
-- Summary：${markdownEscape(guard.summary)}
-- Required inputs：${guard.requiredInputs.length ? markdownEscape(guard.requiredInputs.join('；')) : '-'}
-- Notes：${guard.notes.length ? markdownEscape(guard.notes.join('；')) : '-'}
-
-${rows.length ? ['| ID | Claim | Status | Confidence | Allowed wording | Forbidden wording |', '| --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '当前报告缺少 claim guard 明细。'}
-
-### Forbidden claims
-
-${guard.forbiddenClaims.length ? guard.forbiddenClaims.map((item) => `- ${markdownEscape(item)}`).join('\n') : '-'}
-`;
-}
-
-function formatDefectProof(result: QaResult): string {
-  const proof = result.defectProof;
-  const rows = proof.items.slice(0, 40).map((item) => {
-    const missing = item.missingEvidence.length ? item.missingEvidence.slice(0, 3).join('；') : '-';
-    const next = item.nextSteps.length ? item.nextSteps.slice(0, 3).join('；') : '-';
-    return `| ${markdownEscape(item.id)} | ${markdownEscape(item.rootCauseGroupId)} | ${item.priority} | ${markdownEscape(item.owner)} | ${markdownEscape(item.status)} | ${item.score} | ${markdownEscape(truncateMiddle(item.title, 90))} | ${markdownEscape(truncateMiddle(missing, 140))} | ${markdownEscape(truncateMiddle(next, 140))} |`;
-  });
-  return `## Defect Proof / 缺陷证明强度
-
-- Status：**${proof.status}**
-- Summary：${markdownEscape(proof.summary)}
-- Counts：proven ${proof.counts.proven} / probable ${proof.counts.probable} / needs-evidence ${proof.counts.needsEvidence} / not-defect ${proof.counts.notDefect}
-- Notes：${proof.notes.length ? markdownEscape(proof.notes.join('；')) : '-'}
-
-${rows.length ? ['| ID | Root cause | Priority | Owner | Proof status | Score | Title | Missing / weak evidence | Next step |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |', ...rows, ''].join('\n') : '当前没有 rootCauseGroups 需要证明。'}
 `;
 }
 
@@ -1249,11 +1215,11 @@ ${formatPageProfileAssessment(result)}
 
 ${formatScopeReview(result)}
 
-${formatClaimGuard(result)}
+${formatClaimGuard(result, { headingLevel: 2 })}
 
 ${formatQaIntake(result, { headingLevel: 2 })}
 
-${formatDefectProof(result)}
+${formatDefectProof(result, { headingLevel: 2 })}
 
 ${formatTestDataAssessment(result)}
 

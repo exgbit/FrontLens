@@ -369,7 +369,7 @@ export interface ReportConfig {
   /**
    * Controls the primary human report depth.
    * - executive: shortest decision summary in report.md.
-   * - professional: default decision-oriented QA review.
+   * - professional: fuller QA-lead decision report.
    * - full: append the raw evidence appendix into report.md.
    *
    * Full raw evidence is always written to evidence-report.md regardless of profile.

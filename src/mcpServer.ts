@@ -206,8 +206,28 @@ function listTools(): Record<string, unknown> {
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
+        name: 'frontlens_claim_guard',
+        description: 'Read result.json and return the claim guard allowed/forbidden wording gate so QA conclusions do not overclaim.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
         name: 'frontlens_qa_intake',
         description: 'Read result.json and return professional QA intake questions plus the editable qa-intake.config.json rerun pack; use this before guessing product/PRD/source/test-data intent.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_defect_proof',
+        description: 'Read result.json and return root-cause proof strength; use it before scheduling implementation work.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_report_content_audit',
+        description: 'Read result.json and return generated report content audit findings for forbidden wording, report depth, raw-score caveats, coverage boundaries, and artifact references.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_journey_assertion_audit',
+        description: 'Read result.json and return journey assertion quality so path-only or weak journeys are not treated as business validation.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -732,6 +752,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildProductContextSuggestion(result));
     }
+    case 'frontlens_claim_guard': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(result.claimGuard);
+    }
     case 'frontlens_qa_intake': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
@@ -745,6 +770,21 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           qaPlan: result.artifacts.qaPlan
         }
       });
+    }
+    case 'frontlens_defect_proof': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(result.defectProof);
+    }
+    case 'frontlens_report_content_audit': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(result.reportContentAudit);
+    }
+    case 'frontlens_journey_assertion_audit': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(result.journeyAssertionAudit);
     }
     case 'frontlens_qa_plan': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

@@ -2154,6 +2154,55 @@ export interface AutomationSpecResult {
   notes: string[];
 }
 
+export type EvidenceBundleStatus = 'ready' | 'partial' | 'blocked' | 'empty';
+export type EvidenceBundleItemKind = 'defect-ticket' | 'test-case' | 'traceability-gap' | 'automation-draft' | 'artifact';
+export type EvidenceBundleItemStatus = 'ready' | 'needs-input' | 'missing-artifact' | 'reference';
+
+export interface EvidenceBundleArtifactRef {
+  source: string;
+  path: string;
+  exists: boolean;
+  sizeBytes?: number;
+  message?: string;
+}
+
+export interface EvidenceBundleItem {
+  id: string;
+  kind: EvidenceBundleItemKind;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  title: string;
+  status: EvidenceBundleItemStatus;
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  evidenceRefs: string[];
+  artifactRefs: EvidenceBundleArtifactRef[];
+  issueIds: string[];
+  requirementIds: string[];
+  testCaseIds: string[];
+  defectTicketIds: string[];
+  nextStep: string;
+}
+
+export interface EvidenceBundleResult {
+  generatedAt: string;
+  status: EvidenceBundleStatus;
+  summary: {
+    itemCount: number;
+    readyCount: number;
+    missingArtifactCount: number;
+    defectTicketCount: number;
+    failedOrBlockedTestCaseCount: number;
+    traceabilityGapCount: number;
+    automationDraftCount: number;
+  };
+  items: EvidenceBundleItem[];
+  artifactSummary: {
+    presentCount: number;
+    missingCount: number;
+    skippedCount: number;
+  };
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -2447,6 +2496,8 @@ export interface ArtifactIndex {
   automationSpecs?: string;
   /** Generated Playwright spec draft; review before committing to the target project. */
   automationSpecFile?: string;
+  /** Shareable proof handoff bundle that maps defects, test cases, gaps, automation drafts, and local artifact availability. */
+  evidenceBundle?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -2478,6 +2529,7 @@ export interface ArtifactIndex {
   defectTicketsLog?: string;
   traceabilityLog?: string;
   automationSpecsLog?: string;
+  evidenceBundleLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2649,6 +2701,7 @@ export interface QaResult {
   defectTickets: DefectTicketResult;
   traceability: TraceabilityMatrixResult;
   automationSpecs: AutomationSpecResult;
+  evidenceBundle: EvidenceBundleResult;
   claimGuard: ClaimGuardResult;
   qaIntake: QaIntakeResult;
   qualityGate: QaQualityGate;

@@ -22,6 +22,7 @@ import { formatDefectProof } from '../proof/defectProofReport.js';
 import { buildDefectTickets, formatDefectTickets } from '../tickets/defectTickets.js';
 import { buildTraceabilityMatrix, formatTraceabilityMatrix } from '../traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs, formatAutomationSpecs } from '../automation/automationSpecs.js';
+import { buildEvidenceBundle, formatEvidenceBundle } from '../evidence/evidenceBundle.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1023,6 +1024,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Defect tickets：**${result.defectTickets.status}** / tickets ${result.defectTickets.counts.total} / source-located ${result.defectTickets.counts.sourceLocated} / artifact ${artifactPath(result.artifacts.defectTickets)}
 - Traceability：**${result.traceability.status}** / requirements ${result.traceability.summary.requirementCount} / high-priority gaps ${result.traceability.summary.highPriorityGapCount} / artifact ${artifactPath(result.artifacts.traceability)}
 - Automation specs：**${result.automationSpecs.status}** / drafts ${result.automationSpecs.summary.draftCount} / ready ${result.automationSpecs.summary.readyCount} / artifact ${artifactPath(result.artifacts.automationSpecs)}
+- Evidence bundle：**${result.evidenceBundle.status}** / items ${result.evidenceBundle.summary.itemCount} / missing artifacts ${result.evidenceBundle.summary.missingArtifactCount} / artifact ${artifactPath(result.artifacts.evidenceBundle)}
 - Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
 - Assertion suggestions：**${result.assertionSuggestions.status}** / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount} / artifact ${artifactPath(result.artifacts.assertionSuggestions)}
@@ -1072,6 +1074,15 @@ ${result.traceability.requirements.length ? ['| Requirement | Pri | Status | Tes
 - Rule：这是专业测试工程师可审阅的自动化初稿，不等同“已通过”；只有人工确认 selectors、角色态、测试数据和安全边界并实际执行后，才可作为回归证据。
 
 ${result.automationSpecs.drafts.length ? ['| Draft | Pri | Source | Status | Requirements | Next |', '| --- | --- | --- | --- | --- | --- |', ...result.automationSpecs.drafts.slice(0, 8).map((item) => `| ${markdownEscape(item.id)} | ${item.priority} | ${item.source} | ${item.status} | ${markdownEscape(item.requirementIds.join(', ') || '-')} | ${markdownEscape(truncateMiddle(item.nextSteps[0] ?? '-', 120))} |`), ''].join('\n') : '当前没有自动化草案；先补需求断言、业务旅程或 assertion-suggestions。'}
+
+## 证据交付包 / Evidence Bundle
+
+- Evidence bundle：**${result.evidenceBundle.status}**
+- Artifact：${artifactPath(result.artifacts.evidenceBundle)}
+- Items：${result.evidenceBundle.summary.itemCount}（ready ${result.evidenceBundle.summary.readyCount} / missing-artifact ${result.evidenceBundle.summary.missingArtifactCount}）
+- Rule：开发/发布复核时优先使用此包核对缺陷、失败用例、需求缺口、自动化草案与本地证据文件是否真实存在；missing-artifact 不能作为可引用证据。
+
+${result.evidenceBundle.items.length ? ['| Item | Pri | Kind | Status | Owner | Next |', '| --- | --- | --- | --- | --- | --- |', ...result.evidenceBundle.items.slice(0, 8).map((item) => `| ${markdownEscape(item.id)} | ${item.priority} | ${item.kind} | ${item.status} | ${item.owner} | ${markdownEscape(truncateMiddle(item.nextStep, 120))} |`), ''].join('\n') : '当前没有可交付的证据包条目；先补 defect-proof、testCases、traceability 或自动化草案。'}
 
 ## 缺陷证明强度
 
@@ -1164,6 +1175,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const traceabilityPath = path.join(result.artifacts.outputDir, 'traceability.md');
   const automationSpecsPath = path.join(result.artifacts.outputDir, 'automation-specs.md');
   const automationSpecFilePath = path.join(result.artifacts.outputDir, 'automation', 'frontlens.spec.ts');
+  const evidenceBundlePath = path.join(result.artifacts.outputDir, 'evidence-bundle.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
@@ -1187,6 +1199,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.traceability = traceabilityPath;
   result.artifacts.automationSpecs = automationSpecsPath;
   result.artifacts.automationSpecFile = automationSpecFilePath;
+  result.artifacts.evidenceBundle = evidenceBundlePath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
@@ -1237,6 +1250,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Defect Tickets：${result.defectTickets.status} / tickets ${result.defectTickets.counts.total} / suppressed needs-evidence ${result.defectTickets.counts.suppressedNeedsEvidence}
 - Traceability：${result.traceability.status} / requirements ${result.traceability.summary.requirementCount} / high-priority gaps ${result.traceability.summary.highPriorityGapCount}
 - Automation Specs：${result.automationSpecs.status} / drafts ${result.automationSpecs.summary.draftCount} / ready ${result.automationSpecs.summary.readyCount} / needs-input ${result.automationSpecs.summary.needsInputCount}
+- Evidence Bundle：${result.evidenceBundle.status} / items ${result.evidenceBundle.summary.itemCount} / missing-artifact ${result.evidenceBundle.summary.missingArtifactCount}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
@@ -1407,6 +1421,8 @@ ${formatArtifacts(result)}
   result.automationSpecs = buildAutomationSpecs(result);
   await writeText(automationSpecsPath, formatAutomationSpecs(result.automationSpecs));
   await writeText(automationSpecFilePath, result.automationSpecs.specSource);
+  result.evidenceBundle = buildEvidenceBundle(result);
+  await writeText(evidenceBundlePath, formatEvidenceBundle(result.evidenceBundle));
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);

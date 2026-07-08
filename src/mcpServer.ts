@@ -23,6 +23,7 @@ import { buildArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
+import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -236,6 +237,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_automation_specs',
         description: 'Read result.json and return review-only Playwright automation spec drafts generated from requirements, journeys, assertions, and test cases.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_evidence_bundle',
+        description: 'Read result.json and return a shareable evidence handoff bundle linking proof-ready defects, failed tests, traceability gaps, automation drafts, and artifact existence.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -614,6 +620,10 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           status: result.automationSpecs.status,
           summary: result.automationSpecs.summary
         },
+        evidenceBundle: {
+          status: result.evidenceBundle.status,
+          summary: result.evidenceBundle.summary
+        },
         riskRegister: {
           status: result.riskRegister.status,
           summary: result.riskRegister.summary
@@ -696,6 +706,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         defectTickets: result.defectTickets,
         traceability: result.traceability,
         automationSpecs: result.automationSpecs,
+        evidenceBundle: result.evidenceBundle,
         riskRegister: result.riskRegister,
         riskAcceptance: result.riskAcceptance,
         qualityGate: result.qualityGate,
@@ -823,6 +834,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildAutomationSpecs(result));
+    }
+    case 'frontlens_evidence_bundle': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildEvidenceBundle(result));
     }
     case 'frontlens_report_content_audit': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

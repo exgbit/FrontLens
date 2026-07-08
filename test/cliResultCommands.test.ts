@@ -61,6 +61,7 @@ test('guardrail result commands expose professional QA gates', async () => {
   assert.match(runCli('defect-tickets', reportPath), /FrontLens Defect Tickets/);
   assert.match(runCli('traceability', reportPath), /FrontLens Traceability Matrix/);
   assert.match(runCli('automation-specs', reportPath), /FrontLens Automation Specs/);
+  assert.match(runCli('evidence-bundle', reportPath), /FrontLens Evidence Bundle/);
   assert.match(runCli('report-content-audit', reportPath), /FrontLens Report Content Audit/);
   assert.match(runCli('journey-assertion-audit', reportPath), /FrontLens Journey Assertion Audit/);
 
@@ -69,6 +70,7 @@ test('guardrail result commands expose professional QA gates', async () => {
   assert.ok(['ready', 'empty', 'needs-evidence'].includes(JSON.parse(runCli('defect-tickets', reportPath, ['--json'])).status));
   assert.ok(['ready', 'partial', 'needs-input', 'blocked'].includes(JSON.parse(runCli('traceability', reportPath, ['--json'])).status));
   assert.ok(['ready', 'partial', 'needs-input', 'skipped'].includes(JSON.parse(runCli('automation-specs', reportPath, ['--json'])).status));
+  assert.ok(['ready', 'partial', 'blocked', 'empty'].includes(JSON.parse(runCli('evidence-bundle', reportPath, ['--json'])).status));
   assert.equal(typeof JSON.parse(runCli('report-content-audit', reportPath, ['--json'])).status, 'string');
   assert.equal(typeof JSON.parse(runCli('journey-assertion-audit', reportPath, ['--json'])).status, 'string');
 });

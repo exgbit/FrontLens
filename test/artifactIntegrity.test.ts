@@ -103,6 +103,7 @@ test('artifact integrity tracks generated JSON sidecars before report writing', 
   assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.riskRegisterLog'), true);
   assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.riskAcceptanceLog'), true);
   assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.automationSpecsLog'), true);
+  assert.equal(integrity.entries.some((entry) => entry.source === 'artifacts.evidenceBundleLog'), true);
 });
 
 test('artifact integrity verifies downloaded files referenced by interaction observations', async () => {

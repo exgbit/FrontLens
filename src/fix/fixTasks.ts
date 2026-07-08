@@ -45,6 +45,14 @@ function safeOutputName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'root-cause';
 }
 
+function verificationFlagsForCategory(category: IssueCategory): string {
+  if (category === 'security') return '--sme --security --json-summary';
+  if (category === 'backend-realtime') return '--sme --realtime --json-summary';
+  if (category === 'frontend-visual') return '--sme --p2 --json-summary';
+  if (category.includes('performance') || category.startsWith('resource')) return '--sme --coverage --p2 --json-summary';
+  return '--sme --json-summary';
+}
+
 function sourceTarget(group: RootCauseGroup): string | undefined {
   const first = group.sourceLocations[0];
   return first ? `${first.file}:${first.line}` : undefined;
@@ -57,11 +65,12 @@ export function generateFixTasks(issues: Issue[], config: FrontLensConfig, rootC
       .map((group, index) => {
         const representative = group.issueIds.map((id) => issueById.get(id)).find((issue): issue is Issue => Boolean(issue));
         const verificationOutput = `reports/frontlens/verify-${safeOutputName(group.id || group.rootCauseKey)}`;
+        const category = group.categories[0] ?? 'unknown';
         return {
           id: `FIX-${String(index + 1).padStart(3, '0')}`,
           issueIds: group.issueIds,
           owner: group.owner,
-          type: typeForCategory(group.categories[0] ?? 'unknown'),
+          type: typeForCategory(category),
           title: group.title,
           priority: group.priority,
           target: group.selectors[0] ?? sourceTarget(group) ?? group.networkRequestIds[0] ?? group.resourceUrls[0] ?? representative?.affectedUrl,
@@ -75,7 +84,7 @@ export function generateFixTasks(issues: Issue[], config: FrontLensConfig, rootC
                 }
               }
             : representative?.evidence ?? {},
-          verificationCommand: `node dist/cli.js qa --url ${shellQuote(config.target.url)} --output ${shellQuote(verificationOutput)} --no-trace --json`
+          verificationCommand: `node dist/cli.js qa --url ${shellQuote(config.target.url)} --output ${shellQuote(verificationOutput)} ${verificationFlagsForCategory(category)}`
         };
       });
   }
@@ -93,7 +102,7 @@ export function generateFixTasks(issues: Issue[], config: FrontLensConfig, rootC
       target: issue.evidence.selector ?? issue.evidence.networkRequestId ?? issue.evidence.resourceUrl ?? issue.affectedUrl,
       expectedChange: expectedChange(issue),
       evidence: issue.evidence,
-      verificationCommand: `node dist/cli.js qa --url ${shellQuote(config.target.url)} --output ${shellQuote(verificationOutput)} --no-trace --json`
+      verificationCommand: `node dist/cli.js qa --url ${shellQuote(config.target.url)} --output ${shellQuote(verificationOutput)} ${verificationFlagsForCategory(issue.category)}`
     };
   });
 }

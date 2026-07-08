@@ -217,7 +217,7 @@ function buildModules(input: QaStrategyInput): QaStrategyModuleDecision[] {
     owner: 'test',
     reason: '每次页面 QA 都必须保留加载、DOM/screenshot、Console/Network、非破坏性交互探索，作为后续所有结论的最小证据底座。',
     evidenceRefs: ['pageModel', 'network', 'console', 'artifacts.screenshot'],
-    commandHints: [commandQa(input, ' --no-trace --json')]
+    commandHints: [commandQa(input, ' --sme --json-summary')]
   }));
 
   decisions.push(module({
@@ -503,7 +503,7 @@ function buildEnvironmentPlans(input: QaStrategyInput): QaStrategyEnvironmentPla
 function buildNextCommands(input: QaStrategyInput, modules: QaStrategyModuleDecision[]): string[] {
   const commands = modules.flatMap((item) => item.commandHints).filter(Boolean);
   return uniq([
-    commandQa(input, ' --no-trace --json'),
+    commandQa(input, ' --sme --json-summary'),
     ...commands,
     'frontlens test-strategy --report <result.json>',
     'frontlens brief --report <result.json>'

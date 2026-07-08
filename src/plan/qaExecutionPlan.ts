@@ -40,7 +40,7 @@ function priorityRank(priority: QaExecutionPlanItem['priority']): number {
 }
 
 function baseQaCommand(result: QaExecutionPlanInput, output = 'reports/frontlens/qa-plan-rerun'): string {
-  return `node dist/cli.js qa --url ${quote(result.summary.url)} --output ${quote(output)} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`;
+  return `node dist/cli.js qa --url ${quote(result.summary.url)} --output ${quote(output)} --sme --json-summary${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`;
 }
 
 function itemFromRegression(regression: RegressionPlanItem): QaExecutionPlanItem {
@@ -90,10 +90,10 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
   const productContextConfig = typeof result.artifacts.productContextConfig === 'string' ? result.artifacts.productContextConfig : undefined;
   const qaIntakeConfig = typeof result.artifacts.qaIntakeConfig === 'string' ? result.artifacts.qaIntakeConfig : undefined;
   const qaIntakeRerun = qaIntakeConfig
-    ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(qaIntakeConfig)} --output ${quote('reports/frontlens/qa-plan-with-intake')} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
+    ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(qaIntakeConfig)} --output ${quote('reports/frontlens/qa-plan-with-intake')} --sme --json-summary${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
     : undefined;
   const productContextRerun = productContextConfig
-    ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(productContextConfig)} --output ${quote('reports/frontlens/qa-plan-product-context')} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
+    ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(productContextConfig)} --output ${quote('reports/frontlens/qa-plan-product-context')} --sme --json-summary${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
     : undefined;
   const envCompare = result.environment.trust.performance === 'high' && result.environment.trust.security === 'high'
     ? undefined
@@ -126,7 +126,7 @@ export function buildQaExecutionPlan(result: QaExecutionPlanInput): QaExecutionP
       commands: [
         'node dist/cli.js requirements synthesize --input "<prd.md>" --output "requirements.json"',
         qaIntakeConfig
-          ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(qaIntakeConfig)} --requirements "requirements.json" --output ${quote('reports/frontlens/qa-plan-with-requirements')} --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
+          ? `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(qaIntakeConfig)} --requirements "requirements.json" --output ${quote('reports/frontlens/qa-plan-with-requirements')} --sme --json-summary${result.sourceAnalysis.root ? ` --source-root ${quote(result.sourceAnalysis.root)}` : ''}`
           : `${fullRerun} --requirements "requirements.json"`
       ],
       steps: ['提供 PRD、用户故事或验收标准。', '把自然语言要求转成 selectors / expectedTexts / apiPatterns / journeySteps。', '用 --requirements 复跑并核对 requirementCoverage。'],

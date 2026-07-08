@@ -36,7 +36,7 @@ function unique(items: string[]): string[] {
 }
 
 function baseQaCommand(input: RegressionPlanInput, output = 'reports/frontlens/regression'): string {
-  return `node dist/cli.js qa --url ${quote(input.targetUrl)} --output ${quote(output)} --no-trace --json${input.sourceRoot ? ` --source-root ${quote(input.sourceRoot)}` : ''}`;
+  return `node dist/cli.js qa --url ${quote(input.targetUrl)} --output ${quote(output)} --sme --json-summary${input.sourceRoot ? ` --source-root ${quote(input.sourceRoot)}` : ''}`;
 }
 
 function roleMatrixCommand(input: RegressionPlanInput): string {

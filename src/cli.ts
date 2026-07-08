@@ -13,7 +13,7 @@ import { recordJourney } from './journeys/journeyRecorder.js';
 import type { BrowserName, QaResult, QaRunInput, ReportProfile, RoleMatrixRoleConfig, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
 import { createResultDiff, writeResultDiff } from './diff/resultDiff.js';
-import { evaluateMatrixItemCiGate, evaluateQaCiGate, type CiGateMode } from './gates/ciGate.js';
+import { evaluateMatrixItemCiGate, evaluateQaCiGate, type CiGateEvaluation, type CiGateMode } from './gates/ciGate.js';
 import { formatProfessionalBrief } from './reporters/briefReporter.js';
 import { formatProfessionalAudit, runProfessionalAudit } from './audit/professionalAudit.js';
 import { buildProductContextSuggestion, formatProductContextSuggestion } from './product/productContextSuggestion.js';
@@ -140,7 +140,9 @@ Options:
   --no-p2                     Disable P2 tests.
   --block-mutating-requests   Abort POST/PUT/PATCH/DELETE unless corresponding allow* is enabled.
   --allow-mutating-requests   Do not abort mutating requests; report successful writes as suspicious instead.
+  --sme                       Small/mid-size business standard QA: keep core runtime/API/source checks and disable specialty security/performance/realtime/P2 modules unless explicitly re-enabled.
   --json                      Print machine-readable JSON summary.
+  --json-summary              Print compact low-token machine-readable QA summary.
   --full                      For issues command, print full Issue objects.
   --all                       For suggestions command, include raw suppressed product/style/deployment/needs-evidence suggestions.
   --gate-mode <mode>          CI gate mode: professional (default) | raw.
@@ -156,7 +158,7 @@ Auth options:
   --wait-ms <ms>              Non-TTY wait time before saving storage state. Default: 300000.
 
 Examples:
-  frontlens qa --url https://example.com
+  frontlens qa --url https://example.com --sme --json-summary
   frontlens qa --url https://example.com/admin --headed --output reports/admin
   frontlens qa --url https://example.com/admin --report-profile executive
   frontlens qa --url https://example.com/admin --storage-state .frontlens/auth/admin.json
@@ -256,6 +258,116 @@ function normalizeReportProfile(value: unknown): ReportProfile | undefined {
   if (value === undefined) return undefined;
   if (value === 'executive' || value === 'professional' || value === 'full') return value;
   throw new Error(`Invalid --report-profile: ${String(value)}. Expected executive, professional, or full.`);
+}
+
+function resolveModuleToggle(values: Record<string, unknown>, enableKey: string, disableKey: string, defaultWhenSme: boolean | undefined): boolean | undefined {
+  if (values[disableKey]) return false;
+  if (values[enableKey]) return true;
+  return values.sme ? defaultWhenSme : undefined;
+}
+
+function compactQaSummary(result: QaResult, ciGate: CiGateEvaluation, options: { exitStatus: string; gateMode: CiGateMode; failOn?: Severity; minScore?: number }): unknown {
+  const dispositionByIssueId = new Map(result.issueDisposition.items.map((item) => [item.issueId, item]));
+  const importantIssues = result.issues
+    .map((issue) => {
+      const disposition = dispositionByIssueId.get(issue.id);
+      return {
+        id: issue.id,
+        severity: issue.severity,
+        category: issue.category,
+        title: issue.title,
+        confidence: issue.confidence,
+        status: disposition?.status,
+        bucket: disposition?.bucket,
+        actionability: disposition?.actionability,
+        owner: disposition?.owner
+      };
+    })
+    .sort((left, right) => {
+      const actionRank = (value: string | undefined): number => value === 'actionable' ? 0 : value === 'conditional' ? 1 : 2;
+      const severityOrder: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+      return actionRank(left.actionability) - actionRank(right.actionability) || severityOrder[left.severity] - severityOrder[right.severity];
+    })
+    .slice(0, 20);
+
+  return {
+    run: {
+      url: result.summary.url,
+      title: result.summary.title,
+      testedAt: result.summary.testedAt,
+      browser: result.summary.browser,
+      viewport: result.summary.viewport,
+      outputDir: result.artifacts.outputDir
+    },
+    scores: {
+      adjustedScore: result.summary.adjustedScore,
+      rawScore: result.summary.score,
+      adjustedIssueCount: result.summary.adjustedIssueCount,
+      rawIssueCount: result.summary.issueCount,
+      scoreBasis: result.summary.scoreBasis
+    },
+    gate: {
+      status: ciGate.status,
+      mode: ciGate.mode,
+      exitStatus: options.exitStatus,
+      failedByProfessionalContract: ciGate.failedByProfessionalContract,
+      professionalContractFailures: ciGate.professionalContractFailures.slice(0, 8),
+      failOn: options.failOn,
+      minScore: options.minScore,
+      requestedGateMode: options.gateMode
+    },
+    environment: {
+      kind: result.environment.kind,
+      isViteDevServer: result.environment.isViteDevServer,
+      isLocalOrPrivate: result.environment.isLocalOrPrivate,
+      trust: result.environment.trust
+    },
+    qa: {
+      signoff: result.qaSignoff.status,
+      confidence: result.qaSignoff.confidence,
+      businessValidationConfidence: result.qaSignoff.businessValidationConfidence,
+      qualityGate: result.qualityGate.status,
+      claimGuard: result.claimGuard.status,
+      qaIntake: result.qaIntake.status
+    },
+    sourceHealth: {
+      status: result.sourceHealth.status,
+      syntaxErrorCount: result.sourceHealth.syntaxErrorCount,
+      parsedFiles: result.sourceHealth.parsedFiles,
+      scriptCheckCount: result.sourceHealth.scriptChecks.length
+    },
+    tests: {
+      status: result.testCases.status,
+      total: result.testCases.summary.totalCount,
+      passed: result.testCases.summary.passedCount,
+      failed: result.testCases.summary.failedCount,
+      blocked: result.testCases.summary.blockedCount,
+      partial: result.testCases.summary.partialCount,
+      skipped: result.testCases.summary.skippedCount,
+      needsInput: result.testCases.summary.needsInputCount
+    },
+    defects: {
+      proofStatus: result.defectProof.status,
+      proofCounts: result.defectProof.counts,
+      fixTaskCount: result.fixTasks.length,
+      proofReadyRootCauseCount: result.professionalSummary.counts.proofReadyRootCauseCount,
+      p0p1DefectCount: result.professionalSummary.counts.p0p1DefectCount
+    },
+    issueDisposition: result.issueDisposition.summary,
+    issues: importantIssues,
+    topQuestions: result.qaIntake.topQuestions.slice(0, 5).map((item) => ({
+      id: item.id,
+      priority: item.priority,
+      category: item.category,
+      question: item.question
+    })),
+    artifacts: {
+      brief: result.artifacts.professionalBrief,
+      qaReview: result.artifacts.qaReview,
+      report: result.artifacts.markdownReport,
+      resultJson: result.artifacts.jsonReport
+    }
+  };
 }
 
 function normalizeStringList(value: unknown): string[] | undefined {
@@ -941,7 +1053,7 @@ async function main(): Promise<void> {
       console.log(`Journey recorded: ${result.outputPath}`);
       console.log(`Review: ${result.reviewPath}`);
       console.log(`Events/steps: ${result.eventCount}/${result.stepCount}; dangerous ${result.dangerousStepCount}; redacted ${result.redactedValueCount}`);
-      console.log(`Replay: node dist/cli.js qa --url ${JSON.stringify(url)} --config ${JSON.stringify(result.outputPath)} --journeys --output "reports/frontlens/recorded-journey" --no-trace --json`);
+      console.log(`Replay: node dist/cli.js qa --url ${JSON.stringify(url)} --config ${JSON.stringify(result.outputPath)} --journeys --output "reports/frontlens/recorded-journey" --sme --json-summary`);
     }
     return;
   }
@@ -1355,7 +1467,9 @@ async function main(): Promise<void> {
       'no-p2': { type: 'boolean' },
       'block-mutating-requests': { type: 'boolean' },
       'allow-mutating-requests': { type: 'boolean' },
+      sme: { type: 'boolean' },
       json: { type: 'boolean' },
+      'json-summary': { type: 'boolean' },
       'gate-mode': { type: 'string' },
       'fail-on': { type: 'string' },
       'min-score': { type: 'string' },
@@ -1398,24 +1512,26 @@ async function main(): Promise<void> {
     headless: parsed.values.headed ? false : parsed.values.headless,
     storageState: parsed.values['storage-state'],
     sessionStorageState: parsed.values['session-storage-state'],
-    trace: parsed.values['no-trace'] ? false : parsed.values.trace,
+    trace: parsed.values['no-trace'] ? false : parsed.values.trace ? true : parsed.values.sme ? false : undefined,
     video: parsed.values.video,
     screenshot: parsed.values.screenshot,
     simulateExceptions: parsed.values['no-exceptions'] ? false : parsed.values['simulate-exceptions'],
     ai: parsed.values['no-ai'] ? false : parsed.values.ai,
-    coverage: parsed.values['no-coverage'] ? false : parsed.values.coverage,
-    security: parsed.values['no-security'] ? false : parsed.values.security,
-    journeys: parsed.values['no-journeys'] ? false : parsed.values.journeys,
-    contract: parsed.values['no-contract'] ? false : parsed.values.contract,
-    realtime: parsed.values['no-realtime'] ? false : parsed.values.realtime,
-    p2: parsed.values['no-p2'] ? false : parsed.values.p2,
+    coverage: resolveModuleToggle(parsed.values, 'coverage', 'no-coverage', false),
+    security: resolveModuleToggle(parsed.values, 'security', 'no-security', false),
+    journeys: resolveModuleToggle(parsed.values, 'journeys', 'no-journeys', true),
+    contract: resolveModuleToggle(parsed.values, 'contract', 'no-contract', true),
+    realtime: resolveModuleToggle(parsed.values, 'realtime', 'no-realtime', false),
+    p2: resolveModuleToggle(parsed.values, 'p2', 'no-p2', false),
     blockMutatingRequests: parsed.values['allow-mutating-requests'] ? false : parsed.values['block-mutating-requests']
   };
 
   const result = await runQa(input);
   const ciGate = evaluateQaCiGate({ result, failOn, minScore, mode: gateMode });
   const exitStatus = ciGate.status;
-  if (parsed.values.json) {
+  if (parsed.values['json-summary']) {
+    console.log(JSON.stringify(compactQaSummary(result, ciGate, { exitStatus, gateMode, failOn, minScore }), null, 2));
+  } else if (parsed.values.json) {
     console.log(
       JSON.stringify(
         {

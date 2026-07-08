@@ -276,7 +276,7 @@ ${['| # | Action | Target | Value | allowMutating | Description |', '| --- | ---
 ## How to replay
 
 \`\`\`bash
-node dist/cli.js qa --url ${JSON.stringify(result.journey.startUrl ?? '')} --config ${JSON.stringify(result.outputPath)} --journeys --output "reports/frontlens/recorded-journey" --no-trace --json
+node dist/cli.js qa --url ${JSON.stringify(result.journey.startUrl ?? '')} --config ${JSON.stringify(result.outputPath)} --journeys --output "reports/frontlens/recorded-journey" --sme --json-summary
 \`\`\`
 
 ## Review notes

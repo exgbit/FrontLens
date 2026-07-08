@@ -78,14 +78,14 @@ Never open large raw artifacts by default:
 1. Resolve URL, source path, output directory, and whether requirements or historical bugs were provided.
 2. Ask module selection with SME standard preselected unless modules were specified.
 3. If target is local/private and source path is provided, build/start/refresh the local dev or preview server only when needed; do not modify business code.
-4. Run FrontLens from the repo root with the safest compact profile:
+4. Run FrontLens from the repo root with the safest compact SME profile:
 
    ```bash
-   node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>" --report-profile executive --no-trace --json
+   node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>" --report-profile executive --sme --json-summary
    ```
 
-   Add `--source-root <path>` when provided. Add `--source-run-scripts --source-scripts "typecheck,lint"` only when dependencies exist and the user allowed local checks.
-5. Read `brief.md` first. If missing, use `qa-review.md` or helper output. Read only small targeted fields from `result.json` if needed.
+   Add `--source-root <path>` when provided. Add `--source-run-scripts --source-scripts "typecheck,lint"` only when dependencies exist and the user allowed local checks. If the installed CLI does not support `--sme` or `--json-summary`, use the fallback flags: `--no-trace --no-security --no-coverage --no-realtime --no-p2 --json`.
+5. Use the `--json-summary` stdout first, then read `brief.md` if needed. If missing, use `qa-review.md` or helper output. Read only small targeted fields from `result.json` if needed.
 6. Combine runtime evidence, source evidence, product/requirement context, and review calibration. Do not promote style/product assumptions, dev-server artifacts, deployment headers, skipped modules, or weak API/UI mismatch into must-fix.
 7. Return the 7-section SME report. Keep selector-level/raw network detail out of the final answer unless requested.
 

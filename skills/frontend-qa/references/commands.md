@@ -16,8 +16,8 @@ Run a normal QA scan:
 node dist/cli.js qa \
   --url "https://example.com/admin/users" \
   --output "reports/frontlens/users" \
-  --no-trace \
-  --json
+  --sme \
+  --json-summary
 ```
 
 Choose the primary human report depth when stakeholders need a shorter or exhaustive `report.md`:
@@ -39,8 +39,8 @@ node dist/cli.js qa \
   --source-run-scripts \
   --source-scripts "typecheck,lint" \
   --output "reports/frontlens/users-source" \
-  --no-trace \
-  --json
+  --sme \
+  --json-summary
 ```
 
 Draft requirements from PRD/acceptance text before a professional QA run:
@@ -94,8 +94,8 @@ node dist/cli.js qa \
   --config "journeys/users-smoke.json" \
   --journeys \
   --output "reports/frontlens/users-recorded" \
-  --no-trace \
-  --json
+  --sme \
+  --json-summary
 ```
 
 Do not treat a recorded click/fill path alone as business validation. It is runtime-partial until meaningful success assertions, role/auth state, and test data setup/cleanup are present. FrontLens 1.24+ exposes `qaSignoff.scope.passedAssertionStepCount` / `assertionStepCount`; FrontLens 1.71+ also exposes `runtimeVerifiedJourneyCount`, `requirementBoundRuntimeVerifiedJourneyCount`, `weaklyAssertedJourneyCount`, `pathOnlyJourneyCount`, and `meaningfulAssertionStepCount` so generic body/html/#app assertions cannot masquerade as business proof.

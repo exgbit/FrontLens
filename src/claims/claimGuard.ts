@@ -143,6 +143,7 @@ function buildFrontendDefectClaim(result: ClaimGuardInput): Omit<ClaimGuardItem,
 function buildApiUiBindingClaim(result: ClaimGuardInput): Omit<ClaimGuardItem, 'id'> {
   const strongLinks = result.sourceRuntimeCorrelation.links.filter((link) => link.confidence === 'high' || link.confidence === 'medium');
   const status: ClaimGuardItem['status'] = result.sourceRuntimeCorrelation.status === 'passed' && strongLinks.length > 0 ? 'allowed' : 'limited';
+  const sourceAvailable = result.sourceHealth.status === 'passed' || result.sourceHealth.status === 'failed';
   return {
     claim: 'api-ui-data-binding',
     status,
@@ -153,7 +154,13 @@ function buildApiUiBindingClaim(result: ClaimGuardInput): Omit<ClaimGuardItem, '
     allowedWording: status === 'allowed' ? '对已绑定 link 的具体 API/UI 区域做限定结论。' : 'API/UI 数据关系未充分绑定，只能列为待源码/旅程复核。',
     forbiddenWording: ['接口有数据但页面空', '后端数据一定没渲染', '全局 network 响应可直接证明某 UI 缺陷'],
     evidenceRefs: ['sourceRuntimeCorrelation', 'network.requests', 'pageModel', 'requirementCoverage'],
-    requiredInputs: status === 'allowed' ? [] : ['提供 sourceRoot 并复测，或补充精确 journey/selector/API pattern 绑定。']
+    requiredInputs: status === 'allowed'
+      ? []
+      : [
+          sourceAvailable
+            ? '已提供源码但缺少 medium/high API/UI 绑定；请补充精确 journey、selector、apiPatterns 或组件/API 对应关系后复测。'
+            : '提供 sourceRoot 并复测，或补充精确 journey/selector/API pattern 绑定。'
+        ]
   };
 }
 

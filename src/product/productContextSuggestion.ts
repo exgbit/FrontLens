@@ -52,7 +52,7 @@ export function buildProductContextSuggestion(result: QaResult): ProductContextS
       configKey: 'productContext',
       configPath,
       configSnippet: { productContext },
-      rerunCommand: `node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --config ${JSON.stringify(configArg)} --output "reports/frontlens/with-product-context" --no-trace --json`
+      rerunCommand: `node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --config ${JSON.stringify(configArg)} --output "reports/frontlens/with-product-context" --sme --json-summary`
     }
   };
 }

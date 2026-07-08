@@ -86,7 +86,7 @@ export function buildQaIntakeConfig(result: QaResult): Record<string, unknown> {
     ? result.artifacts.qaIntakeConfig
     : 'qa-intake.config.json';
   const sourceRoot = result.sourceAnalysis.root ?? result.metadata.config.source.root;
-  const rerunCommand = `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(configPath)} --output ${quote('reports/frontlens/with-qa-intake')} --no-trace --json${sourceRoot ? ` --source-root ${quote(sourceRoot)}` : ''}`;
+  const rerunCommand = `node dist/cli.js qa --url ${quote(result.summary.url)} --config ${quote(configPath)} --output ${quote('reports/frontlens/with-qa-intake')} --sme --json-summary${sourceRoot ? ` --source-root ${quote(sourceRoot)}` : ''}`;
   const assertionSuggestions = buildAssertionSuggestions(result);
   const draftAssertionSteps = assertionDrafts(assertionSuggestions);
   return {

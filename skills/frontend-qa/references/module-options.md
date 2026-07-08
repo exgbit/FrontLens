@@ -32,12 +32,12 @@ Show this checklist in Chinese unless the user requested another language:
 
 If the user selects module 4, ask whether SEO should be included only when SEO matters; otherwise keep `analysis.seo=false` because SEO is optional for authenticated/admin pages.
 
-## Default/full selection
+## Default SME selection
 
 For `全选/all/default`, use:
 
 ```bash
-node dist/cli.js qa --url "<URL>" --output "<OUTPUT_DIR>" --no-trace --json
+node dist/cli.js qa --url "<URL>" --output "<OUTPUT_DIR>" --sme --json-summary
 # 有结构化 PRD/验收标准时追加：--requirements "requirements.json"
 ```
 
@@ -51,7 +51,7 @@ Read `<OUTPUT_DIR>/requirements.md` and treat low-confidence or `needsReview` it
 
 If requirements or journeys include create/edit/delete/upload/import/submit flows, add `testData` to the run config before claiming business validation. Missing isolated records, missing cleanup/rollback, sensitive fixture use, or unapproved production writes must downgrade QA sign-off even when UI smoke checks pass.
 
-This default enables security, contract, realtime, safe smoke journey, exception simulation, heuristic AI, coverage, P2 visual capture/pixel baseline diff, P2 budgets, P2 offline + slow-3g profiles, accessibility, responsive, performance, resource, integration, Console, Network, reports, issueDisposition, rootCauseGroups, defectProof, defectTickets, traceability, and proof-aware fixTasks. It keeps destructive actions disabled.
+This SME default keeps core runtime/API/source/exception/basic-a11y checks and disables specialty security, Coverage, realtime, P2 visual/budget/network profiles by default. Use `$frontend-qa-forensics` or the relevant specialty skill for the old exhaustive all-module behavior. It keeps destructive actions disabled.
 
 Use browser matrix only when the user selected module 9 or explicitly asked compatibility:
 
@@ -71,7 +71,7 @@ Use `journey record` when the user asks to validate real business flows but no e
 
 ```bash
 node dist/cli.js journey record --url "<URL>" --output "<OUTPUT_DIR>/recorded-journey.json" --name "<FLOW_NAME>"
-node dist/cli.js qa --url "<URL>" --config "<OUTPUT_DIR>/recorded-journey.json" --journeys --output "<OUTPUT_DIR>-recorded" --no-trace --json
+node dist/cli.js qa --url "<URL>" --config "<OUTPUT_DIR>/recorded-journey.json" --journeys --output "<OUTPUT_DIR>-recorded" --sme --json-summary
 ```
 
 Recorded steps are not enough for business sign-off. Add explicit `expectVisible` / `expectText` / `expectUrl` / `expectRequest`, role/auth state, and testData lifecycle before calling a business flow runtime-verified; FrontLens 1.24+ downgrades passed journeys without successful assertions to runtime-partial. Sensitive values are emitted as `<REDACTED>` and dangerous clicks are safe-blocked unless reviewed.
@@ -79,7 +79,7 @@ Recorded steps are not enough for business sign-off. Add explicit `expectVisible
 
 ## Module-to-config mapping
 
-Start from the default config and disable only unselected modules.
+For specialty/manual module selection, start from the SME profile and explicitly enable only selected modules.
 
 | Module | Enabled by | Disable with |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ When the user deselects modules without direct CLI flags, create `<OUTPUT_DIR>/f
 Then run:
 
 ```bash
-node dist/cli.js qa --url "<URL>" --output "<OUTPUT_DIR>" --config "<OUTPUT_DIR>/frontlens.modules.json" --no-trace --json
+node dist/cli.js qa --url "<URL>" --output "<OUTPUT_DIR>" --config "<OUTPUT_DIR>/frontlens.modules.json" --sme --json-summary
 ```
 
 ## Worker subagent prompt template

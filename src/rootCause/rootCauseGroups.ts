@@ -296,7 +296,7 @@ export function buildRootCauseGroups(issues: Issue[], config: FrontLensConfig, s
     }
   }
 
-  const verificationCommand = `node dist/cli.js qa --url ${shellQuote(config.target.url)} --output ${shellQuote('reports/frontlens/verify-root-cause')} --no-trace --json`;
+  const verificationCommand = `node dist/cli.js qa --url ${shellQuote(config.target.url)} --output ${shellQuote('reports/frontlens/verify-root-cause')} --sme --json-summary`;
   return [...groups.values()]
     .map((draft, index) => {
       const { issues: groupedIssues, ...rest } = draft;

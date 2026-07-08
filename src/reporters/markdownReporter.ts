@@ -1180,7 +1180,7 @@ ${requirementRows.length ? ['| ID | Priority | Source | Status | Confidence | Re
 ## 复测命令
 
 \`\`\`bash
-node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --output "reports/frontlens/verify" --no-trace --json${result.sourceAnalysis.root ? ` --source-root ${JSON.stringify(result.sourceAnalysis.root)}` : ''}
+node dist/cli.js qa --url ${JSON.stringify(result.summary.url)} --output "reports/frontlens/verify" --sme --json-summary${result.sourceAnalysis.root ? ` --source-root ${JSON.stringify(result.sourceAnalysis.root)}` : ''}
 \`\`\`
 
 ## 阅读顺序

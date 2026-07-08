@@ -133,7 +133,16 @@ test('review calibration recognizes previously generated config on rerun', () =>
   });
   const rerun = normalizeResult({
     summary: { url: 'http://127.0.0.1:5173/credentials', title: 'Credentials rerun' },
-    metadata: { config: initial.configPatch },
+    metadata: {
+      config: {
+        ...initial.configPatch,
+        productContext: {
+          ...(initial.configPatch.productContext as any),
+          deviceScope: 'mobile-first',
+          requiredFeatures: ['mobile-touch-target']
+        }
+      }
+    },
     pageModel: {
       url: 'http://127.0.0.1:5173/credentials',
       title: 'Credentials rerun',
@@ -163,10 +172,23 @@ test('review calibration recognizes previously generated config on rerun', () =>
         reproduceSteps: [],
         reason: 'Dev server source module.',
         suggestion: { security: 'Use production build.', priority: 'P2' }
+      },
+      {
+        id: 'ISSUE-RERUN-003',
+        title: '触控目标 <32px',
+        category: 'frontend-accessibility',
+        severity: 'medium',
+        confidence: 0.9,
+        description: 'Small tap target on required mobile scope.',
+        evidence: { selector: '.act--mini' },
+        reproduceSteps: [],
+        reason: 'Tap target too small.',
+        suggestion: { frontend: 'Increase tap target.', priority: 'P3' }
       }
     ]
   });
   const applied = buildReviewCalibration(rerun);
+  const dispositionByIssue = new Map(rerun.issueDisposition.items.map((item) => [item.issueId, item]));
 
   assert.equal(applied.status, 'ready');
   assert.equal(applied.calibrationSource, 'config');
@@ -175,6 +197,14 @@ test('review calibration recognizes previously generated config on rerun', () =>
   assert.ok(applied.signals.some((item) => item.kind === 'dev-server-noise'));
   assert.equal(applied.issueDecisions.find((item) => item.issueId === 'ISSUE-RERUN-001')?.action, 'needs-evidence');
   assert.equal(applied.issueDecisions.find((item) => item.issueId === 'ISSUE-RERUN-002')?.action, 'out-of-scope');
+  assert.equal(dispositionByIssue.get('ISSUE-RERUN-001')?.status, 'insufficient-evidence');
+  assert.equal(dispositionByIssue.get('ISSUE-RERUN-001')?.actionability, 'conditional');
+  assert.equal(dispositionByIssue.get('ISSUE-RERUN-002')?.status, 'tool-limitation');
+  assert.equal(dispositionByIssue.get('ISSUE-RERUN-002')?.actionability, 'non-actionable');
+  assert.equal(dispositionByIssue.get('ISSUE-RERUN-003')?.status, 'confirmed');
+  assert.equal(dispositionByIssue.get('ISSUE-RERUN-003')?.bucket, 'real-frontend-fix');
+  assert.equal(dispositionByIssue.get('ISSUE-RERUN-003')?.actionability, 'actionable');
+  assert.equal(rerun.summary.adjustedIssueCount, 0);
   assert.equal(applied.questions.some((item) => item.includes('人工复核')), false);
   assert.match(applied.feedbackSummary, /Applied existing review-calibration config/);
 });

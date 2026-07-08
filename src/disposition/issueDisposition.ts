@@ -12,7 +12,7 @@ function detailsOf(issue: Issue): Record<string, unknown> {
 }
 
 function textOf(issue: Issue): string {
-  return `${issue.title} ${issue.category} ${issue.description} ${issue.reason}`.toLowerCase();
+  return `${issue.title} ${issue.category} ${issue.description} ${issue.reason} ${issue.suggestion.frontend ?? ''} ${issue.suggestion.product ?? ''} ${issue.evidence.resourceUrl ?? ''} ${JSON.stringify(issue.evidence.details ?? {})}`.toLowerCase();
 }
 
 function ruleText(issue: Issue): string {
@@ -134,6 +134,40 @@ function contextNote(decision: ProductContextDecision): string {
   return `${featureText}${noteText}`;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function appliedReviewCalibration(config: FrontLensConfig): Record<string, unknown> | undefined {
+  const rawConfig = config as unknown as Record<string, unknown>;
+  return isRecord(rawConfig._frontlensReviewCalibration) ? rawConfig._frontlensReviewCalibration : undefined;
+}
+
+function hasCalibrationSignal(config: FrontLensConfig, kind: string): boolean {
+  const calibration = appliedReviewCalibration(config);
+  if (!calibration) return false;
+  const signals = Array.isArray(calibration.signals) ? calibration.signals : [];
+  return signals.some((signal) => isRecord(signal) && signal.kind === kind);
+}
+
+function calibrationPolicy(config: FrontLensConfig, policy: string): boolean {
+  const calibration = appliedReviewCalibration(config);
+  const policies = isRecord(calibration?.policies) ? calibration.policies : {};
+  return policies[policy] === true;
+}
+
+function currentScopeRequiresIssue(issue: Issue, config: FrontLensConfig): boolean {
+  const decision = productDecisionForIssue(issue, config);
+  if (decision.state === 'required') return true;
+  const text = textOf(issue);
+  return Boolean(
+    config.productContext.enabled &&
+    issue.category === 'frontend-accessibility' &&
+    (config.productContext.accessibilityTarget === 'wcag-aa' || config.productContext.accessibilityTarget === 'wcag-aaa') &&
+    /颜色对比度|color-contrast|contrast|accessibility|a11y|无障碍/.test(text)
+  );
+}
+
 function hasEvidence(issue: Issue): boolean {
   return Boolean(
     issue.evidence.screenshot ||
@@ -201,6 +235,109 @@ function makeItem(
     nextStep: input.nextStep,
     rootCauseGroupId: input.rootCauseGroupId
   };
+}
+
+function classifyReviewCalibration(issue: Issue, config: FrontLensConfig, context: IssueDispositionContext, rootCauseGroupId?: string): IssueDispositionItem | undefined {
+  if (!appliedReviewCalibration(config)) return undefined;
+  const text = textOf(issue);
+  const calibrated = (kind: string): boolean => hasCalibrationSignal(config, kind);
+  const explicitCurrentScopeRequirement = currentScopeRequiresIssue(issue, config);
+
+  if ((calibrated('dev-server-noise') || calibrationPolicy(config, 'treatDevServerMetricsAsNonProduction')) && /vite|hmr|\/@vite|source module|源码模块|dev server|开发服务器|websocket|模块请求|\/src\//.test(text)) {
+    return makeItem(issue, {
+      status: 'tool-limitation',
+      bucket: 'tool-limitation',
+      actionability: 'non-actionable',
+      owner: 'test',
+      evidenceStrength: hasEvidence(issue) ? 'strong' : 'medium',
+      reason: '已应用 review-calibration 配置：Vite/dev server/HMR/源码模块指标属于非生产环境噪音，不作为应用代码缺陷或生产安全/性能结论。',
+      nextStep: '若需要生产性能/安全签核，使用 build + preview、staging 或 production-like URL 复测；当前项仅保留为环境说明。',
+      rootCauseGroupId
+    });
+  }
+
+  if (!explicitCurrentScopeRequirement && calibrated('export-out-of-scope') && /导出|下载|export|download/.test(text)) {
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'non-actionable',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '已应用 review-calibration 配置：导出/下载不在当前页面验收范围，不能作为前端 must-fix。',
+      nextStep: '如果产品后续要求导出/下载，先更新 PRD/productContext，再生成对应测试与回归。',
+      rootCauseGroupId
+    });
+  }
+
+  if (!explicitCurrentScopeRequirement && calibrated('pagination-out-of-scope') && /分页|pagination|pager|page-size|pagesize/.test(text)) {
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'non-actionable',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '已应用 review-calibration 配置：分页不适用或不在当前页面范围，不能作为前端 must-fix。',
+      nextStep: '若页面类型或数据量策略变化，先补产品验收标准，再复跑 pagination 交互。',
+      rootCauseGroupId
+    });
+  }
+
+  if (!explicitCurrentScopeRequirement && (calibrated('touch-target-optional') || calibrated('desktop-first')) && /触控目标|tap target|touch target|smalltap|点击区|mobile|移动端|响应式/.test(text)) {
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'conditional',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '已应用 review-calibration 配置：当前页面按 PC-first/移动降级处理，移动触控尺寸默认是可选优化而非发布阻断。',
+      nextStep: '若移动端/触屏成为验收范围，再在对应断点扩大点击区并补响应式回归。',
+      rootCauseGroupId
+    });
+  }
+
+  if (!explicitCurrentScopeRequirement && (calibrated('style-is-design') || calibrationPolicy(config, 'doNotPromoteStyleToDefectWithoutProductConfirmation')) && /样式|风格|视觉|颜色|密度|style|visual|button hierarchy|按钮层级/.test(text)) {
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'conditional',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '已应用 review-calibration 配置：样式/视觉/交互密度属于产品或设计取舍；除非违反明确 PRD/a11y 或阻断核心任务，否则不进入代码缺陷队列。',
+      nextStep: '由产品/设计确认是否提升为需求；确认前只作为产品观察或设计待决策项。',
+      rootCauseGroupId
+    });
+  }
+
+  if (!explicitCurrentScopeRequirement && calibrated('manual-refresh-optional') && /刷新|refresh|reload/.test(text)) {
+    return makeItem(issue, {
+      status: 'product-decision',
+      bucket: 'product-decision',
+      actionability: 'conditional',
+      owner: 'product',
+      evidenceStrength: hasEvidence(issue) ? 'medium' : 'weak',
+      reason: '已应用 review-calibration 配置：手动刷新入口属于产品体验优化，未被 PRD 标为必需时不作为缺陷。',
+      nextStep: '若产品要求手动刷新，补 explicit requirement 后复跑交互测试。',
+      rootCauseGroupId
+    });
+  }
+
+  if ((calibrated('data-mismatch-needs-proof') || calibrationPolicy(config, 'dataMismatchRequiresFourPartProof')) && issue.category === 'integration-data-mismatch') {
+    const proof = evaluateDataMismatchProof(issue, context.requirementCoverage);
+    if (proof.status !== 'proven') {
+      return makeItem(issue, {
+        status: 'insufficient-evidence',
+        bucket: 'coverage-gap',
+        actionability: 'conditional',
+        owner: 'test',
+        evidenceStrength: issue.evidence.networkRequestId && issue.evidence.screenshot ? 'medium' : 'weak',
+        reason: `已应用 review-calibration 配置：API/UI 数据不一致必须满足四段证据门槛；当前缺口：${proof.missingEvidence.join('；') || '未知'}`,
+        nextStep: '补明确 requirement、具体列表响应路径/数量、目标 UI 空态 DOM/截图，以及 medium/high sourceRuntimeCorrelation 后再升级为实现缺陷。',
+        rootCauseGroupId
+      });
+    }
+  }
+
+  return undefined;
 }
 
 function classifySecurity(issue: Issue, rootCauseGroupId?: string): IssueDispositionItem | undefined {
@@ -622,6 +759,7 @@ export function buildIssueDisposition(issues: Issue[], config: FrontLensConfig, 
   const items = issues.map((issue) => {
     const rootCauseGroupId = groupByIssueId.get(issue.id);
     return (
+      classifyReviewCalibration(issue, config, context, rootCauseGroupId) ??
       classifySecurity(issue, rootCauseGroupId) ??
       classifyException(issue, rootCauseGroupId) ??
       classifyProductOrSpec(issue, config, rootCauseGroupId) ??

@@ -947,6 +947,7 @@ export interface BusinessJourneyResult {
 }
 
 export type ReviewCalibrationStatus = 'ready' | 'needs-feedback' | 'needs-input';
+export type ReviewCalibrationSource = 'none' | 'feedback' | 'config';
 export type ReviewCalibrationSignalKind =
   | 'desktop-first'
   | 'style-is-design'
@@ -988,6 +989,7 @@ export interface ReviewCalibrationIssueDecision {
 export interface ReviewCalibrationResult {
   generatedAt: string;
   status: ReviewCalibrationStatus;
+  calibrationSource: ReviewCalibrationSource;
   targetUrl: string;
   feedbackProvided: boolean;
   feedbackSummary: string;

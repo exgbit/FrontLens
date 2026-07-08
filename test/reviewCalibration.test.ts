@@ -112,6 +112,7 @@ test('review calibration turns reviewer feedback into reusable triage config and
   });
 
   assert.equal(calibration.status, 'ready');
+  assert.equal(calibration.calibrationSource, 'feedback');
   assert.ok(calibration.signals.some((item) => item.kind === 'desktop-first'));
   assert.ok(calibration.signals.some((item) => item.kind === 'data-mismatch-needs-proof'));
   assert.ok(calibration.signals.some((item) => item.kind === 'dev-server-noise'));
@@ -126,10 +127,63 @@ test('review calibration turns reviewer feedback into reusable triage config and
   assert.match(formatReviewCalibration(calibration), /FrontLens Review Calibration/);
 });
 
+test('review calibration recognizes previously generated config on rerun', () => {
+  const initial = buildReviewCalibration(sampleResult(), {
+    feedbackText: '项目 PC 为主，移动端降级；样式风格产品设计如此；接口有数据但页面显示空是误报，不要假设，必须结合源码四段证据；Vite dev server/HMR 是环境噪音；异常无反馈和 aria 图标按钮是真问题。'
+  });
+  const rerun = normalizeResult({
+    summary: { url: 'http://127.0.0.1:5173/credentials', title: 'Credentials rerun' },
+    metadata: { config: initial.configPatch },
+    pageModel: {
+      url: 'http://127.0.0.1:5173/credentials',
+      title: 'Credentials rerun',
+      stats: { domNodes: 80, visibleTextLength: 300, bodyTextSample: '凭证 站点 卡片 暂无匹配凭证' }
+    },
+    issues: [
+      {
+        id: 'ISSUE-RERUN-001',
+        title: '接口有数据但页面显示空',
+        category: 'integration-data-mismatch',
+        severity: 'high',
+        confidence: 0.82,
+        description: 'Network contains a list but UI appears empty.',
+        evidence: { networkRequestId: 'REQ-001', selector: '.empty', details: { responsePath: 'data.records' } },
+        reproduceSteps: [],
+        reason: 'Data mismatch suspected.',
+        suggestion: { frontend: 'Check binding.', priority: 'P1' }
+      },
+      {
+        id: 'ISSUE-RERUN-002',
+        title: 'Vite dev server 暴露 /@vite/client 调试信息',
+        category: 'security',
+        severity: 'high',
+        confidence: 0.8,
+        description: 'Debug/source modules are visible.',
+        evidence: { resourceUrl: 'http://127.0.0.1:5173/@vite/client', details: { rule: 'api-leak' } },
+        reproduceSteps: [],
+        reason: 'Dev server source module.',
+        suggestion: { security: 'Use production build.', priority: 'P2' }
+      }
+    ]
+  });
+  const applied = buildReviewCalibration(rerun);
+
+  assert.equal(applied.status, 'ready');
+  assert.equal(applied.calibrationSource, 'config');
+  assert.equal(applied.feedbackProvided, false);
+  assert.ok(applied.signals.some((item) => item.kind === 'data-mismatch-needs-proof'));
+  assert.ok(applied.signals.some((item) => item.kind === 'dev-server-noise'));
+  assert.equal(applied.issueDecisions.find((item) => item.issueId === 'ISSUE-RERUN-001')?.action, 'needs-evidence');
+  assert.equal(applied.issueDecisions.find((item) => item.issueId === 'ISSUE-RERUN-002')?.action, 'out-of-scope');
+  assert.equal(applied.questions.some((item) => item.includes('人工复核')), false);
+  assert.match(applied.feedbackSummary, /Applied existing review-calibration config/);
+});
+
 test('review calibration asks for feedback instead of guessing when no reviewer context exists', () => {
   const calibration = buildReviewCalibration(sampleResult());
 
   assert.equal(calibration.status, 'needs-feedback');
+  assert.equal(calibration.calibrationSource, 'none');
   assert.equal(calibration.feedbackProvided, false);
   assert.ok(calibration.questions.some((item) => item.includes('人工复核')));
   assert.ok(calibration.notes.some((item) => item.includes('stays needs-feedback')));

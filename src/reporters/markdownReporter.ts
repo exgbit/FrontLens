@@ -1033,7 +1033,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
 - Assertion suggestions：**${result.assertionSuggestions.status}** / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount} / artifact ${artifactPath(result.artifacts.assertionSuggestions)}
 - Business journeys：**${result.businessJourneys.status}** / scenarios ${result.businessJourneys.summary.scenarioCount} / ready ${result.businessJourneys.summary.readyCount} / needs-input ${result.businessJourneys.summary.needsInputCount} / artifact ${artifactPath(result.artifacts.businessJourneys)}
-- Review calibration：**${result.reviewCalibration.status}** / signals ${result.reviewCalibration.summary.signalCount} / needs-evidence ${result.reviewCalibration.summary.needsEvidenceCount} / artifact ${artifactPath(result.artifacts.reviewCalibration)}
+- Review calibration：**${result.reviewCalibration.status}** / source ${result.reviewCalibration.calibrationSource} / signals ${result.reviewCalibration.summary.signalCount} / needs-evidence ${result.reviewCalibration.summary.needsEvidenceCount} / artifact ${artifactPath(result.artifacts.reviewCalibration)}
 - Test cases：**${result.testCases.status}** / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount} / artifact ${artifactPath(result.artifacts.testCases)}
 - Risk register：**${result.riskRegister.status}** / total ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount} / artifact ${artifactPath(result.artifacts.riskRegister)}
 - Risk acceptance：**${result.riskAcceptance.status}** / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount} / artifact ${artifactPath(result.artifacts.riskAcceptance)}
@@ -1111,7 +1111,7 @@ ${result.qaStrategy.modules.length ? ['| Module | Pri | Decision | Owner | Reaso
 
 ## 复核校准 / Review Calibration
 
-- Calibration：**${result.reviewCalibration.status}**
+- Calibration：**${result.reviewCalibration.status}** / source ${result.reviewCalibration.calibrationSource}
 - Artifact：${artifactPath(result.artifacts.reviewCalibration)}
 - Config：${artifactPath(result.artifacts.reviewCalibrationConfig)}
 - Signals：${result.reviewCalibration.summary.signalCount}；keep / downgrade / out-of-scope / needs-evidence：${result.reviewCalibration.summary.keepCount} / ${result.reviewCalibration.summary.downgradeCount} / ${result.reviewCalibration.summary.outOfScopeCount} / ${result.reviewCalibration.summary.needsEvidenceCount}

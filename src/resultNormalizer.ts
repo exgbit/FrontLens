@@ -59,7 +59,7 @@ import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy } from './strategy/qaStrategy.js';
 import { buildReviewCalibration } from './review/reviewCalibration.js';
 
-export const RESULT_SCHEMA_VERSION = '1.84.0';
+export const RESULT_SCHEMA_VERSION = '1.85.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));

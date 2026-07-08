@@ -16,6 +16,25 @@ interface BuildReviewCalibrationOptions {
   feedbackText?: string;
 }
 
+const knownSignalKinds: ReviewCalibrationSignalKind[] = [
+  'desktop-first',
+  'style-is-design',
+  'touch-target-optional',
+  'export-out-of-scope',
+  'pagination-out-of-scope',
+  'manual-refresh-optional',
+  'data-mismatch-needs-proof',
+  'dev-server-noise',
+  'source-required',
+  'error-state-required',
+  'a11y-button-name-required',
+  'route-lazy-load-required'
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
@@ -47,6 +66,127 @@ function evidenceRefs(issue: Issue): string[] {
 function addSignal(signals: ReviewCalibrationSignal[], signal: Omit<ReviewCalibrationSignal, 'id'>): void {
   if (signals.some((item) => item.kind === signal.kind)) return;
   signals.push({ id: `RC-SIGNAL-${String(signals.length + 1).padStart(3, '0')}`, ...signal });
+}
+
+function isSignalKind(value: unknown): value is ReviewCalibrationSignalKind {
+  return typeof value === 'string' && knownSignalKinds.includes(value as ReviewCalibrationSignalKind);
+}
+
+function confidenceOf(value: unknown): 'high' | 'medium' | 'low' {
+  return value === 'high' || value === 'medium' || value === 'low' ? value : 'medium';
+}
+
+function signalPatch(kind: ReviewCalibrationSignalKind): Partial<ProductContextConfig> | undefined {
+  if (kind === 'desktop-first') return { deviceScope: 'desktop-first' };
+  if (kind === 'style-is-design') {
+    return {
+      optionalFeatures: ['visual-design', 'style'],
+      decisions: [{
+        id: 'RC-STYLE-DESIGN',
+        title: '样式/视觉密度属于产品/设计取舍，除非阻断核心任务或违反明确 a11y/PRD 才进入缺陷。',
+        appliesTo: ['visual-design', 'style'],
+        rationale: '来自人工复核反馈。'
+      }]
+    };
+  }
+  if (kind === 'touch-target-optional') {
+    return {
+      deviceScope: 'desktop-first',
+      optionalFeatures: ['mobile-touch-target', 'touch-target'],
+      decisions: [{
+        id: 'RC-TOUCH-OPTIONAL',
+        title: 'PC-first 页面中移动触控尺寸为降级优化项，不默认作为发布阻断。',
+        appliesTo: ['mobile-touch-target', 'touch-target'],
+        rationale: '来自人工复核反馈。'
+      }]
+    };
+  }
+  if (kind === 'export-out-of-scope') {
+    return {
+      outOfScopeFeatures: ['export', 'download'],
+      decisions: [{
+        id: 'RC-EXPORT-OOS',
+        title: '导出/下载不属于当前页面验收范围。',
+        appliesTo: ['export', 'download'],
+        rationale: '来自人工复核反馈。'
+      }]
+    };
+  }
+  if (kind === 'pagination-out-of-scope') {
+    return {
+      outOfScopeFeatures: ['pagination'],
+      decisions: [{
+        id: 'RC-PAGINATION-OOS',
+        title: '分页不属于当前页面验收范围，除非 PRD 明确要求。',
+        appliesTo: ['pagination'],
+        rationale: '来自人工复核反馈。'
+      }]
+    };
+  }
+  if (kind === 'manual-refresh-optional') {
+    return {
+      optionalFeatures: ['manual-refresh', 'refresh'],
+      decisions: [{
+        id: 'RC-REFRESH-OPTIONAL',
+        title: '手动刷新入口为产品体验优化项，除非 PRD 要求不作为缺陷。',
+        appliesTo: ['manual-refresh', 'refresh'],
+        rationale: '来自人工复核反馈。'
+      }]
+    };
+  }
+  if (kind === 'error-state-required') return { requiredFeatures: ['error-state', 'error-feedback', 'retry'] };
+  if (kind === 'a11y-button-name-required') return { requiredFeatures: ['button-accessible-name'] };
+  if (kind === 'route-lazy-load-required') return { optionalFeatures: ['route-lazy-load', 'performance-budget'] };
+  return undefined;
+}
+
+function signalTitle(kind: ReviewCalibrationSignalKind): string {
+  const titles: Record<ReviewCalibrationSignalKind, string> = {
+    'desktop-first': '桌面优先，移动端降级/自适应',
+    'style-is-design': '样式/视觉类问题需要产品确认，不默认当缺陷',
+    'touch-target-optional': '移动触控目标为可选/降级项',
+    'export-out-of-scope': '导出/下载不在当前页面范围',
+    'pagination-out-of-scope': '分页不在当前页面范围或不适用当前布局',
+    'manual-refresh-optional': '手动刷新入口为可选项',
+    'data-mismatch-needs-proof': 'API/UI 数据不一致必须满足四段证据门槛',
+    'dev-server-noise': 'Vite/dev server 指标属于环境噪音',
+    'source-required': '前端缺陷需要源码关联',
+    'error-state-required': '接口异常错误态/重试属于必需能力',
+    'a11y-button-name-required': '图标按钮可访问名称属于应修问题',
+    'route-lazy-load-required': '路由懒加载/拆包为真实性能优化项'
+  };
+  return titles[kind];
+}
+
+function addAppliedConfigSignal(signals: ReviewCalibrationSignal[], kind: ReviewCalibrationSignalKind, source: Record<string, unknown> = {}): void {
+  addSignal(signals, {
+    kind,
+    title: typeof source.title === 'string' && source.title.trim() ? source.title : signalTitle(kind),
+    confidence: confidenceOf(source.confidence),
+    rationale: '来自已应用的 review-calibration.config.json / _frontlensReviewCalibration；按已确认的人工复核策略继续校准本次结果。',
+    productContextPatch: signalPatch(kind)
+  });
+}
+
+function appliedCalibrationConfig(result: QaResult): Record<string, unknown> | undefined {
+  const config = result.metadata.config as unknown as Record<string, unknown>;
+  return isRecord(config._frontlensReviewCalibration) ? config._frontlensReviewCalibration : undefined;
+}
+
+function addSignalsFromAppliedConfig(signals: ReviewCalibrationSignal[], result: QaResult): boolean {
+  const config = appliedCalibrationConfig(result);
+  if (!config) return false;
+  const rawSignals = Array.isArray(config.signals) ? config.signals : [];
+  for (const rawSignal of rawSignals) {
+    if (!isRecord(rawSignal) || !isSignalKind(rawSignal.kind)) continue;
+    addAppliedConfigSignal(signals, rawSignal.kind, rawSignal);
+  }
+  const policies = isRecord(config.policies) ? config.policies : {};
+  if (policies.requireSourceForFrontendDefects === true) addAppliedConfigSignal(signals, 'source-required');
+  if (policies.treatDevServerMetricsAsNonProduction === true) addAppliedConfigSignal(signals, 'dev-server-noise');
+  if (policies.dataMismatchRequiresFourPartProof === true) addAppliedConfigSignal(signals, 'data-mismatch-needs-proof');
+  if (policies.doNotPromoteStyleToDefectWithoutProductConfirmation === true) addAppliedConfigSignal(signals, 'style-is-design');
+  return signals.length > 0 || rawSignals.length > 0 || Object.keys(policies).length > 0;
 }
 
 function inferSignals(feedbackText: string | undefined, result: QaResult): ReviewCalibrationSignal[] {
@@ -355,7 +495,7 @@ function baseProductContext(result: QaResult): ProductContextConfig {
   };
 }
 
-function buildConfigPatch(result: QaResult, signals: ReviewCalibrationSignal[], issueDecisions: ReviewCalibrationIssueDecision[], feedbackProvided: boolean): Record<string, unknown> {
+function buildConfigPatch(result: QaResult, signals: ReviewCalibrationSignal[], issueDecisions: ReviewCalibrationIssueDecision[], feedbackProvided: boolean, calibrationSource: ReviewCalibrationResult['calibrationSource']): Record<string, unknown> {
   const productContext = mergeProductContext(baseProductContext(result), signals);
   const providedRequirementItems = result.metadata.config.requirements.items.filter((item) => item.source !== 'inferred');
   const sourceRoot = result.sourceAnalysis.root ?? result.metadata.config.source.root;
@@ -364,6 +504,7 @@ function buildConfigPatch(result: QaResult, signals: ReviewCalibrationSignal[], 
       generatedAt: new Date().toISOString(),
       purpose: 'Reusable reviewer/product feedback calibration. Keep this block as an audit trail; FrontLens uses standard productContext/requirements/source keys, and skills should read this block for triage policy.',
       feedbackProvided,
+      calibrationSource,
       signals: signals.map((item) => ({ id: item.id, kind: item.kind, title: item.title, confidence: item.confidence })),
       policies: {
         requireSourceForFrontendDefects: hasSignal(signals, 'source-required'),
@@ -394,8 +535,11 @@ function buildConfigPatch(result: QaResult, signals: ReviewCalibrationSignal[], 
   return config;
 }
 
-function summarizeFeedback(feedbackText: string | undefined, signals: ReviewCalibrationSignal[]): string {
+function summarizeFeedback(feedbackText: string | undefined, signals: ReviewCalibrationSignal[], calibrationSource: ReviewCalibrationResult['calibrationSource']): string {
   if (!feedbackText?.trim()) {
+    if (calibrationSource === 'config') {
+      return `Applied existing review-calibration config（signals: ${signals.map((item) => item.kind).join(', ') || 'none'}）.`;
+    }
     return 'No reviewer feedback provided yet; this artifact is a reusable intake/template for calibration.';
   }
   const compact = feedbackText.replace(/\s+/g, ' ').trim();
@@ -403,9 +547,9 @@ function summarizeFeedback(feedbackText: string | undefined, signals: ReviewCali
   return `${snippet}（recognized signals: ${signals.map((item) => item.kind).join(', ') || 'none'}）`;
 }
 
-function questionsFor(result: QaResult, signals: ReviewCalibrationSignal[], feedbackProvided: boolean): string[] {
+function questionsFor(result: QaResult, signals: ReviewCalibrationSignal[], calibrationContextProvided: boolean): string[] {
   const questions: string[] = [];
-  if (!feedbackProvided) {
+  if (!calibrationContextProvided) {
     questions.push('请把人工复核/产品/设计/测试反馈粘贴给 `frontlens review-calibration --report <result.json> --feedback-file <feedback.md>`，再生成可复用 rerun config。');
   }
   if (!hasSignal(signals, 'source-required') && result.sourceAnalysis.status === 'skipped') {
@@ -430,16 +574,20 @@ function countAction(issueDecisions: ReviewCalibrationIssueDecision[], action: R
 export function buildReviewCalibration(result: QaResult, options: BuildReviewCalibrationOptions = {}): ReviewCalibrationResult {
   const feedbackProvided = Boolean(options.feedbackText?.trim());
   const signals = inferSignals(options.feedbackText, result);
+  const appliedConfig = addSignalsFromAppliedConfig(signals, result);
+  const calibrationSource: ReviewCalibrationResult['calibrationSource'] = feedbackProvided ? 'feedback' : appliedConfig ? 'config' : 'none';
+  const calibrationContextProvided = calibrationSource !== 'none';
   const issueDecisions = buildIssueDecisions(result, signals);
-  const configPatch = buildConfigPatch(result, signals, issueDecisions, feedbackProvided);
-  const questions = questionsFor(result, signals, feedbackProvided);
-  const status: ReviewCalibrationResult['status'] = !feedbackProvided ? 'needs-feedback' : questions.length > 0 || signals.length === 0 ? 'needs-input' : 'ready';
+  const configPatch = buildConfigPatch(result, signals, issueDecisions, feedbackProvided, calibrationSource);
+  const questions = questionsFor(result, signals, calibrationContextProvided);
+  const status: ReviewCalibrationResult['status'] = !calibrationContextProvided ? 'needs-feedback' : questions.length > 0 || signals.length === 0 ? 'needs-input' : 'ready';
   return {
     generatedAt: new Date().toISOString(),
     status,
+    calibrationSource,
     targetUrl: result.summary.url,
     feedbackProvided,
-    feedbackSummary: summarizeFeedback(options.feedbackText, signals),
+    feedbackSummary: summarizeFeedback(options.feedbackText, signals, calibrationSource),
     summary: {
       signalCount: signals.length,
       keepCount: countAction(issueDecisions, 'keep'),
@@ -464,7 +612,9 @@ export function buildReviewCalibration(result: QaResult, options: BuildReviewCal
     notes: [
       'Reviewer feedback is treated as a calibration input, not as automatic proof that a defect is fixed or false.',
       'The generated config is page/run-specific and compatible with different page types because it writes standard productContext/requirements/source keys instead of hard-coded selectors.',
-      'If feedback is missing, this artifact intentionally stays needs-feedback so future agents ask for context instead of guessing.'
+      calibrationSource === 'config'
+        ? 'An existing review-calibration config is applied, so future agents should preserve these decisions instead of asking for the same feedback again.'
+        : 'If feedback is missing and no review-calibration config is applied, this artifact intentionally stays needs-feedback so future agents ask for context instead of guessing.'
     ]
   };
 }
@@ -493,6 +643,7 @@ export function formatReviewCalibration(calibration: ReviewCalibrationResult): s
 ## Status
 
 - Status：**${calibration.status}**
+- Calibration source：${escapeMarkdown(calibration.calibrationSource)}
 - Target：${escapeMarkdown(calibration.targetUrl)}
 - Feedback provided：${calibration.feedbackProvided}
 - Feedback summary：${escapeMarkdown(calibration.feedbackSummary)}

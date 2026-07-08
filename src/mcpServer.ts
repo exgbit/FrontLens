@@ -639,6 +639,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         },
         reviewCalibration: {
           status: result.reviewCalibration.status,
+          calibrationSource: result.reviewCalibration.calibrationSource,
           summary: result.reviewCalibration.summary
         },
         testCases: {

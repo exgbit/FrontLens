@@ -2113,13 +2113,14 @@ Schema 1.83+ adds `result.json.businessJourneys`, `business-journeys.md/json`, a
 
 ## reviewCalibration / review-calibration.md/json/config
 
-Schema 1.84+ adds `result.json.reviewCalibration`, `review-calibration.md/json`, `review-calibration.config.json`, and `frontlens review-calibration --report [--feedback-file feedback.md]`. Use it after a tester/product/engineering review to convert human feedback into a reusable calibration contract: product/design scope, desktop-first/mobile-touch decisions, dev-server noise, source-required triage, and the four-part API/UI data-mismatch proof gate. It returns `signals[]`, `issueDecisions[]` with `keep | downgrade | out-of-scope | needs-evidence | ask-product | review`, and a `configPatch` containing standard `productContext`, `requirements`, `source`, and `_frontlensReviewCalibration` audit metadata. If no feedback is provided, `status=needs-feedback`; do not treat it as a confirmed product decision until QA/Product approves the config and reruns.
+Schema 1.84+ adds `result.json.reviewCalibration`, `review-calibration.md/json`, `review-calibration.config.json`, and `frontlens review-calibration --report [--feedback-file feedback.md]`. Use it after a tester/product/engineering review to convert human feedback into a reusable calibration contract: product/design scope, desktop-first/mobile-touch decisions, dev-server noise, source-required triage, and the four-part API/UI data-mismatch proof gate. It returns `signals[]`, `issueDecisions[]` with `keep | downgrade | out-of-scope | needs-evidence | ask-product | review`, and a `configPatch` containing standard `productContext`, `requirements`, `source`, and `_frontlensReviewCalibration` audit metadata. If no feedback is provided and no calibration config is applied, `status=needs-feedback`; do not treat it as a confirmed product decision until QA/Product approves the config and reruns. In schema 1.85+, reruns that pass the generated `review-calibration.config.json` are recognized via `_frontlensReviewCalibration`, and `reviewCalibration.calibrationSource='config'` preserves the human feedback contract so future same-type pages do not ask the same question again.
 
 ```ts
 type ReviewCalibrationIssueAction = 'keep' | 'downgrade' | 'out-of-scope' | 'needs-evidence' | 'ask-product' | 'review';
 
 interface ReviewCalibrationResult {
   status: 'ready' | 'needs-feedback' | 'needs-input';
+  calibrationSource: 'none' | 'feedback' | 'config';
   feedbackProvided: boolean;
   signals: Array<{ id: string; kind: string; title: string; confidence: 'high' | 'medium' | 'low'; rationale: string }>;
   issueDecisions: Array<{

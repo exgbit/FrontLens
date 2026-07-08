@@ -184,6 +184,43 @@ Skill 会自动执行：
 
 ### 3. 带验收标准分析
 
+如果需求文档已经是本地文件，使用 skill 时把**文件路径**和页面、源码路径放在同一句里即可：
+
+```text
+用 frontend-qa 全选分析 http://127.0.0.1:5173/rules，
+前端代码 /Users/justin/work/sunrise-web，
+需求文档 /Users/justin/work/sunrise-web/docs/rules-prd.md，
+如果页面不可达则自动部署，只输出 SME 标准 QA 结论
+```
+
+文件建议：
+
+- `.md` / `.txt`：作为自然语言 PRD/验收说明，先转换成待人工确认的验收标准初稿。
+- `.json`：如果已经是 FrontLens `requirements.json` 结构，可直接作为 `--requirements` 输入。
+- Word/PDF：建议先转成 Markdown 或纯文本，再交给 `frontend-qa`，避免抽取歧义。
+
+手动 CLI 下，Markdown/文本需求先转成结构化需求：
+
+```bash
+node dist/cli.js requirements synthesize \
+  --input "/Users/justin/work/sunrise-web/docs/rules-prd.md" \
+  --output "reports/frontlens/rules/requirements.json" \
+  --prefix "REQ-RULES"
+```
+
+然后带着生成的 `requirements.json` 运行 SME QA：
+
+```bash
+node dist/cli.js qa \
+  --url "http://127.0.0.1:5173/rules" \
+  --source-root "/Users/justin/work/sunrise-web" \
+  --requirements "reports/frontlens/rules/requirements.json" \
+  --output "reports/frontlens/rules" \
+  --report-profile executive \
+  --sme \
+  --json-summary
+```
+
 如果只有 Markdown/自然语言 PRD，先让引擎生成一个**待人工确认**的验收标准初稿：
 
 ```bash

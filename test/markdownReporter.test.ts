@@ -64,6 +64,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   const automationSpecs = await readFile(result.artifacts.automationSpecs!, 'utf8');
   const automationSpecFile = await readFile(result.artifacts.automationSpecFile!, 'utf8');
   const evidenceBundle = await readFile(result.artifacts.evidenceBundle!, 'utf8');
+  const testStrategy = await readFile(result.artifacts.testStrategy!, 'utf8');
 
   assert.match(report, /FrontLens Professional QA Report/);
   assert.match(brief, /FrontLens QA Brief/);
@@ -94,6 +95,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(brief, /automation-specs\.md/);
   assert.match(brief, /automation\/frontlens\.spec\.ts/);
   assert.match(brief, /evidence-bundle\.md/);
+  assert.match(brief, /test-strategy\.md/);
   assert.match(report, /核心缺陷 \/ 修复根因/);
   assert.match(report, /Professional audit/);
   assert.match(report, /产品范围 \/ PRD 待确认/);
@@ -103,6 +105,7 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(report, /需求追踪矩阵 \/ Traceability/);
   assert.match(report, /自动化草案 \/ Automation Specs/);
   assert.match(report, /证据交付包 \/ Evidence Bundle/);
+  assert.match(report, /测试策略 \/ QA Test Strategy/);
   assert.match(report, /Adjusted score：\*\*.*专业排期口径/);
   assert.match(report, /Raw score：\*\*.*不能直接等同页面质量或修复工作量/);
   assert.ok(report.indexOf('Adjusted score') < report.indexOf('Raw score'));
@@ -133,6 +136,8 @@ test('markdown reporter makes report.md decision-oriented and moves raw evidence
   assert.match(automationSpecs, /FrontLens Automation Specs/);
   assert.match(automationSpecFile, /@playwright\/test/);
   assert.match(evidenceBundle, /FrontLens Evidence Bundle/);
+  assert.match(testStrategy, /FrontLens QA Test Strategy/);
+  assert.match(testStrategy, /Module decisions/);
 });
 
 test('markdown report profile controls primary report depth while preserving evidence appendix', async () => {
@@ -249,6 +254,8 @@ test('writeReports rewrites human reports after final artifact integrity is know
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.automationSpecsLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.evidenceBundle' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.evidenceBundleLog' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.testStrategy' && entry.exists), true);
+  assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.testStrategyLog' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.evidenceReport' && entry.exists), true);
   assert.equal(result.artifactIntegrity.entries.some((entry) => entry.source === 'artifacts.htmlReport' && entry.exists), true);
   assert.match(report, /Artifact integrity: \*\*passed（missing 0, skipped\/non-portable 0）\*\*/);

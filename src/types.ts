@@ -2203,6 +2203,77 @@ export interface EvidenceBundleResult {
   notes: string[];
 }
 
+export type QaStrategyStatus = 'ready' | 'needs-input' | 'blocked';
+export type QaStrategyRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type QaStrategyRunMode = 'smoke' | 'focused' | 'full' | 'blocked';
+export type QaStrategyDecision = 'run' | 'run-if-input' | 'out-of-scope' | 'blocked' | 'already-covered';
+export type QaStrategyModule =
+  | 'runtime-smoke'
+  | 'requirements'
+  | 'journeys'
+  | 'api-contract'
+  | 'source-correlation'
+  | 'source-scripts'
+  | 'accessibility'
+  | 'responsive'
+  | 'performance'
+  | 'security-passive'
+  | 'exception-simulation'
+  | 'role-matrix'
+  | 'test-data'
+  | 'env-compare'
+  | 'automation'
+  | 'evidence-handoff';
+
+export interface QaStrategyModuleDecision {
+  module: QaStrategyModule;
+  decision: QaStrategyDecision;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  reason: string;
+  requiredInputs: string[];
+  evidenceRefs: string[];
+  commandHints: string[];
+}
+
+export interface QaStrategyQuestion {
+  id: string;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  category: QaIntakeCategory | 'release';
+  question: string;
+  reason: string;
+  unblocks: QaStrategyModule[];
+}
+
+export interface QaStrategyEnvironmentPlan {
+  kind: 'dev' | 'preview' | 'staging' | 'production' | 'unknown';
+  purpose: string;
+  trust: 'high' | 'medium' | 'low';
+  required: boolean;
+  commandHint?: string;
+}
+
+export interface QaStrategyResult {
+  generatedAt: string;
+  status: QaStrategyStatus;
+  summary: {
+    targetUrl: string;
+    pageType: PageProfileType;
+    riskLevel: QaStrategyRiskLevel;
+    recommendedRunMode: QaStrategyRunMode;
+    runCount: number;
+    runIfInputCount: number;
+    outOfScopeCount: number;
+    blockedCount: number;
+    requiredInputCount: number;
+  };
+  modules: QaStrategyModuleDecision[];
+  environments: QaStrategyEnvironmentPlan[];
+  questions: QaStrategyQuestion[];
+  nextCommands: string[];
+  notes: string[];
+}
+
 export interface QaQualityGate {
   status: 'pass' | 'pass-with-risks' | 'fail' | 'blocked';
   confidence: 'high' | 'medium' | 'low';
@@ -2498,6 +2569,8 @@ export interface ArtifactIndex {
   automationSpecFile?: string;
   /** Shareable proof handoff bundle that maps defects, test cases, gaps, automation drafts, and local artifact availability. */
   evidenceBundle?: string;
+  /** QA test strategy planner: what to run, defer, scope out, or block before treating analysis as professional tester output. */
+  testStrategy?: string;
   qaReview?: string;
   jsonReport?: string;
   htmlReport?: string;
@@ -2530,6 +2603,7 @@ export interface ArtifactIndex {
   traceabilityLog?: string;
   automationSpecsLog?: string;
   evidenceBundleLog?: string;
+  testStrategyLog?: string;
   regressionPlanLog?: string;
   scopeReview?: string;
   scopeReviewLog?: string;
@@ -2702,6 +2776,7 @@ export interface QaResult {
   traceability: TraceabilityMatrixResult;
   automationSpecs: AutomationSpecResult;
   evidenceBundle: EvidenceBundleResult;
+  qaStrategy: QaStrategyResult;
   claimGuard: ClaimGuardResult;
   qaIntake: QaIntakeResult;
   qualityGate: QaQualityGate;

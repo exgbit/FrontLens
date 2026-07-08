@@ -80,6 +80,7 @@ export function formatProfessionalBrief(result: QaResult): string {
   const traceabilitySummary = `traceability ${result.traceability.status} / requirements ${result.traceability.summary.requirementCount} / high-priority gaps ${result.traceability.summary.highPriorityGapCount}`;
   const automationSummary = `automationSpecs ${result.automationSpecs.status} / drafts ${result.automationSpecs.summary.draftCount} / ready ${result.automationSpecs.summary.readyCount} / needs-input ${result.automationSpecs.summary.needsInputCount}`;
   const evidenceBundleSummary = `evidenceBundle ${result.evidenceBundle.status} / items ${result.evidenceBundle.summary.itemCount} / missing-artifact ${result.evidenceBundle.summary.missingArtifactCount}`;
+  const strategySummary = `testStrategy ${result.qaStrategy.status} / risk ${result.qaStrategy.summary.riskLevel} / mode ${result.qaStrategy.summary.recommendedRunMode} / run-if-input ${result.qaStrategy.summary.runIfInputCount}`;
   const artifactSummary = `${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}, skipped/non-portable ${result.artifactIntegrity.skippedCount}）`;
   const coverageSummary = `qaCoverage ${result.qaCoverage.status}/${result.qaCoverage.confidence}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}; testCases ${result.testCases.status}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}`;
   const artifactLine = [
@@ -105,7 +106,8 @@ export function formatProfessionalBrief(result: QaResult): string {
     `traceability.md: \`${markdownEscape(artifactPath(result, 'traceability'))}\``,
     `automation-specs.md: \`${markdownEscape(artifactPath(result, 'automationSpecs'))}\``,
     `automation/frontlens.spec.ts: \`${markdownEscape(artifactPath(result, 'automationSpecFile'))}\``,
-    `evidence-bundle.md: \`${markdownEscape(artifactPath(result, 'evidenceBundle'))}\``
+    `evidence-bundle.md: \`${markdownEscape(artifactPath(result, 'evidenceBundle'))}\``,
+    `test-strategy.md: \`${markdownEscape(artifactPath(result, 'testStrategy'))}\``
   ].join('；');
 
   const suggestedFixQueue = summaryFixRows.length && rootRows.length === 0
@@ -123,7 +125,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Coverage: ${coverageSummary}
 - Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）；Report content audit: **${result.reportContentAudit.status}**（blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}）
 - Journey assertion audit: **${result.journeyAssertionAudit.status}**（runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}）；Assertion suggestions: **${result.assertionSuggestions.status}**（suggestions ${result.assertionSuggestions.summary.totalCount}）
-- Release risk: ${riskSummary}; ${ticketSummary}; ${traceabilitySummary}; ${automationSummary}; ${evidenceBundleSummary}; artifacts **${artifactSummary}**
+- Release risk: ${riskSummary}; ${ticketSummary}; ${traceabilitySummary}; ${automationSummary}; ${evidenceBundleSummary}; ${strategySummary}; artifacts **${artifactSummary}**
 
 ## Core fixes
 

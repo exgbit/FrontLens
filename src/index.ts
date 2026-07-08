@@ -29,6 +29,7 @@ export { buildDefectTickets, formatDefectTickets } from './tickets/defectTickets
 export { buildTraceabilityMatrix, formatTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 export { buildAutomationSpecs, formatAutomationSpecs } from './automation/automationSpecs.js';
 export { buildEvidenceBundle, formatEvidenceBundle } from './evidence/evidenceBundle.js';
+export { buildQaStrategy, formatQaStrategy } from './strategy/qaStrategy.js';
 export { evaluateDataMismatchProof } from './proof/dataMismatchProof.js';
 export { buildArtifactIntegrity, createEmptyArtifactIntegrity } from './artifacts/artifactIntegrity.js';
 export { buildRootCauseGroups } from './rootCause/rootCauseGroups.js';

@@ -53,6 +53,8 @@ const FILE_ARTIFACT_KEYS = [
   'automationSpecsLog',
   'evidenceBundle',
   'evidenceBundleLog',
+  'testStrategy',
+  'testStrategyLog',
   'regressionPlanLog',
   'scopeReview',
   'scopeReviewLog',

@@ -55,8 +55,9 @@ import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
+import { buildQaStrategy } from './strategy/qaStrategy.js';
 
-export const RESULT_SCHEMA_VERSION = '1.81.0';
+export const RESULT_SCHEMA_VERSION = '1.82.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1485,6 +1486,50 @@ export function normalizeResult(raw: unknown): QaResult {
     automationSpecs,
     qaSignoff
   });
+  const qaStrategy = buildQaStrategy({
+    summary,
+    metadata: {
+      config: metadataConfig,
+      durationMs: asNumber(metadataRaw.durationMs, 0),
+      version: asString(metadataRaw.version, 'unknown'),
+      schemaVersion: asString(metadataRaw.schemaVersion, 'pre-1.1.0'),
+      phaseErrors
+    },
+    pageModel,
+    network,
+    pageProfile,
+    requirementCoverage,
+    scopeReview,
+    qaIntake,
+    journeyTests,
+    journeyAssertionAudit,
+    assertionSuggestions,
+    apiContract: normalizeApiContract(raw.apiContract),
+    testCases,
+    riskRegister,
+    riskAcceptance,
+    testData,
+    environment,
+    sourceAnalysis,
+    sourceRuntimeCorrelation,
+    sourceHealth,
+    artifactIntegrity,
+    evidenceBundle,
+    automationSpecs,
+    defectTickets,
+    traceability,
+    qaCoverage,
+    qaPlan,
+    qaSignoff,
+    qualityGate,
+    security,
+    coverage,
+    p2,
+    accessibilityChecks,
+    responsiveChecks: asArray(raw.responsiveChecks),
+    exceptionSimulations,
+    permissionChecks
+  });
   const reportContentAudit = normalizeReportContentAudit(raw.reportContentAudit, metadataConfig.report.profile);
 
   return {
@@ -1533,6 +1578,7 @@ export function normalizeResult(raw: unknown): QaResult {
     traceability,
     automationSpecs,
     evidenceBundle,
+    qaStrategy,
     claimGuard,
     qaIntake,
     qualityGate,

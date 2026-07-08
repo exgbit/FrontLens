@@ -24,6 +24,7 @@ import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
+import { buildQaStrategy } from './strategy/qaStrategy.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -242,6 +243,11 @@ function listTools(): Record<string, unknown> {
       {
         name: 'frontlens_evidence_bundle',
         description: 'Read result.json and return a shareable evidence handoff bundle linking proof-ready defects, failed tests, traceability gaps, automation drafts, and artifact existence.',
+        inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_test_strategy',
+        description: 'Read result.json and return the QA test strategy planner: modules to run, run-if-input, out-of-scope, blocked, environment plan, questions, and next commands.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
       },
       {
@@ -624,6 +630,10 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           status: result.evidenceBundle.status,
           summary: result.evidenceBundle.summary
         },
+        qaStrategy: {
+          status: result.qaStrategy.status,
+          summary: result.qaStrategy.summary
+        },
         riskRegister: {
           status: result.riskRegister.status,
           summary: result.riskRegister.summary
@@ -707,6 +717,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         traceability: result.traceability,
         automationSpecs: result.automationSpecs,
         evidenceBundle: result.evidenceBundle,
+        qaStrategy: result.qaStrategy,
         riskRegister: result.riskRegister,
         riskAcceptance: result.riskAcceptance,
         qualityGate: result.qualityGate,
@@ -839,6 +850,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildEvidenceBundle(result));
+    }
+    case 'frontlens_test_strategy': {
+      const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildQaStrategy(result));
     }
     case 'frontlens_report_content_audit': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

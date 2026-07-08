@@ -48,6 +48,7 @@ import { buildDefectTickets } from './tickets/defectTickets.js';
 import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
+import { buildQaStrategy } from './strategy/qaStrategy.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
@@ -986,6 +987,56 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     automationSpecs,
     qaSignoff
   });
+  const qaStrategy = buildQaStrategy({
+    summary,
+    metadata: {
+      config: resultConfig,
+      durationMs: Date.now() - started,
+      version: VERSION,
+      schemaVersion: RESULT_SCHEMA_VERSION,
+      phaseErrors
+    },
+    pageModel,
+    network: {
+      requests: networkCollector.list(),
+      failedRequests: analysis.network.failedRequests,
+      slowRequests: analysis.network.slowRequests,
+      duplicatedRequests: analysis.network.duplicatedRequests,
+      suspiciousRequests: analysis.network.suspiciousRequests
+    },
+    pageProfile,
+    requirementCoverage,
+    scopeReview,
+    qaIntake,
+    journeyTests,
+    journeyAssertionAudit,
+    assertionSuggestions,
+    apiContract,
+    testCases,
+    riskRegister,
+    riskAcceptance,
+    testData,
+    environment,
+    sourceAnalysis,
+    sourceRuntimeCorrelation,
+    sourceHealth,
+    artifactIntegrity: initialArtifactIntegrity,
+    evidenceBundle,
+    automationSpecs,
+    defectTickets,
+    traceability,
+    qaCoverage,
+    qaPlan,
+    qaSignoff,
+    qualityGate,
+    security,
+    coverage,
+    p2,
+    accessibilityChecks,
+    responsiveChecks,
+    exceptionSimulations,
+    permissionChecks
+  });
 
   const result: QaResult = {
     summary,
@@ -1045,6 +1096,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     traceability,
     automationSpecs,
     evidenceBundle,
+    qaStrategy,
     reportContentAudit: createSkippedReportContentAudit(resultConfig.report.profile),
     journeyAssertionAudit,
     assertionSuggestions,

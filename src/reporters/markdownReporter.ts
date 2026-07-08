@@ -23,6 +23,7 @@ import { buildDefectTickets, formatDefectTickets } from '../tickets/defectTicket
 import { buildTraceabilityMatrix, formatTraceabilityMatrix } from '../traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs, formatAutomationSpecs } from '../automation/automationSpecs.js';
 import { buildEvidenceBundle, formatEvidenceBundle } from '../evidence/evidenceBundle.js';
+import { buildQaStrategy, formatQaStrategy } from '../strategy/qaStrategy.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1025,6 +1026,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - Traceability：**${result.traceability.status}** / requirements ${result.traceability.summary.requirementCount} / high-priority gaps ${result.traceability.summary.highPriorityGapCount} / artifact ${artifactPath(result.artifacts.traceability)}
 - Automation specs：**${result.automationSpecs.status}** / drafts ${result.automationSpecs.summary.draftCount} / ready ${result.automationSpecs.summary.readyCount} / artifact ${artifactPath(result.artifacts.automationSpecs)}
 - Evidence bundle：**${result.evidenceBundle.status}** / items ${result.evidenceBundle.summary.itemCount} / missing artifacts ${result.evidenceBundle.summary.missingArtifactCount} / artifact ${artifactPath(result.artifacts.evidenceBundle)}
+- Test strategy：**${result.qaStrategy.status}** / risk ${result.qaStrategy.summary.riskLevel} / mode ${result.qaStrategy.summary.recommendedRunMode} / run-if-input ${result.qaStrategy.summary.runIfInputCount} / artifact ${artifactPath(result.artifacts.testStrategy)}
 - Professional audit：**${professionalAudit.status}** / blockers ${professionalAudit.summary.blockerCount} / warnings ${professionalAudit.summary.warningCount} / artifact ${artifactPath(result.artifacts.professionalAudit)}
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
 - Assertion suggestions：**${result.assertionSuggestions.status}** / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount} / artifact ${artifactPath(result.artifacts.assertionSuggestions)}
@@ -1083,6 +1085,16 @@ ${result.automationSpecs.drafts.length ? ['| Draft | Pri | Source | Status | Req
 - Rule：开发/发布复核时优先使用此包核对缺陷、失败用例、需求缺口、自动化草案与本地证据文件是否真实存在；missing-artifact 不能作为可引用证据。
 
 ${result.evidenceBundle.items.length ? ['| Item | Pri | Kind | Status | Owner | Next |', '| --- | --- | --- | --- | --- | --- |', ...result.evidenceBundle.items.slice(0, 8).map((item) => `| ${markdownEscape(item.id)} | ${item.priority} | ${item.kind} | ${item.status} | ${item.owner} | ${markdownEscape(truncateMiddle(item.nextStep, 120))} |`), ''].join('\n') : '当前没有可交付的证据包条目；先补 defect-proof、testCases、traceability 或自动化草案。'}
+
+## 测试策略 / QA Test Strategy
+
+- Strategy：**${result.qaStrategy.status}**
+- Artifact：${artifactPath(result.artifacts.testStrategy)}
+- Risk / mode：${result.qaStrategy.summary.riskLevel} / ${result.qaStrategy.summary.recommendedRunMode}
+- Module decisions：run ${result.qaStrategy.summary.runCount} / run-if-input ${result.qaStrategy.summary.runIfInputCount} / out-of-scope ${result.qaStrategy.summary.outOfScopeCount} / blocked ${result.qaStrategy.summary.blockedCount}
+- Rule：这是“测什么、问什么、哪些先不测”的专业测试策略门；用于防止把产品设计/样式风格/dev 环境噪声直接升级为缺陷。
+
+${result.qaStrategy.modules.length ? ['| Module | Pri | Decision | Owner | Reason |', '| --- | --- | --- | --- | --- |', ...result.qaStrategy.modules.slice(0, 10).map((item) => `| ${markdownEscape(item.module)} | ${item.priority} | ${item.decision} | ${item.owner} | ${markdownEscape(truncateMiddle(item.reason, 140))} |`), ''].join('\n') : '当前没有测试策略模块。'}
 
 ## 缺陷证明强度
 
@@ -1176,6 +1188,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const automationSpecsPath = path.join(result.artifacts.outputDir, 'automation-specs.md');
   const automationSpecFilePath = path.join(result.artifacts.outputDir, 'automation', 'frontlens.spec.ts');
   const evidenceBundlePath = path.join(result.artifacts.outputDir, 'evidence-bundle.md');
+  const testStrategyPath = path.join(result.artifacts.outputDir, 'test-strategy.md');
   const reviewPath = path.join(result.artifacts.outputDir, 'qa-review.md');
   const scopeReviewPath = path.join(result.artifacts.outputDir, 'scope-review.md');
   const claimGuardPath = path.join(result.artifacts.outputDir, 'claim-guard.md');
@@ -1200,6 +1213,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.automationSpecs = automationSpecsPath;
   result.artifacts.automationSpecFile = automationSpecFilePath;
   result.artifacts.evidenceBundle = evidenceBundlePath;
+  result.artifacts.testStrategy = testStrategyPath;
   result.artifacts.qaReview = reviewPath;
   result.artifacts.scopeReview = scopeReviewPath;
   result.artifacts.claimGuard = claimGuardPath;
@@ -1251,6 +1265,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Traceability：${result.traceability.status} / requirements ${result.traceability.summary.requirementCount} / high-priority gaps ${result.traceability.summary.highPriorityGapCount}
 - Automation Specs：${result.automationSpecs.status} / drafts ${result.automationSpecs.summary.draftCount} / ready ${result.automationSpecs.summary.readyCount} / needs-input ${result.automationSpecs.summary.needsInputCount}
 - Evidence Bundle：${result.evidenceBundle.status} / items ${result.evidenceBundle.summary.itemCount} / missing-artifact ${result.evidenceBundle.summary.missingArtifactCount}
+- Test Strategy：${result.qaStrategy.status} / risk ${result.qaStrategy.summary.riskLevel} / mode ${result.qaStrategy.summary.recommendedRunMode} / run-if-input ${result.qaStrategy.summary.runIfInputCount}
 - Artifact Integrity：${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}）
 - 问题总数：${result.summary.issueCount}
 - 可执行问题：${actionableIssues.length}（参考观察项：${referenceIssues.length}）
@@ -1423,6 +1438,8 @@ ${formatArtifacts(result)}
   await writeText(automationSpecFilePath, result.automationSpecs.specSource);
   result.evidenceBundle = buildEvidenceBundle(result);
   await writeText(evidenceBundlePath, formatEvidenceBundle(result.evidenceBundle));
+  result.qaStrategy = buildQaStrategy(result);
+  await writeText(testStrategyPath, formatQaStrategy(result.qaStrategy));
   await writeText(outputPath, reportMarkdown);
   await writeText(reviewPath, reviewMarkdown);
   await writeText(evidencePath, evidenceMarkdown);

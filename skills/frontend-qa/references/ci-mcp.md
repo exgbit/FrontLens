@@ -112,7 +112,7 @@ Tools exposed:
 - `frontlens_env_compare`: run dev/source-module and build/preview QA, then classify persistent, dev-only, preview-only, and dev-artifact findings.
 - `frontlens_suggestions`: return proof-aware frontend/backend/product/test suggestions by default; pass `all=true` only for raw audit of suppressed product/style/deployment/tool/needs-evidence rows.
 
-`frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `journeyAssertionAudit`, `assertionSuggestions` summary, `testCases` summary, `defectTickets` summary, `traceability` summary, `automationSpecs` summary, `evidenceBundle` summary, `testData` lifecycle status, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, `rootCauseGroups`, `regressionPlan` summary, `riskRegister`/`riskAcceptance` summary, and `professionalSummary`; use `professionalSummary.status`, `qaSignoff` plus `journeyAssertionAudit.status`, `assertionSuggestions.status`, `testCases.status`, `defectTickets.status`, `traceability.status`, `automationSpecs.status`, `evidenceBundle.status`, `testData.status`, `environment.trust`, `pageProfile.status`, `riskRegister.status`, `riskAcceptance.status`, and `regressionPlan.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
+`frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `journeyAssertionAudit`, `assertionSuggestions` summary, `testCases` summary, `defectTickets` summary, `traceability` summary, `automationSpecs` summary, `evidenceBundle` / `qaStrategy` summary, `testData` lifecycle status, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, `rootCauseGroups`, `regressionPlan` summary, `riskRegister`/`riskAcceptance` summary, and `professionalSummary`; use `professionalSummary.status`, `qaSignoff` plus `journeyAssertionAudit.status`, `assertionSuggestions.status`, `testCases.status`, `defectTickets.status`, `traceability.status`, `automationSpecs.status`, `evidenceBundle.status`, `qaStrategy.status`, `testData.status`, `environment.trust`, `pageProfile.status`, `riskRegister.status`, `riskAcceptance.status`, and `regressionPlan.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
 
 `frontlens_role_matrix` returns `role-matrix.json` / `role-matrix.md`. Use it for permission-sensitive pages after collecting storage states; treat role-specific action labels or issues as review evidence unless expected allowed/forbidden text contracts or PRD/source/runtime proof show a violation.
 
@@ -143,7 +143,7 @@ Return these paths to the caller:
 - `$OUTPUT_DIR/network.json`
 - `$OUTPUT_DIR/console.json`
 
-Other skills should consume `result.json`, read `professionalSummary`, `assertionSuggestions`, `testCases`, `defectTickets`, `traceability`, `automationSpecs`, `evidenceBundle`, and `riskAcceptance` first, filter via `defectProof` + `issueDisposition`/`rootCauseGroups`, follow `regressionPlan.items[]`, and rerun FrontLens after applying fixes.
+Other skills should consume `result.json`, read `professionalSummary`, `assertionSuggestions`, `testCases`, `defectTickets`, `traceability`, `automationSpecs`, `evidenceBundle`, `qaStrategy`, and `riskAcceptance` first, filter via `defectProof` + `issueDisposition`/`rootCauseGroups`, follow `regressionPlan.items[]`, and rerun FrontLens after applying fixes.
 
 For lighter wrappers, call the helper commands:
 
@@ -161,6 +161,7 @@ node dist/cli.js defect-tickets --report "$OUTPUT_DIR/result.json"
 node dist/cli.js traceability --report "$OUTPUT_DIR/result.json"
 node dist/cli.js automation-specs --report "$OUTPUT_DIR/result.json"
 node dist/cli.js evidence-bundle --report "$OUTPUT_DIR/result.json"
+node dist/cli.js test-strategy --report "$OUTPUT_DIR/result.json"
 node dist/cli.js report-content-audit --report "$OUTPUT_DIR/result.json"
 node dist/cli.js journey-assertion-audit --report "$OUTPUT_DIR/result.json"
 node dist/cli.js assertion-suggestions --report "$OUTPUT_DIR/result.json"

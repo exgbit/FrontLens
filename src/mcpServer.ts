@@ -26,6 +26,7 @@ import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy } from './strategy/qaStrategy.js';
+import { buildReviewCalibration } from './review/reviewCalibration.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -85,6 +86,13 @@ async function readResult(reportPath: string): Promise<QaResult> {
     }
   }
   return normalizeResult(raw);
+}
+
+async function readFeedbackArg(args: Record<string, unknown>): Promise<string | undefined> {
+  if (typeof args.feedbackFile === 'string' && args.feedbackFile.trim()) {
+    return readFile(args.feedbackFile, 'utf8');
+  }
+  return typeof args.feedback === 'string' && args.feedback.trim() ? args.feedback : undefined;
 }
 
 function textContent(data: unknown, isError = false): { content: Array<{ type: 'text'; text: string }>; isError?: boolean } {
@@ -210,6 +218,15 @@ function listTools(): Record<string, unknown> {
         name: 'frontlens_product_context',
         description: 'Read result.json and return the reviewable suggested productContext config plus scope questions to reduce product/design false positives on rerun.',
         inputSchema: schema({ report: { type: 'string' } }, ['report'])
+      },
+      {
+        name: 'frontlens_review_calibration',
+        description: 'Read result.json plus optional reviewer/product feedback, then return reusable productContext/policy rerun config and calibrated issue actions to reduce style/design false positives and unsupported data-mismatch assumptions.',
+        inputSchema: schema({
+          report: { type: 'string' },
+          feedback: { type: 'string', description: 'Inline reviewer/product feedback.' },
+          feedbackFile: { type: 'string', description: 'Markdown/text file containing reviewer/product feedback.' }
+        }, ['report'])
       },
       {
         name: 'frontlens_claim_guard',
@@ -620,6 +637,10 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           status: result.businessJourneys.status,
           summary: result.businessJourneys.summary
         },
+        reviewCalibration: {
+          status: result.reviewCalibration.status,
+          summary: result.reviewCalibration.summary
+        },
         testCases: {
           status: result.testCases.status,
           summary: result.testCases.summary
@@ -723,6 +744,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         qaCoverage: result.qaCoverage,
         assertionSuggestions: result.assertionSuggestions,
         businessJourneys: result.businessJourneys,
+        reviewCalibration: result.reviewCalibration,
         testCases: result.testCases,
         defectTickets: result.defectTickets,
         traceability: result.traceability,
@@ -817,6 +839,11 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);
       const result = await readResult(requireString(args, 'report'));
       return textContent(buildProductContextSuggestion(result));
+    }
+    case 'frontlens_review_calibration': {
+      const args = validateArgs(params.arguments ?? {}, ['report', 'feedback', 'feedbackFile'], ['report']);
+      const result = await readResult(requireString(args, 'report'));
+      return textContent(buildReviewCalibration(result, { feedbackText: await readFeedbackArg(args) }));
     }
     case 'frontlens_claim_guard': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

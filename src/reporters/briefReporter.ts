@@ -82,6 +82,7 @@ export function formatProfessionalBrief(result: QaResult): string {
   const evidenceBundleSummary = `evidenceBundle ${result.evidenceBundle.status} / items ${result.evidenceBundle.summary.itemCount} / missing-artifact ${result.evidenceBundle.summary.missingArtifactCount}`;
   const businessJourneySummary = `businessJourneys ${result.businessJourneys.status} / ${result.businessJourneys.summary.scenarioCount} / ready ${result.businessJourneys.summary.readyCount} / needs ${result.businessJourneys.summary.needsInputCount}`;
   const strategySummary = `testStrategy ${result.qaStrategy.status} / risk ${result.qaStrategy.summary.riskLevel} / mode ${result.qaStrategy.summary.recommendedRunMode} / run-if-input ${result.qaStrategy.summary.runIfInputCount}`;
+  const reviewCalibrationSummary = `reviewCal ${result.reviewCalibration.status}/${result.reviewCalibration.summary.signalCount}/${result.reviewCalibration.summary.needsEvidenceCount}`;
   const artifactSummary = `${result.artifactIntegrity.status}（missing ${result.artifactIntegrity.missingCount}, skipped/non-portable ${result.artifactIntegrity.skippedCount}）`;
   const coverageSummary = `qaCoverage ${result.qaCoverage.status}/${result.qaCoverage.confidence}, gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}; testCases ${result.testCases.status}, failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount}, needs-input ${result.testCases.summary.needsInputCount}`;
   const artifactLine = [
@@ -96,6 +97,7 @@ export function formatProfessionalBrief(result: QaResult): string {
     `journey-assertion-audit.md: \`${markdownEscape(artifactPath(result, 'journeyAssertionAudit'))}\``,
     `assertion-suggestions.md: \`${markdownEscape(artifactPath(result, 'assertionSuggestions'))}\``,
     `business-journeys.md: \`${markdownEscape(artifactPath(result, 'businessJourneys'))}\``,
+    `review-cal: \`${markdownEscape(artifactPath(result, 'reviewCalibration'))}\``,
     `product-context.md: \`${markdownEscape(artifactPath(result, 'productContext'))}\``,
     `product-context.config.json: \`${markdownEscape(artifactPath(result, 'productContextConfig'))}\``,
     `qa-intake.config.json: \`${markdownEscape(artifactPath(result, 'qaIntakeConfig'))}\``,
@@ -127,7 +129,7 @@ export function formatProfessionalBrief(result: QaResult): string {
 - Coverage: ${coverageSummary}
 - Professional audit: **${professionalAudit.status}**（blockers ${professionalAudit.summary.blockerCount}, warnings ${professionalAudit.summary.warningCount}）；Report content audit: **${result.reportContentAudit.status}**（blockers ${result.reportContentAudit.summary.blockerCount}, warnings ${result.reportContentAudit.summary.warningCount}）
 - Journey assertion audit: **${result.journeyAssertionAudit.status}**（runtime-verified ${result.journeyAssertionAudit.summary.runtimeVerifiedJourneyCount}, path-only ${result.journeyAssertionAudit.summary.pathOnlyJourneyCount}, weak ${result.journeyAssertionAudit.summary.weaklyAssertedJourneyCount}）；Assertion suggestions: **${result.assertionSuggestions.status}**（suggestions ${result.assertionSuggestions.summary.totalCount}）；${businessJourneySummary}
-- Release risk: ${riskSummary}; ${ticketSummary}; ${traceabilitySummary}; ${automationSummary}; ${evidenceBundleSummary}; ${strategySummary}; artifacts **${artifactSummary}**
+- Release risk: ${riskSummary}; ${ticketSummary}; ${traceabilitySummary}; ${automationSummary}; ${evidenceBundleSummary}; ${strategySummary}; ${reviewCalibrationSummary}; artifacts **${artifactSummary}**
 
 ## Core fixes
 

@@ -25,6 +25,7 @@ import { buildTraceabilityMatrix, formatTraceabilityMatrix } from '../traceabili
 import { buildAutomationSpecs, formatAutomationSpecs } from '../automation/automationSpecs.js';
 import { buildEvidenceBundle, formatEvidenceBundle } from '../evidence/evidenceBundle.js';
 import { buildQaStrategy, formatQaStrategy } from '../strategy/qaStrategy.js';
+import { buildReviewCalibration, formatReviewCalibration } from '../review/reviewCalibration.js';
 
 const severityLabel: Record<Severity, string> = {
   critical: '严重',
@@ -1032,6 +1033,7 @@ export function formatProfessionalReview(result: QaResult): string {
 - QA coverage：**${result.qaCoverage.status}** / confidence **${result.qaCoverage.confidence}** / gaps ${result.qaCoverage.summary.partialCount + result.qaCoverage.summary.skippedCount + result.qaCoverage.summary.needsInputCount + result.qaCoverage.summary.failedCount}
 - Assertion suggestions：**${result.assertionSuggestions.status}** / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount} / artifact ${artifactPath(result.artifacts.assertionSuggestions)}
 - Business journeys：**${result.businessJourneys.status}** / scenarios ${result.businessJourneys.summary.scenarioCount} / ready ${result.businessJourneys.summary.readyCount} / needs-input ${result.businessJourneys.summary.needsInputCount} / artifact ${artifactPath(result.artifacts.businessJourneys)}
+- Review calibration：**${result.reviewCalibration.status}** / signals ${result.reviewCalibration.summary.signalCount} / needs-evidence ${result.reviewCalibration.summary.needsEvidenceCount} / artifact ${artifactPath(result.artifacts.reviewCalibration)}
 - Test cases：**${result.testCases.status}** / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount} / artifact ${artifactPath(result.artifacts.testCases)}
 - Risk register：**${result.riskRegister.status}** / total ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount} / artifact ${artifactPath(result.artifacts.riskRegister)}
 - Risk acceptance：**${result.riskAcceptance.status}** / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount} / artifact ${artifactPath(result.artifacts.riskAcceptance)}
@@ -1106,6 +1108,16 @@ ${result.evidenceBundle.items.length ? ['| Item | Pri | Kind | Status | Owner | 
 - Rule：这是“测什么、问什么、哪些先不测”的专业测试策略门；用于防止把产品设计/样式风格/dev 环境噪声直接升级为缺陷。
 
 ${result.qaStrategy.modules.length ? ['| Module | Pri | Decision | Owner | Reason |', '| --- | --- | --- | --- | --- |', ...result.qaStrategy.modules.slice(0, 10).map((item) => `| ${markdownEscape(item.module)} | ${item.priority} | ${item.decision} | ${item.owner} | ${markdownEscape(truncateMiddle(item.reason, 140))} |`), ''].join('\n') : '当前没有测试策略模块。'}
+
+## 复核校准 / Review Calibration
+
+- Calibration：**${result.reviewCalibration.status}**
+- Artifact：${artifactPath(result.artifacts.reviewCalibration)}
+- Config：${artifactPath(result.artifacts.reviewCalibrationConfig)}
+- Signals：${result.reviewCalibration.summary.signalCount}；keep / downgrade / out-of-scope / needs-evidence：${result.reviewCalibration.summary.keepCount} / ${result.reviewCalibration.summary.downgradeCount} / ${result.reviewCalibration.summary.outOfScopeCount} / ${result.reviewCalibration.summary.needsEvidenceCount}
+- Rule：把人工复核/产品取舍写成 productContext + policy config，后续同页或同类页面复测时先应用配置，避免把样式风格、产品设计、dev 环境噪音或未满足四段证据的 API/UI 推断直接列为 must-fix。
+
+${result.reviewCalibration.signals.length ? ['| Signal | Confidence | Rationale |', '| --- | --- | --- |', ...result.reviewCalibration.signals.slice(0, 8).map((item) => `| ${markdownEscape(item.kind)} | ${item.confidence} | ${markdownEscape(truncateMiddle(item.rationale, 150))} |`), ''].join('\n') : '尚未提供人工复核反馈；先使用 review-calibration.config.json/qa-intake.config.json 补产品范围。'}
 
 ## 缺陷证明强度
 
@@ -1189,6 +1201,8 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   const assertionSuggestionsPath = path.join(result.artifacts.outputDir, 'assertion-suggestions.md');
   const productContextPath = path.join(result.artifacts.outputDir, 'product-context.md');
   const businessJourneysPath = path.join(result.artifacts.outputDir, 'business-journeys.md');
+  const reviewCalibrationPath = path.join(result.artifacts.outputDir, 'review-calibration.md');
+  const reviewCalibrationConfigPath = path.join(result.artifacts.outputDir, 'review-calibration.config.json');
   const qaIntakeConfigPath = path.join(result.artifacts.outputDir, 'qa-intake.config.json');
   const qaPlanPath = path.join(result.artifacts.outputDir, 'qa-plan.md');
   const qaCoveragePath = path.join(result.artifacts.outputDir, 'qa-coverage.md');
@@ -1214,6 +1228,8 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
   result.artifacts.journeyAssertionAudit = journeyAssertionAuditPath;
   result.artifacts.assertionSuggestions = assertionSuggestionsPath;
   result.artifacts.businessJourneys = businessJourneysPath;
+  result.artifacts.reviewCalibration = reviewCalibrationPath;
+  result.artifacts.reviewCalibrationConfig = reviewCalibrationConfigPath;
   result.artifacts.productContext = productContextPath;
   result.artifacts.qaIntakeConfig = qaIntakeConfigPath;
   result.artifacts.qaPlan = qaPlanPath;
@@ -1272,6 +1288,7 @@ export async function writeMarkdownReport(result: QaResult): Promise<void> {
 - Regression Plan：${result.regressionPlan.status} / items ${result.regressionPlan.summary.itemCount} / blocked ${result.regressionPlan.summary.blockedCount}
 - Assertion Suggestions：${result.assertionSuggestions.status} / suggestions ${result.assertionSuggestions.summary.totalCount} / weak journeys ${result.assertionSuggestions.summary.weakJourneyCount}
 - Business Journeys：${result.businessJourneys.status} / scenarios ${result.businessJourneys.summary.scenarioCount} / ready ${result.businessJourneys.summary.readyCount} / needs-input ${result.businessJourneys.summary.needsInputCount}
+- Review Calibration：${result.reviewCalibration.status} / signals ${result.reviewCalibration.summary.signalCount} / questions ${result.reviewCalibration.summary.questionCount}
 - Test Cases：${result.testCases.status} / total ${result.testCases.summary.totalCount} / failed+blocked ${result.testCases.summary.failedCount + result.testCases.summary.blockedCount} / needs-input ${result.testCases.summary.needsInputCount}
 - Risk Register：${result.riskRegister.status} / risks ${result.riskRegister.summary.totalCount} / release-blocking ${result.riskRegister.summary.releaseBlockingCount}
 - Risk Acceptance：${result.riskAcceptance.status} / must-mitigate ${result.riskAcceptance.summary.mustMitigateCount} / needs-acceptance ${result.riskAcceptance.summary.acceptanceRequiredCount}
@@ -1299,6 +1316,8 @@ ${formatEnvironmentAssessment(result)}
 ${formatPageProfileAssessment(result)}
 
 ${formatScopeReview(result)}
+
+${formatReviewCalibration(result.reviewCalibration)}
 
 ${formatClaimGuard(result, { headingLevel: 2 })}
 
@@ -1412,6 +1431,7 @@ ${formatArtifacts(result)}
 
   result.assertionSuggestions = buildAssertionSuggestions(result);
   result.businessJourneys = buildBusinessJourneys(result);
+  result.reviewCalibration = buildReviewCalibration(result);
   const buildHumanMarkdown = (): { reviewMarkdown: string; reportMarkdown: string } => {
     const review = formatProfessionalReview(result);
     const professionalReportMarkdown = review.replace('# FrontLens Professional QA Review', '# FrontLens Professional QA Report');
@@ -1433,6 +1453,9 @@ ${formatArtifacts(result)}
   await writeText(journeyAssertionAuditPath, formatJourneyAssertionAudit(result.journeyAssertionAudit));
   await writeText(assertionSuggestionsPath, formatAssertionSuggestions(result.assertionSuggestions));
   await writeText(businessJourneysPath, formatBusinessJourneys(result.businessJourneys));
+  result.reviewCalibration = buildReviewCalibration(result);
+  await writeText(reviewCalibrationPath, formatReviewCalibration(result.reviewCalibration));
+  await writeText(reviewCalibrationConfigPath, `${JSON.stringify(result.reviewCalibration.configPatch, null, 2)}\n`);
   await writeText(productContextPath, formatProductContextSuggestion(buildProductContextSuggestion(result)));
   await writeText(qaIntakeConfigPath, `${JSON.stringify(buildQaIntakeConfig(result), null, 2)}\n`);
   result.qaPlan = buildQaExecutionPlan(result);

@@ -17,6 +17,7 @@ import { buildTraceabilityMatrix } from '../traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from '../automation/automationSpecs.js';
 import { buildEvidenceBundle } from '../evidence/evidenceBundle.js';
 import { buildQaStrategy } from '../strategy/qaStrategy.js';
+import { buildReviewCalibration } from '../review/reviewCalibration.js';
 
 export function assignJsonArtifactPaths(result: QaResult): void {
   const outputDir = result.artifacts.outputDir;
@@ -36,6 +37,8 @@ export function assignJsonArtifactPaths(result: QaResult): void {
   result.artifacts.journeyAssertionAuditLog = path.join(outputDir, 'journey-assertion-audit.json');
   result.artifacts.assertionSuggestionsLog = path.join(outputDir, 'assertion-suggestions.json');
   result.artifacts.businessJourneysLog = path.join(outputDir, 'business-journeys.json');
+  result.artifacts.reviewCalibrationLog = path.join(outputDir, 'review-calibration.json');
+  result.artifacts.reviewCalibrationConfig = path.join(outputDir, 'review-calibration.config.json');
   result.artifacts.productContextLog = path.join(outputDir, 'product-context.json');
   result.artifacts.productContextConfig = path.join(outputDir, 'product-context.config.json');
   result.artifacts.qaIntakeConfig = path.join(outputDir, 'qa-intake.config.json');
@@ -78,6 +81,8 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
     journeyAssertionAuditLog: string;
     assertionSuggestionsLog: string;
     businessJourneysLog: string;
+    reviewCalibrationLog: string;
+    reviewCalibrationConfig: string;
     productContextLog: string;
     productContextConfig: string;
     qaIntakeConfig: string;
@@ -120,6 +125,9 @@ export async function writeJsonReports(result: QaResult): Promise<void> {
   await writeJson(artifacts.assertionSuggestionsLog, result.assertionSuggestions);
   result.businessJourneys = buildBusinessJourneys(result);
   await writeJson(artifacts.businessJourneysLog, result.businessJourneys);
+  result.reviewCalibration = buildReviewCalibration(result);
+  await writeJson(artifacts.reviewCalibrationLog, result.reviewCalibration);
+  await writeJson(artifacts.reviewCalibrationConfig, result.reviewCalibration.configPatch);
   const productContextSuggestion = buildProductContextSuggestion(result);
   await writeJson(artifacts.productContextLog, productContextSuggestion);
   await writeJson(artifacts.productContextConfig, productContextSuggestion.usage.configSnippet);

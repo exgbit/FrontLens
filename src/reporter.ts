@@ -32,6 +32,7 @@ import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy } from './strategy/qaStrategy.js';
+import { buildReviewCalibration } from './review/reviewCalibration.js';
 
 function rebuildTriageArtifacts(result: QaResult): void {
   const preliminaryDisposition = buildIssueDisposition(result.issues, result.metadata.config, [], { requirementCoverage: result.requirementCoverage });
@@ -150,6 +151,7 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
   result.automationSpecs = buildAutomationSpecs(result);
   result.evidenceBundle = buildEvidenceBundle(result);
   result.qaStrategy = buildQaStrategy(result);
+  result.reviewCalibration = buildReviewCalibration(result);
 }
 
 async function writeHumanReportsWithStableIntegrity(result: QaResult, formats: Set<string>): Promise<void> {
@@ -224,6 +226,7 @@ export async function writeReports(result: QaResult): Promise<QaResult> {
     result.automationSpecs = buildAutomationSpecs(result);
     result.evidenceBundle = buildEvidenceBundle(result);
     result.qaStrategy = buildQaStrategy(result);
+    result.reviewCalibration = buildReviewCalibration(result);
     await writeHumanReportsWithStableIntegrity(result, formats);
     await writeJsonReports(result);
   }

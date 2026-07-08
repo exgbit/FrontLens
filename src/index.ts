@@ -6,6 +6,7 @@ export { recordJourney, buildRecordedJourneyConfig } from './journeys/journeyRec
 export { buildJourneyAssertionAudit, formatJourneyAssertionAudit, createSkippedJourneyAssertionAudit } from './journeys/journeyAssertionAudit.js';
 export { buildAssertionSuggestions, formatAssertionSuggestions } from './journeys/assertionSuggestions.js';
 export { buildBusinessJourneys, formatBusinessJourneys } from './journeys/businessJourneys.js';
+export { buildReviewCalibration, formatReviewCalibration } from './review/reviewCalibration.js';
 export { loadConfig } from './config.js';
 export { createDefaultConfig } from './defaultConfig.js';
 export { normalizeResult, normalizeIssueLike, fingerprintIssue, RESULT_SCHEMA_VERSION } from './resultNormalizer.js';

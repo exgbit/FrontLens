@@ -92,6 +92,7 @@ Tools exposed:
 - `frontlens_fix_tasks`: return machine-executable fix tasks for downstream repair skills.
 - `frontlens_audit`: run professional report-contract self-check for overclaiming, proof-ready fix queue, source evidence, artifact integrity, and scope alignment.
 - `frontlens_product_context`: return a reviewable suggested productContext config plus scope questions so product/design/style/device findings can be downgraded consistently on rerun.
+- `frontlens_review_calibration`: return reviewer/Product/QA feedback calibration, issue actions, and rerun config patch for style/design/dev-server/data-mismatch false-positive reduction.
 - `frontlens_claim_guard`: return allowed/forbidden QA wording so other agents do not overclaim business pass, production readiness, or source/API proof.
 - `frontlens_qa_intake`: return professional QA intake questions plus the editable rerun config pack; use it before guessing PRD/product/source/test-data intent.
 - `frontlens_defect_proof`: return proof strength for each root cause before implementation work is scheduled.
@@ -113,7 +114,7 @@ Tools exposed:
 - `frontlens_env_compare`: run dev/source-module and build/preview QA, then classify persistent, dev-only, preview-only, and dev-artifact findings.
 - `frontlens_suggestions`: return proof-aware frontend/backend/product/test suggestions by default; pass `all=true` only for raw audit of suppressed product/style/deployment/tool/needs-evidence rows.
 
-`frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `journeyAssertionAudit`, `assertionSuggestions` summary, `businessJourneys` summary, `testCases` summary, `defectTickets` summary, `traceability` summary, `automationSpecs` summary, `evidenceBundle` / `qaStrategy` summary, `testData` lifecycle status, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, `rootCauseGroups`, `regressionPlan` summary, `riskRegister`/`riskAcceptance` summary, and `professionalSummary`; use `professionalSummary.status`, `qaSignoff` plus `journeyAssertionAudit.status`, `assertionSuggestions.status`, `businessJourneys.status`, `testCases.status`, `defectTickets.status`, `traceability.status`, `automationSpecs.status`, `evidenceBundle.status`, `qaStrategy.status`, `testData.status`, `environment.trust`, `pageProfile.status`, `riskRegister.status`, `riskAcceptance.status`, and `regressionPlan.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
+`frontlens_qa` and `frontlens_inspect` include `qaSignoff` and `qualityGate` with `status` (`pass`, `pass-with-risks`, `fail`, `blocked`) and `confidence`, plus `requirementCoverage` summary/details, `journeyAssertionAudit`, `assertionSuggestions` summary, `businessJourneys` summary, `reviewCalibration` summary, `testCases` summary, `defectTickets` summary, `traceability` summary, `automationSpecs` summary, `evidenceBundle` / `qaStrategy` summary, `testData` lifecycle status, `environment` trust, `pageProfile` scope status/questions, `sourceHealth` including optional `scriptChecks`, `artifactIntegrity`, `issueDisposition`, `rootCauseGroups`, `regressionPlan` summary, `riskRegister`/`riskAcceptance` summary, and `professionalSummary`; use `professionalSummary.status`, `qaSignoff` plus `journeyAssertionAudit.status`, `assertionSuggestions.status`, `businessJourneys.status`, `reviewCalibration.status`, `testCases.status`, `defectTickets.status`, `traceability.status`, `automationSpecs.status`, `evidenceBundle.status`, `qaStrategy.status`, `testData.status`, `environment.trust`, `pageProfile.status`, `riskRegister.status`, `riskAcceptance.status`, and `regressionPlan.status` as the first machine-readable release/sign-off gate before applying source/requirement triage.
 
 `frontlens_role_matrix` returns `role-matrix.json` / `role-matrix.md`. Use it for permission-sensitive pages after collecting storage states; treat role-specific action labels or issues as review evidence unless expected allowed/forbidden text contracts or PRD/source/runtime proof show a violation.
 
@@ -144,7 +145,7 @@ Return these paths to the caller:
 - `$OUTPUT_DIR/network.json`
 - `$OUTPUT_DIR/console.json`
 
-Other skills should consume `result.json`, read `professionalSummary`, `assertionSuggestions`, `businessJourneys`, `testCases`, `defectTickets`, `traceability`, `automationSpecs`, `evidenceBundle`, `qaStrategy`, and `riskAcceptance` first, filter via `defectProof` + `issueDisposition`/`rootCauseGroups`, follow `regressionPlan.items[]`, and rerun FrontLens after applying fixes.
+Other skills should consume `result.json`, read `professionalSummary`, `assertionSuggestions`, `businessJourneys`, `reviewCalibration`, `testCases`, `defectTickets`, `traceability`, `automationSpecs`, `evidenceBundle`, `qaStrategy`, and `riskAcceptance` first, filter via `defectProof` + `issueDisposition`/`rootCauseGroups`, follow `regressionPlan.items[]`, and rerun FrontLens after applying fixes.
 
 For lighter wrappers, call the helper commands:
 
@@ -167,6 +168,7 @@ node dist/cli.js report-content-audit --report "$OUTPUT_DIR/result.json"
 node dist/cli.js journey-assertion-audit --report "$OUTPUT_DIR/result.json"
 node dist/cli.js assertion-suggestions --report "$OUTPUT_DIR/result.json"
 node dist/cli.js business-journeys --report "$OUTPUT_DIR/result.json"
+node dist/cli.js review-calibration --report "$OUTPUT_DIR/result.json" --feedback-file feedback.md
 node dist/cli.js test-cases --report "$OUTPUT_DIR/result.json"
 node dist/cli.js risk-register --report "$OUTPUT_DIR/result.json"
 node dist/cli.js risk-acceptance --report "$OUTPUT_DIR/result.json"

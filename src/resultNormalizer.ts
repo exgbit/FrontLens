@@ -57,8 +57,9 @@ import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy } from './strategy/qaStrategy.js';
+import { buildReviewCalibration } from './review/reviewCalibration.js';
 
-export const RESULT_SCHEMA_VERSION = '1.83.0';
+export const RESULT_SCHEMA_VERSION = '1.84.0';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -1550,6 +1551,22 @@ export function normalizeResult(raw: unknown): QaResult {
     permissionChecks
   });
   const reportContentAudit = normalizeReportContentAudit(raw.reportContentAudit, metadataConfig.report.profile);
+  const reviewCalibration = buildReviewCalibration({
+    summary,
+    issues,
+    issueDisposition,
+    requirementCoverage,
+    metadata: {
+      config: metadataConfig,
+      durationMs: asNumber(metadataRaw.durationMs, 0),
+      version: asString(metadataRaw.version, 'unknown'),
+      schemaVersion: asString(metadataRaw.schemaVersion, 'pre-1.1.0'),
+      phaseErrors
+    },
+    scopeReview,
+    sourceAnalysis,
+    pageProfile
+  } as QaResult);
 
   return {
     summary,
@@ -1592,6 +1609,7 @@ export function normalizeResult(raw: unknown): QaResult {
     journeyAssertionAudit,
     assertionSuggestions,
     businessJourneys,
+    reviewCalibration,
     professionalSummary,
     defectProof,
     defectTickets,

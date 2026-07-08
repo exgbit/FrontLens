@@ -946,6 +946,70 @@ export interface BusinessJourneyResult {
   notes: string[];
 }
 
+export type ReviewCalibrationStatus = 'ready' | 'needs-feedback' | 'needs-input';
+export type ReviewCalibrationSignalKind =
+  | 'desktop-first'
+  | 'style-is-design'
+  | 'touch-target-optional'
+  | 'export-out-of-scope'
+  | 'pagination-out-of-scope'
+  | 'manual-refresh-optional'
+  | 'data-mismatch-needs-proof'
+  | 'dev-server-noise'
+  | 'source-required'
+  | 'error-state-required'
+  | 'a11y-button-name-required'
+  | 'route-lazy-load-required';
+
+export interface ReviewCalibrationSignal {
+  id: string;
+  kind: ReviewCalibrationSignalKind;
+  title: string;
+  confidence: 'high' | 'medium' | 'low';
+  rationale: string;
+  productContextPatch?: Partial<ProductContextConfig>;
+}
+
+export type ReviewCalibrationIssueAction = 'keep' | 'downgrade' | 'out-of-scope' | 'needs-evidence' | 'ask-product' | 'review';
+
+export interface ReviewCalibrationIssueDecision {
+  issueId: string;
+  title: string;
+  category: IssueCategory;
+  severity: Severity;
+  action: ReviewCalibrationIssueAction;
+  owner: 'frontend' | 'backend' | 'product' | 'test' | 'security';
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+  evidenceRefs: string[];
+  matchedSignals: ReviewCalibrationSignalKind[];
+}
+
+export interface ReviewCalibrationResult {
+  generatedAt: string;
+  status: ReviewCalibrationStatus;
+  targetUrl: string;
+  feedbackProvided: boolean;
+  feedbackSummary: string;
+  summary: {
+    signalCount: number;
+    keepCount: number;
+    downgradeCount: number;
+    outOfScopeCount: number;
+    needsEvidenceCount: number;
+    askProductCount: number;
+    reviewCount: number;
+    configPatchKeys: string[];
+    questionCount: number;
+  };
+  signals: ReviewCalibrationSignal[];
+  issueDecisions: ReviewCalibrationIssueDecision[];
+  configPatch: Record<string, unknown>;
+  questions: string[];
+  nextSteps: string[];
+  notes: string[];
+}
+
 export interface ResponsiveCheckResult {
   name: string;
   width: number;
@@ -2590,6 +2654,10 @@ export interface ArtifactIndex {
   assertionSuggestions?: string;
   /** Business journey scenario plan that combines requirements, recorded journeys, and assertion drafts without claiming pass until rerun. */
   businessJourneys?: string;
+  /** Human review/product feedback calibration artifact; turns reviewer feedback into reusable productContext/policy config. */
+  reviewCalibration?: string;
+  /** Direct rerun config generated from review calibration. */
+  reviewCalibrationConfig?: string;
   /** Reviewable productContext suggestion Markdown. */
   productContext?: string;
   /** Direct FrontLens config JSON containing the suggested/reviewed productContext snippet. */
@@ -2641,6 +2709,7 @@ export interface ArtifactIndex {
   journeyAssertionAuditLog?: string;
   assertionSuggestionsLog?: string;
   businessJourneysLog?: string;
+  reviewCalibrationLog?: string;
   productContextLog?: string;
   qaPlanLog?: string;
   qaCoverageLog?: string;
@@ -2819,6 +2888,7 @@ export interface QaResult {
   journeyAssertionAudit: JourneyAssertionAuditResult;
   assertionSuggestions: AssertionSuggestionResult;
   businessJourneys: BusinessJourneyResult;
+  reviewCalibration: ReviewCalibrationResult;
   professionalSummary: ProfessionalSummaryResult;
   defectProof: DefectProofResult;
   defectTickets: DefectTicketResult;

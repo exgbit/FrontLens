@@ -37,9 +37,10 @@ import { buildTraceabilityMatrix, formatTraceabilityMatrix } from './traceabilit
 import { buildAutomationSpecs, formatAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle, formatEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy, formatQaStrategy } from './strategy/qaStrategy.js';
+import { buildReviewCalibration, formatReviewCalibration } from './review/reviewCalibration.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'traceability', 'automation-specs', 'evidence-bundle', 'test-strategy', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'business-journeys', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'review-calibration', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'traceability', 'automation-specs', 'evidence-bundle', 'test-strategy', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'business-journeys', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -57,6 +58,7 @@ Usage:
   frontlens brief --report <result.json>
   frontlens audit --report <result.json>
   frontlens product-context --report <result.json>
+  frontlens review-calibration --report <result.json> [--feedback-file feedback.md]
   frontlens claim-guard --report <result.json>
   frontlens qa-intake --report <result.json>
   frontlens defect-proof --report <result.json>
@@ -112,7 +114,9 @@ Options:
   --role <name=storageState[|sessionStorageState]>
                               Role matrix entry. Use name= for anonymous/no storage. Repeatable.
   --roles <path>              Role matrix JSON file: [{name, storageState, sessionStorageState, expectedAllowedTexts, expectedForbiddenTexts}].
-  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/claim-guard/qa-intake/defect-proof/defect-tickets/traceability/automation-specs/evidence-bundle/test-strategy/business-journeys/report-content-audit/journey-assertion-audit/qa-plan/qa-coverage/assertion-suggestions/test-cases/risk-register/risk-acceptance/artifact-integrity/suggestions.
+  --report <path>             Existing result.json for inspect/issues/network/coverage/security/fix-tasks/audit/product-context/review-calibration/claim-guard/qa-intake/defect-proof/defect-tickets/traceability/automation-specs/evidence-bundle/test-strategy/business-journeys/report-content-audit/journey-assertion-audit/qa-plan/qa-coverage/assertion-suggestions/test-cases/risk-register/risk-acceptance/artifact-integrity/suggestions.
+  --feedback <text>           Inline reviewer/product feedback for review-calibration.
+  --feedback-file <path>      Reviewer/product feedback Markdown/text file for review-calibration.
   --severity <level>          Filter issues by severity.
   --trace                     Enable Playwright trace.
   --no-trace                  Disable Playwright trace.
@@ -166,6 +170,7 @@ Examples:
   frontlens brief --report reports/frontlens/users/result.json
   frontlens audit --report reports/frontlens/users/result.json
   frontlens product-context --report reports/frontlens/users/result.json
+  frontlens review-calibration --report reports/frontlens/users/result.json --feedback-file feedback.md
   frontlens claim-guard --report reports/frontlens/users/result.json
   frontlens qa-intake --report reports/frontlens/users/result.json
   frontlens defect-proof --report reports/frontlens/users/result.json
@@ -210,6 +215,13 @@ async function readResult(reportPath: string): Promise<QaResult> {
     }
   }
   return normalizeResult(raw);
+}
+
+async function readFeedbackText(values: { feedback?: string; 'feedback-file'?: string }): Promise<string | undefined> {
+  if (typeof values['feedback-file'] === 'string' && values['feedback-file'].trim()) {
+    return readFile(values['feedback-file'], 'utf8');
+  }
+  return typeof values.feedback === 'string' && values.feedback.trim() ? values.feedback : undefined;
 }
 
 function severityRank(severity: Severity): number {
@@ -304,6 +316,7 @@ Exposed tools:
   frontlens_fix_tasks
   frontlens_audit
   frontlens_product_context
+  frontlens_review_calibration
   frontlens_claim_guard
   frontlens_qa_intake
   frontlens_defect_proof
@@ -332,13 +345,15 @@ function ensureKnownCommand(argv: string[]): void {
   throw new Error(`Unsupported command: ${first}. Run frontlens --help for usage.`);
 }
 
-async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'claim-guard' | 'qa-intake' | 'defect-proof' | 'defect-tickets' | 'traceability' | 'automation-specs' | 'evidence-bundle' | 'test-strategy' | 'report-content-audit' | 'journey-assertion-audit' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'business-journeys' | 'test-cases' | 'risk-register' | 'risk-acceptance' | 'artifact-integrity' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
+async function handleResultCommand(command: 'brief' | 'audit' | 'product-context' | 'review-calibration' | 'claim-guard' | 'qa-intake' | 'defect-proof' | 'defect-tickets' | 'traceability' | 'automation-specs' | 'evidence-bundle' | 'test-strategy' | 'report-content-audit' | 'journey-assertion-audit' | 'qa-plan' | 'qa-coverage' | 'assertion-suggestions' | 'business-journeys' | 'test-cases' | 'risk-register' | 'risk-acceptance' | 'artifact-integrity' | 'inspect' | 'issues' | 'root-causes' | 'disposition' | 'network' | 'coverage' | 'security' | 'fix-tasks' | 'suggestions', args: string[]): Promise<void> {
   const parsed = parseArgs({
     args,
     allowPositionals: true,
     options: {
       report: { type: 'string' },
       severity: { type: 'string' },
+      feedback: { type: 'string' },
+      'feedback-file': { type: 'string' },
       json: { type: 'boolean' },
       full: { type: 'boolean' },
       all: { type: 'boolean' },
@@ -369,6 +384,7 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
             qaCoverage: result.qaCoverage,
             assertionSuggestions: result.assertionSuggestions,
             businessJourneys: result.businessJourneys,
+            reviewCalibration: result.reviewCalibration,
             testCases: result.testCases,
             defectTickets: result.defectTickets,
             traceability: result.traceability,
@@ -405,6 +421,15 @@ async function handleResultCommand(command: 'brief' | 'audit' | 'product-context
       console.log(JSON.stringify(suggestion, null, 2));
     } else {
       console.log(formatProductContextSuggestion(suggestion));
+    }
+    return;
+  }
+  if (command === 'review-calibration') {
+    const calibration = buildReviewCalibration(result, { feedbackText: await readFeedbackText(parsed.values as { feedback?: string; 'feedback-file'?: string }) });
+    if (parsed.values.json) {
+      console.log(JSON.stringify(calibration, null, 2));
+    } else {
+      console.log(formatReviewCalibration(calibration));
     }
     return;
   }
@@ -639,6 +664,7 @@ ${skippedRows.length ? ['| Source | Kind | Path | Message |', '| --- | --- | ---
           qaCoverage: result.qaCoverage,
           assertionSuggestions: result.assertionSuggestions,
           businessJourneys: result.businessJourneys,
+          reviewCalibration: result.reviewCalibration,
           testCases: result.testCases,
           defectTickets: result.defectTickets,
           traceability: result.traceability,
@@ -777,7 +803,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'claim-guard' || argv[0] === 'qa-intake' || argv[0] === 'defect-proof' || argv[0] === 'defect-tickets' || argv[0] === 'traceability' || argv[0] === 'automation-specs' || argv[0] === 'evidence-bundle' || argv[0] === 'test-strategy' || argv[0] === 'report-content-audit' || argv[0] === 'journey-assertion-audit' || argv[0] === 'qa-plan' || argv[0] === 'qa-coverage' || argv[0] === 'assertion-suggestions' || argv[0] === 'business-journeys' || argv[0] === 'test-cases' || argv[0] === 'risk-register' || argv[0] === 'risk-acceptance' || argv[0] === 'artifact-integrity' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
+  if (argv[0] === 'brief' || argv[0] === 'audit' || argv[0] === 'product-context' || argv[0] === 'review-calibration' || argv[0] === 'claim-guard' || argv[0] === 'qa-intake' || argv[0] === 'defect-proof' || argv[0] === 'defect-tickets' || argv[0] === 'traceability' || argv[0] === 'automation-specs' || argv[0] === 'evidence-bundle' || argv[0] === 'test-strategy' || argv[0] === 'report-content-audit' || argv[0] === 'journey-assertion-audit' || argv[0] === 'qa-plan' || argv[0] === 'qa-coverage' || argv[0] === 'assertion-suggestions' || argv[0] === 'business-journeys' || argv[0] === 'test-cases' || argv[0] === 'risk-register' || argv[0] === 'risk-acceptance' || argv[0] === 'artifact-integrity' || argv[0] === 'inspect' || argv[0] === 'issues' || argv[0] === 'root-causes' || argv[0] === 'disposition' || argv[0] === 'network' || argv[0] === 'coverage' || argv[0] === 'security' || argv[0] === 'fix-tasks' || argv[0] === 'suggestions') {
     await handleResultCommand(argv[0], argv.slice(1));
     return;
   }

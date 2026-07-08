@@ -50,6 +50,7 @@ import { buildTraceabilityMatrix } from './traceability/traceabilityMatrix.js';
 import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy } from './strategy/qaStrategy.js';
+import { buildReviewCalibration } from './review/reviewCalibration.js';
 import { createSkippedReportContentAudit } from './audit/reportContentAudit.js';
 import { buildDefectProof } from './proof/defectProof.js';
 import { applyRequirementJourneySynthesis } from './requirements/requirementJourneys.js';
@@ -1062,6 +1063,22 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     exceptionSimulations,
     permissionChecks
   });
+  const reviewCalibration = buildReviewCalibration({
+    summary,
+    issues,
+    issueDisposition,
+    requirementCoverage,
+    metadata: {
+      config: resultConfig,
+      durationMs: Date.now() - started,
+      version: VERSION,
+      schemaVersion: RESULT_SCHEMA_VERSION,
+      phaseErrors
+    },
+    scopeReview,
+    sourceAnalysis,
+    pageProfile
+  } as QaResult);
 
   const result: QaResult = {
     summary,
@@ -1126,6 +1143,7 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     journeyAssertionAudit,
     assertionSuggestions,
     businessJourneys,
+    reviewCalibration,
     professionalSummary,
     defectProof,
     claimGuard,

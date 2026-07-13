@@ -286,9 +286,9 @@ function buildModules(input: QaStrategyInput): QaStrategyModuleDecision[] {
         : sourceScriptsDetected
           ? '源码脚本已执行并可作为静态质量证据。'
           : '未检测到可执行脚本，跳过源码脚本门禁。',
-    requiredInputs: sourceScriptsMissing ? ['允许执行非破坏性 source scripts（typecheck,lint,build/test 可按需）'] : [],
+    requiredInputs: sourceScriptsMissing ? ['允许执行代码侧 source scripts（默认 typecheck,lint,test；build/e2e 可按项目补充）'] : [],
     evidenceRefs: ['sourceHealth'],
-    commandHints: sourceScriptsMissing ? [commandQa(input, ' --source-run-scripts --source-scripts typecheck,lint')] : []
+    commandHints: sourceScriptsMissing ? [commandQa(input, ' --source-run-scripts --source-scripts typecheck,lint,test')] : []
   }));
 
   decisions.push(module({

@@ -73,11 +73,11 @@ export class ExceptionTester {
 
     const routeUrl = (api as NetworkRecord & { rawUrl?: string }).rawUrl ?? api.url;
     const apiPattern = routePatternForUrl(routeUrl);
-    results.push(await this.testApiFulfill(context, page, api.url, apiPattern, 'api-500', 500));
-    results.push(await this.testApiFulfill(context, page, api.url, apiPattern, 'api-404', 404));
-    results.push(await this.testApiFulfill(context, page, api.url, apiPattern, 'api-401', 401));
-    results.push(await this.testApiFulfill(context, page, api.url, apiPattern, 'api-403', 403));
-    results.push(await this.testApiAbort(context, page, api.url, apiPattern, 'api-timeout'));
+    results.push(await this.testApiFulfill(context, page, api.url, api.method, apiPattern, 'api-500', 500));
+    results.push(await this.testApiFulfill(context, page, api.url, api.method, apiPattern, 'api-404', 404));
+    results.push(await this.testApiFulfill(context, page, api.url, api.method, apiPattern, 'api-401', 401));
+    results.push(await this.testApiFulfill(context, page, api.url, api.method, apiPattern, 'api-403', 403));
+    results.push(await this.testApiAbort(context, page, api.url, api.method, apiPattern, 'api-timeout'));
     results.push(await this.testOffline(context, page));
 
     await context.unroute(apiPattern).catch(() => undefined);
@@ -99,6 +99,7 @@ export class ExceptionTester {
   private createResult(input: {
     kind: ExceptionSimulationKind;
     target?: string;
+    method?: string;
     status: ExceptionSimulationResult['status'];
     startedAt: string;
     issue?: string;
@@ -110,6 +111,7 @@ export class ExceptionTester {
       id: `EX-${String(++this.counter).padStart(3, '0')}`,
       kind: input.kind,
       target: input.target,
+      method: input.method,
       status: input.status,
       startedAt: input.startedAt,
       endedAt,
@@ -171,7 +173,7 @@ export class ExceptionTester {
     }
   }
 
-  private async testApiFulfill(context: BrowserContext, page: Page, apiUrl: string, apiPattern: string, kind: 'api-500' | 'api-404' | 'api-401' | 'api-403', status: number): Promise<ExceptionSimulationResult> {
+  private async testApiFulfill(context: BrowserContext, page: Page, apiUrl: string, method: string, apiPattern: string, kind: 'api-500' | 'api-404' | 'api-401' | 'api-403', status: number): Promise<ExceptionSimulationResult> {
     const startedAt = new Date().toISOString();
     const before = this.snapshot();
     let hitCount = 0;
@@ -194,6 +196,7 @@ export class ExceptionTester {
       return this.createResult({
         kind,
         target: apiUrl,
+        method,
         status: hitCount === 0 ? 'skipped' : reloadError || consoleIds.length > 0 || pageErrorIds.length > 0 ? 'failed' : feedback ? 'passed' : noFeedbackStatus(kind),
         startedAt,
         issue:
@@ -228,7 +231,7 @@ export class ExceptionTester {
     }
   }
 
-  private async testApiAbort(context: BrowserContext, page: Page, apiUrl: string, apiPattern: string, kind: 'api-timeout'): Promise<ExceptionSimulationResult> {
+  private async testApiAbort(context: BrowserContext, page: Page, apiUrl: string, method: string, apiPattern: string, kind: 'api-timeout'): Promise<ExceptionSimulationResult> {
     const startedAt = new Date().toISOString();
     const before = this.snapshot();
     let hitCount = 0;
@@ -247,6 +250,7 @@ export class ExceptionTester {
       return this.createResult({
         kind,
         target: apiUrl,
+        method,
         status: hitCount === 0 ? 'skipped' : reloadError || pageErrorIds.length > 0 ? 'failed' : feedback ? 'passed' : 'warning',
         startedAt,
         issue: hitCount === 0 ? '模拟超时的路由未命中，页面刷新时未重新请求目标接口。' : reloadError ? `模拟接口超时后页面刷新失败：${reloadError}` : pageErrorIds.length > 0 ? '模拟接口超时后出现 Page Error。' : feedback ? undefined : '模拟接口超时后页面未发现明显超时/失败反馈。',

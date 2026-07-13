@@ -87,6 +87,7 @@ test('OpenAPI default response accepts any status code', async () => {
 
   const { result } = await analyzeApiContract(config, [{ ...record('https://example.com/api/v1/users', 'REQ-0001'), status: 418, ok: false }], {});
   assert.equal(result.endpoints[0].issues.some((issue) => issue.rule === 'undocumented-status-code'), false);
+  assert.deepEqual(result.endpoints[0].networkRequestIds, ['REQ-0001']);
 });
 
 test('OpenAPI schema load failure is reported instead of silently skipped', async () => {

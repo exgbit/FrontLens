@@ -69,6 +69,21 @@ export async function runAiAnalyzer(context: AnalyzerContext, issues: Issue[]): 
     };
   }
 
+  // The heuristic provider is local and only consumes the issue list. Writing a
+  // 100KB+ model context for it creates a misleading artifact and encourages
+  // agents to load data that was never used.
+  if (provider === 'heuristic') {
+    const heuristic = heuristicSummary(issues);
+    return {
+      enabled: true,
+      provider: 'heuristic',
+      status: 'passed',
+      summary: heuristic.summary,
+      suggestions: heuristic.suggestions,
+      issues: []
+    };
+  }
+
   const aiContext = trimJsonContext(
     {
       summary: {
@@ -77,9 +92,9 @@ export async function runAiAnalyzer(context: AnalyzerContext, issues: Issue[]): 
         issueCount: issues.length
       },
       pageModel: context.pageModel,
-      issues,
-      network: context.networkRecords.slice(0, 80),
-      console: context.consoleRecords.slice(0, 80),
+      issues: issues.slice(0, context.config.ai.maxIssues),
+      network: context.networkRecords.slice(0, 40),
+      console: context.consoleRecords.slice(0, 40),
       performance: context.performanceMetrics,
       apiContract: context.apiContract,
       realtime: context.realtime,
@@ -144,14 +159,7 @@ export async function runAiAnalyzer(context: AnalyzerContext, issues: Issue[]): 
     }
   }
 
-  const heuristic = heuristicSummary(issues);
-  return {
-    enabled: true,
-    provider: 'heuristic',
-    status: 'passed',
-    contextPath,
-    summary: heuristic.summary,
-    suggestions: heuristic.suggestions,
-    issues: []
-  };
+  // provider is narrowed to command above; this is retained as a defensive
+  // fallback for config values produced by older integrations.
+  return { enabled: true, provider, status: 'failed', contextPath, suggestions: [], issues: [], error: `Unsupported AI provider: ${String(provider)}` };
 }

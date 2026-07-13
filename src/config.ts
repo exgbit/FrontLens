@@ -198,6 +198,9 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
       item.journeySteps.forEach((step, stepIndex) => validateJourneyStep(step, `${itemPath}.journeySteps[${stepIndex}]`));
     }
     if (item.apiPatterns !== undefined) assertStringArray(item.apiPatterns, `${itemPath}.apiPatterns`);
+    for (const field of ['roles', 'preconditions', 'businessRules', 'acceptanceCriteria', 'stateTransitions', 'frontendScope', 'backendScope', 'apiScope', 'sourceScope', 'ambiguities', 'sourceRefs'] as const) {
+      if (item[field] !== undefined) assertStringArray(item[field], `${itemPath}.${field}`);
+    }
     if (item.interactionKinds !== undefined) {
       assert(Array.isArray(item.interactionKinds) && item.interactionKinds.every((kind) => typeof kind === 'string' && interactionKinds.has(kind)), `${itemPath}.interactionKinds must contain supported interaction kinds.`);
     }

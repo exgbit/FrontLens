@@ -2,9 +2,12 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { access, readdir, readFile, stat } from 'node:fs/promises';
 import ts from 'typescript';
-import type { FrontLensConfig, Issue, SourceHealthFinding, SourceHealthResult, SourceHealthScript, SourceScriptCheck } from '../types.js';
+import type { FrontLensConfig, Issue, SourceHealthFinding, SourceHealthResult, SourceHealthScript, SourceScriptCheck, SourceTestEvidenceBinding, TestLayer, TestScenario } from '../types.js';
 
 const PARSE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.vue']);
+const TEST_EVIDENCE_MANIFEST = '.frontlens/test-evidence.json';
+const TEST_LAYERS = new Set<TestLayer>(['frontend', 'backend', 'api', 'source']);
+const TEST_SCENARIOS = new Set<TestScenario>(['smoke', 'positive', 'negative', 'boundary', 'permission', 'state-transition', 'consistency', 'idempotency', 'recovery', 'regression']);
 
 export function createEmptySourceHealth(config: FrontLensConfig, status: SourceHealthResult['status'] = 'skipped', error?: string): SourceHealthResult {
   return {
@@ -14,6 +17,7 @@ export function createEmptySourceHealth(config: FrontLensConfig, status: SourceH
     root: config.source.root,
     packageScripts: [],
     scriptChecks: [],
+    testEvidence: [],
     scannedFiles: 0,
     parsedFiles: 0,
     skippedFiles: 0,
@@ -21,6 +25,49 @@ export function createEmptySourceHealth(config: FrontLensConfig, status: SourceH
     findings: [],
     error
   };
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? [...new Set(value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean))] : [];
+}
+
+async function readTestEvidence(root: string, checks: SourceScriptCheck[]): Promise<SourceTestEvidenceBinding[]> {
+  const manifestPath = path.join(root, TEST_EVIDENCE_MANIFEST);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch {
+    return [];
+  }
+  if (!parsed || typeof parsed !== 'object') return [];
+  const bindings = (parsed as { bindings?: unknown }).bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((raw, index): SourceTestEvidenceBinding[] => {
+    if (!raw || typeof raw !== 'object') return [];
+    const item = raw as Record<string, unknown>;
+    const requirementIds = stringList(item.requirementIds);
+    const scriptNames = stringList(item.scriptNames);
+    const layer = typeof item.layer === 'string' && TEST_LAYERS.has(item.layer as TestLayer) ? item.layer as TestLayer : undefined;
+    const scenarios = stringList(item.scenarios).filter((scenario): scenario is TestScenario => TEST_SCENARIOS.has(scenario as TestScenario));
+    if (!requirementIds.length || !scriptNames.length || !layer || !scenarios.length) return [];
+    const matched = scriptNames.map((name) => checks.find((check) => check.scriptName === name));
+    const status: SourceTestEvidenceBinding['status'] = matched.some((check) => check?.status === 'failed' || check?.status === 'timed-out')
+      ? 'failed'
+      : matched.every((check) => check?.status === 'passed')
+        ? 'passed'
+        : 'skipped';
+    const id = typeof item.id === 'string' && item.id.trim() ? item.id.trim() : `TEST-EVIDENCE-${String(index + 1).padStart(3, '0')}`;
+    return [{
+      id,
+      requirementIds,
+      layer,
+      scenarios,
+      scriptNames,
+      status,
+      evidenceRefs: [...new Set([TEST_EVIDENCE_MANIFEST, ...stringList(item.evidenceRefs), ...matched.filter(Boolean).map((check) => check!.id)])],
+      notes: stringList(item.notes)
+    }];
+  });
 }
 
 function normalizePath(value: string): string {
@@ -429,6 +476,7 @@ export async function analyzeSourceHealth(config: FrontLensConfig): Promise<{ re
   for (const script of selected) {
     result.scriptChecks.push(await runSourceScriptCheck(result.scriptChecks.length + 1, root, result.packageManager, script, config));
   }
+  result.testEvidence = await readTestEvidence(root, result.scriptChecks);
   const failedScriptCount = result.scriptChecks.filter((check) => check.status === 'failed' || check.status === 'timed-out').length;
   result.status = result.syntaxErrorCount > 0 || failedScriptCount > 0 ? 'failed' : 'passed';
 

@@ -14,8 +14,10 @@ import type {
   RequirementCoverageStatus,
   RequirementPriority,
   RequirementSource,
+  SourceHealthResult,
   JourneyStepAction
 } from '../types.js';
+import { apiAcceptanceExpectations, parseApiPattern, apiPathMatches } from './httpAcceptance.js';
 
 function makeEmptyCoverage(enabled: boolean, gap?: string): RequirementCoverageResult {
   return {
@@ -57,9 +59,34 @@ function selectorMatches(selector: string, component: ComponentRecord): boolean 
   return Boolean(component.selector && (component.selector === selector || component.selector.includes(selector) || selector.includes(component.selector)));
 }
 
-function patternMatches(pattern: string, value: string): boolean {
+function patternMatches(pattern: string, record: NetworkRecord): boolean {
   if (!pattern) return false;
+  const methodMatch = pattern.trim().match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(.+)$/i);
+  if (methodMatch && record.method.toUpperCase() !== methodMatch[1].toUpperCase()) return false;
+  const value = record.url;
+  pattern = (methodMatch?.[2] ?? pattern).trim();
   if (value.includes(pattern)) return true;
+  // PRDs normally use OpenAPI-style path parameters. Treat them as a single
+  // path segment instead of feeding `{id}` to RegExp as a quantifier.
+  if (/\{[^/{}]+\}|\*/.test(pattern)) {
+    let actualPath = value.split(/[?#]/, 1)[0];
+    try {
+      actualPath = new URL(value).pathname;
+    } catch {
+      // Relative URLs are already usable as paths.
+    }
+    let patternPath = pattern.split(/[?#]/, 1)[0];
+    try {
+      patternPath = new URL(pattern).pathname;
+    } catch {
+      // Relative patterns are expected here.
+    }
+    const source = patternPath
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\\\{[^/{}]+\\\}/g, '[^/]+')
+      .replace(/\\\*/g, '.*');
+    return new RegExp(`^${source}/?$`).test(actualPath);
+  }
   try {
     return new RegExp(pattern).test(value);
   } catch {
@@ -80,6 +107,31 @@ const journeyAssertionActions = new Set<JourneyStepAction>(['expectVisible', 'ex
 
 function hasPassedJourneyAssertion(journey: JourneyTestResult): boolean {
   return journey.steps.some((step) => journeyAssertionActions.has(step.action) && step.status === 'passed');
+}
+
+function sourceStatusForRequirement(item: RequirementConfigItem, sourceHealth: SourceHealthResult | undefined): RequirementCoverageStatus | undefined {
+  const text = `${item.title} ${item.description ?? ''} ${(item.sourceScope ?? []).join(' ')}`;
+  if (!/typecheck|lint|单元测试|集成测试|代码检查|构建必须|tests?\s+必须|source\s+check/i.test(text)) return undefined;
+  if (!sourceHealth || sourceHealth.status === 'skipped') return 'not-covered';
+  const requiredCategories = [
+    /typecheck|类型检查/i.test(text) ? 'typecheck' : undefined,
+    /\blint\b|代码规范/i.test(text) ? 'lint' : undefined,
+    /单元测试|集成测试|\btests?\b/i.test(text) ? 'test' : undefined,
+    /(?:构建|\bbuild\b)[^，。,；;]{0,12}(?:必须|通过|成功)|(?:必须|通过)[^，。,；;]{0,12}(?:构建|\bbuild\b)/i.test(text) ? 'build' : undefined
+  ].filter((item): item is SourceHealthResult['packageScripts'][number]['category'] => Boolean(item));
+  if (requiredCategories.length === 0) return sourceHealth.status === 'failed' ? 'failed' : 'passed';
+  if (requiredCategories.some((category) => sourceHealth.scriptChecks.some((check) => check.category === category && (check.status === 'failed' || check.status === 'timed-out')))) return 'failed';
+  return requiredCategories.every((category) => sourceHealth.scriptChecks.some((check) => check.category === category && check.status === 'passed')) ? 'passed' : 'not-covered';
+}
+
+function recordMatchesExpectation(record: NetworkRecord, expectation: ReturnType<typeof apiAcceptanceExpectations>[number]): boolean {
+  if (!expectation.path) return false;
+  if (expectation.method && expectation.method !== record.method.toUpperCase()) return false;
+  try {
+    return apiPathMatches(expectation.path, new URL(record.url).pathname);
+  } catch {
+    return apiPathMatches(expectation.path, parseApiPattern(record.url).path ?? record.url);
+  }
 }
 
 function relatedIssuesForEvidence(input: {
@@ -114,6 +166,7 @@ function buildItemFromConfig(
     issues: Issue[];
     journeyTests: JourneyTestResult[];
     interactionTests: InteractionTestResult[];
+    sourceHealth?: SourceHealthResult;
   }
 ): RequirementCoverageItem {
   const source = normalizeSource(item.source, 'provided');
@@ -126,7 +179,7 @@ function buildItemFromConfig(
     ...input.journeyTests.filter((journey) => journey.requirementIds?.includes(id))
   ].filter((journey, journeyIndex, journeys) => journeys.findIndex((candidate) => candidate.id === journey.id) === journeyIndex);
   const interactionTests = (item.interactionKinds ?? []).flatMap((kind) => input.interactionTests.filter((test) => test.kind === kind));
-  const networkRecords = (item.apiPatterns ?? []).flatMap((pattern) => input.networkRecords.filter((record) => patternMatches(pattern, record.url)));
+  const networkRecords = (item.apiPatterns ?? []).flatMap((pattern) => input.networkRecords.filter((record) => patternMatches(pattern, record)));
   const networkRequestIds = [...new Set(networkRecords.map((record) => record.id))];
   const matchedSelectors = [...new Set([...matchedComponents.map((component) => component.selector).filter((selector): selector is string => Boolean(selector)), ...selectors.filter((selector) => matchedComponents.some((component) => selectorMatches(selector, component)))])];
   const relatedIssues = relatedIssuesForEvidence({
@@ -140,9 +193,19 @@ function buildItemFromConfig(
   const mediumIssue = relatedIssues.find((issue) => issue.severity === 'medium');
   const journeyStatus = statusFromTests(journeyTests);
   const interactionStatus = statusFromTests(interactionTests);
+  const sourceStatus = sourceStatusForRequirement(item, input.sourceHealth);
   const passedJourneyTests = journeyTests.filter((journey) => journey.status === 'passed');
   const hasPassedAssertion = passedJourneyTests.some(hasPassedJourneyAssertion);
-  const failedNetwork = networkRecords.filter((record) => record.failed || (record.status !== undefined && record.status >= 400));
+  const apiExpectations = apiAcceptanceExpectations(item);
+  const failedNetwork = networkRecords.filter((record) => record.failed || (
+    record.status !== undefined
+    && (() => {
+      const expectation = apiExpectations.find((candidate) => recordMatchesExpectation(record, candidate));
+      return expectation?.statuses.length
+        ? !expectation.statuses.includes(record.status!)
+        : record.status! >= 400;
+    })()
+  ));
 
   const evidenceNotes: string[] = [];
   const gaps: string[] = [];
@@ -151,15 +214,16 @@ function buildItemFromConfig(
   if (interactionTests.length > 0) evidenceNotes.push(`匹配到 ${interactionTests.length} 条安全交互测试。`);
   if (networkRecords.length > 0) evidenceNotes.push(`匹配到 ${networkRecords.length} 个网络请求。`);
   if (relatedIssues.length > 0) evidenceNotes.push(`关联到 ${relatedIssues.length} 个 raw issue。`);
+  if (sourceStatus) evidenceNotes.push(`需求专属代码验收状态：${sourceStatus}；sourceHealth=${input.sourceHealth?.status ?? 'missing'}。`);
 
   let status: RequirementCoverageStatus = 'not-covered';
   let confidence: RequirementCoverageItem['confidence'] = 'low';
-  if (blockingIssue || failedNetwork.length > 0 || journeyStatus === 'failed' || interactionStatus === 'failed') {
+  if (blockingIssue || failedNetwork.length > 0 || journeyStatus === 'failed' || interactionStatus === 'failed' || sourceStatus === 'failed') {
     status = 'failed';
-    confidence = journeyStatus === 'failed' || interactionStatus === 'failed' ? 'high' : 'medium';
+    confidence = journeyStatus === 'failed' || interactionStatus === 'failed' || sourceStatus === 'failed' ? 'high' : 'medium';
     if (blockingIssue) gaps.push(`存在阻断/高风险关联问题：${blockingIssue.id} ${blockingIssue.title}`);
     if (failedNetwork.length > 0) gaps.push(`${failedNetwork.length} 个关联接口失败或返回 4xx/5xx。`);
-  } else if (journeyStatus === 'passed' || interactionStatus === 'passed') {
+  } else if (journeyStatus === 'passed' || interactionStatus === 'passed' || sourceStatus === 'passed') {
     if (journeyStatus === 'passed' && interactionStatus !== 'passed' && !hasPassedAssertion) {
       status = 'partial';
       confidence = 'medium';
@@ -173,7 +237,7 @@ function buildItemFromConfig(
     confidence = journeyStatus === 'partial' || interactionStatus === 'partial' ? 'medium' : 'low';
     if (mediumIssue) gaps.push(`存在 Medium 关联风险：${mediumIssue.id} ${mediumIssue.title}`);
     gaps.push('只有结构/API/部分交互证据，尚未形成完整业务旅程验收。');
-  } else if (journeyStatus === 'not-covered' || interactionStatus === 'not-covered') {
+  } else if (journeyStatus === 'not-covered' || interactionStatus === 'not-covered' || sourceStatus === 'not-covered') {
     status = 'not-covered';
     confidence = 'low';
     gaps.push('关联旅程或交互测试被 skipped，需求未覆盖。');
@@ -295,17 +359,26 @@ export function buildRequirementCoverage(input: {
   config: FrontLensConfig;
   pageModel: PageModel;
   networkRecords: NetworkRecord[];
+  /** Synthetic exception/security probes must not fail a normal requirement. */
+  excludedNetworkRequestIds?: string[];
   issues: Issue[];
   journeyTests: JourneyTestResult[];
   interactionTests: InteractionTestResult[];
+  sourceHealth?: SourceHealthResult;
   accessibilityChecks: AccessibilityCheckResult[];
 }): RequirementCoverageResult {
   const config = input.config.requirements;
   if (!config.enabled) return makeEmptyCoverage(false, '需求覆盖矩阵未启用。');
 
-  const providedItems = config.items.map((item, index) => buildItemFromConfig({ ...item, source: item.source ?? 'provided' }, index, input));
-  const inferredConfigs = config.inferFromPage ? makeInferredItems(input) : [];
-  const inferredItems = inferredConfigs.map((item, index) => applySpecialInferredStatus(buildItemFromConfig(item, index, input), input));
+  const excludedNetworkRequestIds = new Set(input.excludedNetworkRequestIds ?? []);
+  const coverageInput = {
+    ...input,
+    networkRecords: input.networkRecords.filter((record) => !excludedNetworkRequestIds.has(record.id))
+  };
+
+  const providedItems = config.items.map((item, index) => buildItemFromConfig({ ...item, source: item.source ?? 'provided' }, index, coverageInput));
+  const inferredConfigs = config.inferFromPage ? makeInferredItems(coverageInput) : [];
+  const inferredItems = inferredConfigs.map((item, index) => applySpecialInferredStatus(buildItemFromConfig(item, index, coverageInput), coverageInput));
   const items = [...providedItems, ...inferredItems];
   if (items.length === 0) return makeEmptyCoverage(true, '未提供需求/验收标准，且未能从页面模型推断可验证能力。');
 

@@ -127,6 +127,28 @@ export interface RequirementConfigItem {
   expectedTexts?: string[];
   interactionKinds?: InteractionTestKind[];
   apiPatterns?: string[];
+  /** Product roles that may execute or are affected by this requirement. */
+  roles?: string[];
+  /** Conditions that must be true before the requirement can be verified. */
+  preconditions?: string[];
+  /** Explicit product rules extracted from the PRD. */
+  businessRules?: string[];
+  /** Verifiable acceptance outcomes, kept separate from implementation signals. */
+  acceptanceCriteria?: string[];
+  /** Expected state transitions, for example draft -> submitted. */
+  stateTransitions?: string[];
+  /** Requirement-owned frontend responsibilities. */
+  frontendScope?: string[];
+  /** Requirement-owned backend responsibilities. */
+  backendScope?: string[];
+  /** Requirement-owned API responsibilities. */
+  apiScope?: string[];
+  /** Expected source/code responsibilities or files. */
+  sourceScope?: string[];
+  /** Ambiguities that prevent an unconditional pass decision. */
+  ambiguities?: string[];
+  /** Source document headings/lines used to derive the requirement. */
+  sourceRefs?: string[];
 }
 
 export interface RequirementCoverageConfig {
@@ -153,6 +175,149 @@ export interface RequirementWizardResult {
   candidates: RequirementWizardCandidate[];
   warnings: string[];
   questions: string[];
+}
+
+export type TestLayer = 'frontend' | 'backend' | 'api' | 'source';
+export type TestScenario =
+  | 'smoke'
+  | 'positive'
+  | 'negative'
+  | 'boundary'
+  | 'permission'
+  | 'state-transition'
+  | 'consistency'
+  | 'idempotency'
+  | 'recovery'
+  | 'regression';
+export type TestAudience = 'developer' | 'qa';
+export type PlannedExecutionMode = 'automated' | 'manual' | 'hybrid';
+
+export interface TestPointItem {
+  id: string;
+  requirementId: string;
+  layer: TestLayer;
+  title: string;
+  description: string;
+  priority: RequirementPriority;
+  blocker: boolean;
+  scenarios: TestScenario[];
+  rationale: string;
+}
+
+export interface PlannedTestCase {
+  id: string;
+  requirementIds: string[];
+  testPointIds: string[];
+  layer: TestLayer;
+  scenario: TestScenario;
+  title: string;
+  priority: RequirementPriority;
+  blocker: boolean;
+  audiences: TestAudience[];
+  preconditions: string[];
+  testData: string[];
+  steps: string[];
+  expected: string[];
+  executionMode: PlannedExecutionMode;
+  automationBinding?: string;
+  sourceRefs: string[];
+  tags: string[];
+}
+
+export interface BlockerCoverageItem {
+  id: string;
+  category: 'availability' | 'authentication' | 'core-flow' | 'data-integrity' | 'authorization' | 'dependency' | 'compatibility';
+  title: string;
+  /** Plan-time readiness only. Execution/pass status belongs to the execution report. */
+  status: 'drafted' | 'ready' | 'not-applicable' | 'missing';
+  testCaseIds: string[];
+  reason: string;
+}
+
+export interface TestPlanResult {
+  schemaVersion: '1.0';
+  generatedAt: string;
+  source: {
+    inputPath?: string;
+    sourceRoot?: string;
+    requirementCount: number;
+  };
+  status: 'ready' | 'needs-review' | 'blocked';
+  requirements: RequirementWizardCandidate[];
+  testPoints: TestPointItem[];
+  testCases: PlannedTestCase[];
+  blockerCoverage: {
+    status: 'drafted' | 'ready' | 'incomplete';
+    coveredCount: number;
+    missingCount: number;
+    notApplicableCount: number;
+    items: BlockerCoverageItem[];
+  };
+  summary: {
+    requirementCount: number;
+    testPointCount: number;
+    testCaseCount: number;
+    developerCaseCount: number;
+    qaCaseCount: number;
+    p0Count: number;
+    p1Count: number;
+    p2Count: number;
+    p3Count: number;
+    frontendCount: number;
+    backendCount: number;
+    apiCount: number;
+    sourceCount: number;
+    needsReviewRequirementCount: number;
+  };
+  reviewQuestions: string[];
+  artifacts?: {
+    json: string;
+    summary: string;
+    manifest: string;
+    requirements: string;
+    developerCases: string;
+    qaCases: string;
+    traceability: string;
+  };
+}
+
+export interface PlannedCaseExecution {
+  testCaseId: string;
+  requirementIds: string[];
+  status: TestCaseStatus;
+  actual: string;
+  evidenceRefs: string[];
+  issueIds: string[];
+}
+
+export interface TestPlanExecutionReport {
+  generatedAt: string;
+  status: 'passed' | 'failed' | 'blocked' | 'partial';
+  planStatus: TestPlanResult['status'];
+  summary: {
+    totalCount: number;
+    passedCount: number;
+    failedCount: number;
+    blockedCount: number;
+    partialCount: number;
+    notExecutedCount: number;
+    p0OpenCount: number;
+    requirementCoveredCount: number;
+    requirementGapCount: number;
+    defectCount: number;
+  };
+  executions: PlannedCaseExecution[];
+  requirementTraceability: Array<{
+    requirementId: string;
+    title: string;
+    testCaseIds: string[];
+    statuses: TestCaseStatus[];
+    issueIds: string[];
+    implementationVerdict: 'implemented' | 'implementation-mismatch' | 'unable-to-verify' | 'requirement-needs-review';
+    verificationVerdict: 'verified' | 'partially-verified' | 'not-verified' | 'blocked' | 'requirement-needs-review';
+  }>;
+  defectIds: string[];
+  releaseRecommendation: string;
 }
 
 export type ProductDeviceScope = 'unknown' | 'desktop-only' | 'desktop-first' | 'responsive' | 'mobile-first';
@@ -1078,6 +1243,8 @@ export interface ExceptionSimulationResult {
   id: string;
   kind: ExceptionSimulationKind;
   target?: string;
+  /** HTTP method of the probed endpoint. Required for method-scoped requirement evidence. */
+  method?: string;
   status: 'passed' | 'warning' | 'failed' | 'skipped';
   startedAt: string;
   endedAt: string;
@@ -1340,6 +1507,22 @@ export interface SourceScriptCheck {
   error?: string;
 }
 
+/**
+ * Requirement-scoped evidence declared by `<sourceRoot>/.frontlens/test-evidence.json`.
+ * A passing global script is not enough: the manifest must explicitly bind the
+ * script to a requirement, layer, and scenario before it can close that case.
+ */
+export interface SourceTestEvidenceBinding {
+  id: string;
+  requirementIds: string[];
+  layer: TestLayer;
+  scenarios: TestScenario[];
+  scriptNames: string[];
+  status: 'passed' | 'failed' | 'skipped';
+  evidenceRefs: string[];
+  notes: string[];
+}
+
 export interface SourceHealthResult {
   enabled: boolean;
   status: 'passed' | 'skipped' | 'failed';
@@ -1348,6 +1531,7 @@ export interface SourceHealthResult {
   packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun' | 'unknown';
   packageScripts: SourceHealthScript[];
   scriptChecks: SourceScriptCheck[];
+  testEvidence?: SourceTestEvidenceBinding[];
   scannedFiles: number;
   parsedFiles: number;
   skippedFiles: number;
@@ -1413,6 +1597,8 @@ export interface ApiEndpointContract {
   method: string;
   path: string;
   requestCount: number;
+  /** Request ids retained for requirement/case/defect traceability. */
+  networkRequestIds?: string[];
   statusCodes: number[];
   contentTypes: string[];
   requestShape?: unknown;

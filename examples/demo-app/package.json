@@ -1,0 +1,11 @@
+{
+  "name": "frontlens-requirement-demo-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "npm run typecheck && npm run lint",
+    "typecheck": "node --check src/server.mjs && node --check src/client.js",
+    "lint": "node --check src/server.mjs && node --check src/client.js",
+    "test": "node --test test/*.test.mjs"
+  }
+}

@@ -92,20 +92,35 @@ function auditOverclaims(result: QaResult, findings: ProfessionalAuditFinding[])
 
 function auditCoverageBoundary(result: QaResult, findings: ProfessionalAuditFinding[]): void {
   const coverage = result.qaCoverage;
-  const gapCount = coverage.summary.partialCount + coverage.summary.skippedCount + coverage.summary.needsInputCount + coverage.summary.failedCount;
+  const gapRows = coverage.items.filter((item) => item.status !== 'covered');
+  const intentionallyExcluded = (item: typeof coverage.items[number]): boolean =>
+    (item.area === 'performance' && !result.metadata.config.analysis.coverage && !result.metadata.config.p2.enabled)
+    || (item.area === 'security' && !result.metadata.config.security.enabled)
+    || (item.area === 'environment' && result.environment.trust.functional === 'high');
+  const blockingGapRows = gapRows.filter((item) => !intentionallyExcluded(item));
+  const advisoryGapRows = gapRows.filter(intentionallyExcluded);
+  const gapCount = blockingGapRows.length;
   const failedRows = coverage.items.filter((item) => item.status === 'failed');
   const acceptanceLikeSignoff = result.qaSignoff.status === 'pass' || result.qaSignoff.businessValidationConfidence === 'runtime-verified';
   const businessClaimAllowed = result.claimGuard.items.find((item) => item.claim === 'business-validation')?.status === 'allowed';
 
-  if (coverage.status !== 'sufficient') {
+  if (blockingGapRows.length > 0) {
     add(findings, {
       severity: acceptanceLikeSignoff || businessClaimAllowed || coverage.status === 'insufficient' && failedRows.length > 0 ? 'blocker' : 'warning',
       category: 'coverage',
       title: `QA coverage is ${coverage.status}; ${gapCount} dimension(s) are partial/skipped/needs-input/failed.`,
-      evidenceRefs: ['qaCoverage', ...coverage.items.filter((item) => item.status !== 'covered').slice(0, 6).map((item) => item.id)],
+      evidenceRefs: ['qaCoverage', ...blockingGapRows.slice(0, 6).map((item) => item.id)],
       recommendation: acceptanceLikeSignoff || businessClaimAllowed
         ? 'Downgrade acceptance/business-validation wording until qaCoverage is sufficient, or close the listed coverage gaps with PRD-backed runtime evidence.'
         : 'Surface these rows as coverage gaps in the final answer; do not describe skipped or needs-input dimensions as passed.'
+    });
+  } else if (advisoryGapRows.length > 0) {
+    add(findings, {
+      severity: 'warning',
+      category: 'coverage',
+      title: `SME core coverage is complete; ${advisoryGapRows.length} specialty/deployment dimension(s) were intentionally excluded or environment-limited.`,
+      evidenceRefs: ['qaCoverage', ...advisoryGapRows.slice(0, 6).map((item) => item.id)],
+      recommendation: 'Keep performance/security/production-environment conclusions scoped; run the corresponding specialty QA only when those areas are release scope.'
     });
   }
 

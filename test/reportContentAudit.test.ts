@@ -21,6 +21,16 @@ test('report content audit blocks forbidden claimGuard wording in generated Mark
   assert.match(formatReportContentAudit(audit), /Report Content Audit/);
 });
 
+test('report content audit does not flag forbidden substring when it appears inside approved negated wording', () => {
+  const result = baseResult();
+  result.claimGuard.forbiddenClaims = ['无条件发布批准'];
+  result.claimGuard.items[0].allowedWording = '当前结论不能作为无条件发布批准。';
+
+  const audit = runReportContentAudit(result, '# Report\n\n当前结论不能作为无条件发布批准。\n');
+
+  assert.equal(audit.findings.some((item) => item.category === 'forbidden-wording'), false);
+});
+
 test('report content audit blocks raw evidence leakage in professional profile', () => {
   const result = baseResult();
   result.metadata.config.report.profile = 'professional';
@@ -80,4 +90,10 @@ test('report content audit warns when executive report exceeds compact brief bud
 
   assert.equal(audit.status, 'warning');
   assert.equal(audit.findings.some((finding) => finding.category === 'profile-depth' && /too detailed/.test(finding.title)), true);
+});
+
+test('report content audit recognizes lowercase executive decision labels', () => {
+  const result = baseResult();
+  const audit = runReportContentAudit(result, '# Report\n\nQA sign-off pass\nadjusted 100/100\nFix queue 0\nCoverage gap none\n');
+  assert.equal(audit.findings.some((finding) => finding.category === 'summary-shape'), false);
 });

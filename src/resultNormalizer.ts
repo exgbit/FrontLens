@@ -1071,6 +1071,7 @@ function normalizeSourceHealth(raw: unknown): QaResult['sourceHealth'] {
     checkedAt: new Date().toISOString(),
     packageScripts: [],
     scriptChecks: [],
+    testEvidence: [],
     scannedFiles: 0,
     parsedFiles: 0,
     skippedFiles: 0,
@@ -1103,6 +1104,16 @@ function normalizeSourceHealth(raw: unknown): QaResult['sourceHealth'] {
       stdoutPreview: optionalString(check.stdoutPreview),
       stderrPreview: optionalString(check.stderrPreview),
       error: optionalString(check.error)
+    })),
+    testEvidence: asArray(raw.testEvidence).filter(isRecord).map((binding) => ({
+      id: asString(binding.id),
+      requirementIds: asArray<string>(binding.requirementIds).filter((item) => typeof item === 'string'),
+      layer: binding.layer === 'frontend' || binding.layer === 'backend' || binding.layer === 'api' || binding.layer === 'source' ? binding.layer : 'source',
+      scenarios: asArray<string>(binding.scenarios).filter((item): item is import('./types.js').TestScenario => item === 'smoke' || item === 'positive' || item === 'negative' || item === 'boundary' || item === 'permission' || item === 'state-transition' || item === 'consistency' || item === 'idempotency' || item === 'recovery' || item === 'regression'),
+      scriptNames: asArray<string>(binding.scriptNames).filter((item) => typeof item === 'string'),
+      status: binding.status === 'passed' || binding.status === 'failed' || binding.status === 'skipped' ? binding.status : 'skipped',
+      evidenceRefs: asArray<string>(binding.evidenceRefs).filter((item) => typeof item === 'string'),
+      notes: asArray<string>(binding.notes).filter((item) => typeof item === 'string')
     })),
     scannedFiles: asNumber(raw.scannedFiles),
     parsedFiles: asNumber(raw.parsedFiles),
@@ -1218,13 +1229,16 @@ export function normalizeResult(raw: unknown): QaResult {
   const accessibilityChecks = asArray<AccessibilityCheckResult>(raw.accessibilityChecks);
   const permissionChecks = asArray<PermissionCheckResult>(raw.permissionChecks);
   const exceptionSimulations = asArray<ExceptionSimulationResult>(raw.exceptionSimulations);
+  const sourceHealth = normalizeSourceHealth(raw.sourceHealth);
   const requirementCoverage = buildRequirementCoverage({
     config: metadataConfig,
     pageModel,
     networkRecords: network.requests,
+    excludedNetworkRequestIds: exceptionSimulations.flatMap((item) => item.observations.networkRequestIds ?? []),
     issues,
     journeyTests,
     interactionTests,
+    sourceHealth,
     accessibilityChecks
   });
   const journeyAssertionAuditFallback = buildJourneyAssertionAudit({
@@ -1235,7 +1249,6 @@ export function normalizeResult(raw: unknown): QaResult {
   const artifactIntegrity = normalizeArtifactIntegrity(raw.artifactIntegrity);
   const sourceAnalysis = normalizeSourceAnalysis(raw.sourceAnalysis, metadataConfig);
   const sourceRuntimeCorrelation = normalizeSourceRuntimeCorrelation(raw.sourceRuntimeCorrelation);
-  const sourceHealth = normalizeSourceHealth(raw.sourceHealth);
   const environment = normalizeEnvironment(raw.environment, metadataConfig.target.url);
   const pageProfile = normalizePageProfile(raw.pageProfile, buildPageProfileAssessment({ config: metadataConfig, pageModel }));
   const testData = normalizeTestDataAssessment(raw.testData, buildTestDataAssessment(metadataConfig, requirementCoverage));

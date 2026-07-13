@@ -61,9 +61,11 @@ async function normalizeAndRebuildSummary(result: QaResult): Promise<void> {
     config: result.metadata.config,
     pageModel: result.pageModel,
     networkRecords: result.network.requests,
+    excludedNetworkRequestIds: result.exceptionSimulations.flatMap((item) => item.observations.networkRequestIds ?? []),
     issues: result.issues,
     journeyTests: result.journeyTests,
     interactionTests: result.interactionTests,
+    sourceHealth: result.sourceHealth,
     accessibilityChecks: result.accessibilityChecks
   });
   result.journeyAssertionAudit = buildJourneyAssertionAudit({

@@ -75,7 +75,13 @@ function forbiddenPhrases(result: QaResult): string[] {
 
 function auditForbiddenWording(result: QaResult, markdown: string, findings: ReportContentAuditFinding[]): void {
   const phrases = forbiddenPhrases(result);
-  const conclusionMarkdown = removeClaimGuardSections(markdown);
+  // allowedWording can intentionally contain a forbidden phrase under an
+  // explicit negation (for example “不能作为无条件发布批准”). Remove those
+  // approved full sentences before substring matching to avoid self-failures.
+  let conclusionMarkdown = removeClaimGuardSections(markdown);
+  for (const allowed of result.claimGuard.items.map((item) => item.allowedWording).filter(Boolean)) {
+    conclusionMarkdown = conclusionMarkdown.split(allowed).join('');
+  }
   for (const phrase of phrases) {
     if (!includesPhrase(conclusionMarkdown, phrase)) continue;
     add(findings, {
@@ -170,7 +176,8 @@ function auditArtifactReference(result: QaResult, markdown: string, findings: Re
 }
 
 function auditSummaryShape(result: QaResult, markdown: string, findings: ReportContentAuditFinding[]): void {
-  const hasDecisionSignals = markdown.includes('QA sign-off') && markdown.includes('Adjusted score') && (markdown.includes('Fix queue') || markdown.includes('核心缺陷') || markdown.includes('Core fixes'));
+  const lower = markdown.toLowerCase();
+  const hasDecisionSignals = lower.includes('qa sign-off') && lower.includes('adjusted') && (lower.includes('fix queue') || markdown.includes('核心缺陷') || lower.includes('core fixes'));
   if (!hasDecisionSignals) {
     add(findings, {
       severity: 'warning',

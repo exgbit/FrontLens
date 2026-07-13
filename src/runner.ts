@@ -408,6 +408,9 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   let interactionRestoreNetworkRequestIds: string[] = [];
   let interactionRestoreConsoleIds: string[] = [];
   let interactionRestorePageErrorIds: string[] = [];
+  let journeyPhaseNetworkRequestIds: string[] = [];
+  let journeyPhaseConsoleIds: string[] = [];
+  let journeyPhasePageErrorIds: string[] = [];
   let exceptionPhaseNetworkRequestIds: string[] = [];
   let exceptionPhaseConsoleIds: string[] = [];
   let exceptionPhasePageErrorIds: string[] = [];
@@ -495,6 +498,9 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     }
     accessibilityChecks = config.analysis.accessibility ? await safePhase('accessibility.check', phaseErrors, [], () => new AccessibilityChecker().check(activePage)) : [];
     permissionChecks = await safePhase('permissions.check', phaseErrors, [], async () => new PermissionChecker().check(pageModel, networkCollector.list()));
+    const journeyNetworkBefore = new Set(networkCollector.list().map((record) => record.id));
+    const journeyConsoleBefore = new Set(consoleCollector.getMessages().map((record) => record.id));
+    const journeyPageErrorsBefore = new Set(consoleCollector.getPageErrors().map((record) => record.id));
     journeyTests = await safePhase('journeys.run', phaseErrors, [], () =>
       new JourneyTester({
         config,
@@ -504,6 +510,10 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
         getPageErrors: () => consoleCollector.getPageErrors()
       }).run(activeContext)
     );
+    await networkCollector.flush();
+    journeyPhaseNetworkRequestIds = networkCollector.list().filter((record) => !journeyNetworkBefore.has(record.id)).map((record) => record.id);
+    journeyPhaseConsoleIds = consoleCollector.getMessages().filter((record) => !journeyConsoleBefore.has(record.id)).map((record) => record.id);
+    journeyPhasePageErrorIds = consoleCollector.getPageErrors().filter((record) => !journeyPageErrorsBefore.has(record.id)).map((record) => record.id);
     const securityNetworkBefore = new Set(networkCollector.list().map((record) => record.id));
     const securityOutput = await safePhase(
       'security.scan',
@@ -663,16 +673,18 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
   const journeyNetworkRequestIds = journeyTests.flatMap((journey) => journey.steps.flatMap((step) => step.networkRequestIds ?? []));
   const journeyConsoleIds = journeyTests.flatMap((journey) => journey.steps.flatMap((step) => step.consoleIds ?? []));
   const journeyPageErrorIds = journeyTests.flatMap((journey) => journey.steps.flatMap((step) => step.pageErrorIds ?? []));
-  const sanitizedNetworkIds = new Set([...syntheticNetworkRequestIds, ...journeyNetworkRequestIds]);
-  const sanitizedConsoleIds = new Set([...interactionRestoreConsoleIds, ...exceptionPhaseConsoleIds, ...exceptionSimulations.flatMap((item) => item.observations.consoleIds ?? []), ...journeyConsoleIds]);
-  const sanitizedPageErrorIds = new Set([...interactionRestorePageErrorIds, ...exceptionPhasePageErrorIds, ...exceptionSimulations.flatMap((item) => item.observations.pageErrorIds ?? []), ...journeyPageErrorIds]);
+  const sanitizedNetworkIds = new Set([...syntheticNetworkRequestIds, ...journeyPhaseNetworkRequestIds, ...journeyNetworkRequestIds]);
+  const sanitizedConsoleIds = new Set([...interactionRestoreConsoleIds, ...exceptionPhaseConsoleIds, ...exceptionSimulations.flatMap((item) => item.observations.consoleIds ?? []), ...journeyPhaseConsoleIds, ...journeyConsoleIds]);
+  const sanitizedPageErrorIds = new Set([...interactionRestorePageErrorIds, ...exceptionPhasePageErrorIds, ...exceptionSimulations.flatMap((item) => item.observations.pageErrorIds ?? []), ...journeyPhasePageErrorIds, ...journeyPageErrorIds]);
   const sanitizedAnalyzerContext = {
     ...analyzerContext,
     networkRecords: analyzerContext.networkRecords.filter((record) => !sanitizedNetworkIds.has(record.id)),
     consoleRecords: analyzerContext.consoleRecords.filter((record) => !sanitizedConsoleIds.has(record.id)),
     pageErrors: analyzerContext.pageErrors.filter((record) => !sanitizedPageErrorIds.has(record.id))
   };
-  const analysis = analyzeAll(analyzerContext);
+  // Journey, restore, security, P2, and exception traffic is deliberate test
+  // traffic. Feeding it to duplicate/error analyzers creates false defects.
+  const analysis = analyzeAll(sanitizedAnalyzerContext);
   const pluginIssues = await runAnalyzerPlugins(sanitizedAnalyzerContext);
   const baseIssues = [
     ...(navigationError ? [createNavigationIssue(navigationError, artifacts)] : []),
@@ -695,9 +707,11 @@ export async function runQa(input: QaRunInput): Promise<QaResult> {
     config,
     pageModel,
     networkRecords: networkCollector.list(),
+    excludedNetworkRequestIds: syntheticNetworkRequestIds,
     issues,
     journeyTests,
     interactionTests,
+    sourceHealth,
     accessibilityChecks
   });
   const resultConfig: FrontLensConfig = {

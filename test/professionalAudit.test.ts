@@ -71,6 +71,28 @@ test('professional audit surfaces qa coverage gaps and blocks acceptance wording
   assert.equal(signedAudit.findings.some((item) => item.category === 'coverage' && item.severity === 'blocker'), true);
 });
 
+test('professional audit does not block SME business verification only because disabled specialties and local deployment checks are out of scope', () => {
+  const result = baseResult();
+  result.metadata.config.analysis.coverage = false;
+  result.metadata.config.p2.enabled = false;
+  result.metadata.config.security.enabled = false;
+  result.environment.trust.functional = 'high';
+  result.qaCoverage.items = result.qaCoverage.items.map((item) => ({
+    ...item,
+    status: item.area === 'performance' || item.area === 'security' ? 'skipped' : item.area === 'environment' ? 'partial' : 'covered'
+  }));
+  result.qaCoverage.status = 'partial';
+  result.qaSignoff.businessValidationConfidence = 'runtime-verified';
+  result.qaSignoff.scope.providedRequirementCount = 1;
+  result.qaSignoff.scope.assertionStepCount = 1;
+  result.qaSignoff.scope.passedAssertionStepCount = 1;
+  result.claimGuard.items = result.claimGuard.items.map((item) => item.claim === 'business-validation' ? { ...item, status: 'allowed' } : item);
+
+  const audit = runProfessionalAudit(result);
+  assert.equal(audit.findings.some((item) => item.category === 'coverage' && item.severity === 'blocker'), false);
+  assert.equal(audit.findings.some((item) => item.category === 'coverage' && /intentionally excluded/.test(item.title)), true);
+});
+
 
 test('professional audit blocks stale disposition that promotes weak or speculative findings', () => {
   const result = normalizeResult({

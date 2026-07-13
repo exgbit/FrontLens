@@ -198,7 +198,7 @@ function buildSourceHealthClaim(result: ClaimGuardInput): Omit<ClaimGuardItem, '
     allowedWording: passed ? 'sourceHealth 已通过已启用的解析/脚本检查。' : failed ? 'sourceHealth 发现源码阻断。' : 'sourceHealth 未提供充分证据。',
     forbiddenWording: ['sourceHealth 通过等同业务功能通过', '未运行 typecheck/lint 也说源码健康无问题'],
     evidenceRefs: ['sourceHealth'],
-    requiredInputs: passed || failed ? [] : ['提供 sourceRoot，并在安全时启用 --source-run-scripts --source-scripts "typecheck,lint"。']
+    requiredInputs: passed || failed ? [] : ['提供 sourceRoot，并启用 --source-run-scripts --source-scripts "typecheck,lint,test"。']
   };
 }
 

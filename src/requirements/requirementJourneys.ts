@@ -1,4 +1,5 @@
 import type { FrontLensConfig, JourneyConfig, JourneyStepConfig, PageModel, RequirementConfigItem } from '../types.js';
+import { apiAcceptanceExpectations } from './httpAcceptance.js';
 
 const MAX_GENERATED_REQUIREMENT_JOURNEYS = 20;
 
@@ -29,7 +30,16 @@ function makeSelectorSteps(item: RequirementConfigItem): JourneyStepConfig[] {
     }));
 }
 
+function requiresBusinessAction(item: RequirementConfigItem): boolean {
+  return /点击|输入|选择|搜索|筛选|提交|保存|创建|新增|编辑|删除|上传|导入|导出|下载|分页|排序|详情|后|时|如果|当|失败|成功|click|fill|submit|save|create|delete|upload|export|download|after|when/i.test(`${item.title} ${item.description ?? ''}`);
+}
+
+function canAssertOutcome(item: RequirementConfigItem): boolean {
+  return !requiresBusinessAction(item) || (item.journeySteps?.some((step) => ['click', 'fill', 'press', 'select', 'check', 'uncheck'].includes(step.action)) ?? false);
+}
+
 function makeTextSteps(item: RequirementConfigItem): JourneyStepConfig[] {
+  if (!canAssertOutcome(item)) return [];
   return (item.expectedTexts ?? [])
     .filter(Boolean)
     .map((text) => ({
@@ -40,14 +50,16 @@ function makeTextSteps(item: RequirementConfigItem): JourneyStepConfig[] {
 }
 
 function makeApiSteps(item: RequirementConfigItem): JourneyStepConfig[] {
-  return (item.apiPatterns ?? [])
-    .filter(Boolean)
-    .map((pattern) => ({
-      action: 'expectRequest' as const,
-      target: pattern,
-      value: '2xx',
-      description: `验收断言：需求关联接口 ${pattern} 被调用且返回 2xx`
-    }));
+  if (!canAssertOutcome(item)) return [];
+  return apiAcceptanceExpectations(item).flatMap(({ pattern, statuses }) => {
+    const expectations = statuses.length ? statuses.map(String) : ['2xx'];
+    return expectations.map((statusExpectation) => ({
+        action: 'expectRequest' as const,
+        target: pattern,
+        value: statusExpectation,
+        description: `验收断言：需求关联接口 ${pattern} 被调用且返回 ${statusExpectation}`
+      }));
+  });
 }
 
 function makeRequirementSteps(item: RequirementConfigItem): JourneyStepConfig[] {
@@ -60,7 +72,7 @@ function makeRequirementSteps(item: RequirementConfigItem): JourneyStepConfig[] 
 }
 
 function hasRunnableAssertion(item: RequirementConfigItem): boolean {
-  return Boolean((item.journeySteps?.length ?? 0) > 0 || (item.selectors?.length ?? 0) > 0 || (item.expectedTexts?.length ?? 0) > 0 || (item.apiPatterns?.length ?? 0) > 0);
+  return Boolean((item.journeySteps?.length ?? 0) > 0 || (item.selectors?.length ?? 0) > 0 || (canAssertOutcome(item) && ((item.expectedTexts?.length ?? 0) > 0 || (item.apiPatterns?.length ?? 0) > 0)));
 }
 
 function hasExistingJourneyLink(item: RequirementConfigItem, existingNames: Set<string>): boolean {

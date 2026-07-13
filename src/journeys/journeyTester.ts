@@ -61,8 +61,12 @@ async function targetLocator(page: Page, target?: string): Promise<Locator> {
   return page.getByText(target, { exact: false }).first();
 }
 
-function patternMatches(pattern: string, value: string): boolean {
+function patternMatches(pattern: string, record: NetworkRecord): boolean {
   if (!pattern) return true;
+  const methodMatch = pattern.trim().match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(.+)$/i);
+  if (methodMatch && record.method.toUpperCase() !== methodMatch[1].toUpperCase()) return false;
+  const value = record.url;
+  pattern = methodMatch?.[2] ?? pattern;
   if (pattern.startsWith('url=')) return value.includes(pattern.slice(4));
   if (pattern.startsWith('regex=')) {
     try {
@@ -99,7 +103,7 @@ function statusMatches(record: NetworkRecord, expectation = '2xx'): boolean {
 
 export function findExpectedRequest(records: NetworkRecord[], pattern: string, statusExpectation = '2xx', since?: string): { matched: NetworkRecord[]; passed: NetworkRecord[] } {
   const sinceMs = since ? new Date(since).getTime() : Number.NEGATIVE_INFINITY;
-  const matched = records.filter((record) => new Date(record.startedAt).getTime() >= sinceMs && patternMatches(pattern, record.url));
+  const matched = records.filter((record) => new Date(record.startedAt).getTime() >= sinceMs && patternMatches(pattern, record));
   return {
     matched,
     passed: matched.filter((record) => statusMatches(record, statusExpectation))

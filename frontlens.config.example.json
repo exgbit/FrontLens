@@ -219,7 +219,8 @@
     "runScripts": false,
     "scriptNames": [
       "typecheck",
-      "lint"
+      "lint",
+      "test"
     ],
     "scriptTimeoutMs": 120000,
     "maxScriptOutputBytes": 12000

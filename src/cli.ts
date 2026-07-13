@@ -7,7 +7,7 @@ import { runCompatibility } from './matrix.js';
 import { saveAuthState } from './auth.js';
 import { startMcpServer } from './mcpServer.js';
 import { runEnvironmentComparison } from './compare/environmentComparison.js';
-import { synthesizeRequirements } from './requirements/requirementWizard.js';
+import { compactRequirementWizard, synthesizeRequirements } from './requirements/requirementWizard.js';
 import { loadRoleMatrixRoles, parseRoleSpec, runRoleMatrix } from './roles/roleMatrix.js';
 import { recordJourney } from './journeys/journeyRecorder.js';
 import type { BrowserName, QaResult, QaRunInput, ReportProfile, RoleMatrixRoleConfig, Severity } from './types.js';
@@ -38,9 +38,13 @@ import { buildAutomationSpecs, formatAutomationSpecs } from './automation/automa
 import { buildEvidenceBundle, formatEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy, formatQaStrategy } from './strategy/qaStrategy.js';
 import { buildReviewCalibration, formatReviewCalibration } from './review/reviewCalibration.js';
+import { buildTestPlan } from './testDesign/testPlan.js';
+import { buildTestPlanExecutionReport, formatCompactTestPlanExecutionReport, formatTestPlanExecutionReport } from './testDesign/testExecutionReport.js';
+import { compactTestPlan, compactTestPlanExecution } from './testDesign/testPlanCompact.js';
+import { ensureDir, writeJson, writeText } from './utils/fs.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'mcp', 'brief', 'audit', 'product-context', 'review-calibration', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'traceability', 'automation-specs', 'evidence-bundle', 'test-strategy', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'business-journeys', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'test-plan', 'test-report', 'mcp', 'brief', 'audit', 'product-context', 'review-calibration', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'traceability', 'automation-specs', 'evidence-bundle', 'test-strategy', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'business-journeys', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -51,6 +55,8 @@ Usage:
   frontlens auth save --url <login-url> --output <storage-state-path>
   frontlens journey record --url <url> --output <journey-config.json>
   frontlens requirements synthesize --input <prd.md> --output <requirements.json>
+  frontlens test-plan --input <prd.md> --output <directory> [--source-root <path>]
+  frontlens test-report --plan <test-plan.json> --report <result.json> --output <directory> [--fail-on-blocked]
   frontlens matrix --url <url> --browsers chromium,firefox,webkit
   frontlens role-matrix --url <url> --role admin=.auth/admin.json --role viewer=.auth/viewer.json
   frontlens env-compare --dev-url <vite-dev-url> --preview-url <build-preview-url>
@@ -92,13 +98,13 @@ Options:
   --url <url>                 Target page URL.
   --dev-url <url>             Dev/source-module URL for env-compare.
   --preview-url <url>         Build/preview URL for env-compare.
-  --input <path>              Requirements synthesize input Markdown/text file.
+  --input <path>              PRD/acceptance Markdown or text file.
   --text <text>               Inline PRD/acceptance text for requirements synthesize.
   --config <path>             Optional config file (.json/.js/.mjs).
   --requirements <path>       Optional requirements/acceptance criteria JSON file.
   --source-root <path>        Optional frontend source repository root for static source correlation.
   --source-run-scripts        Run selected non-destructive source scripts during source health.
-  --source-scripts <list>     Comma-separated package.json scripts to run when --source-run-scripts is enabled. Default: typecheck,lint.
+  --source-scripts <list>     Comma-separated package.json scripts to run when --source-run-scripts is enabled. Default: typecheck,lint,test.
   --source-script-timeout-ms <ms>
                               Timeout per source script. Default: 120000.
   --output <dir>              Output report directory.
@@ -141,7 +147,7 @@ Options:
   --block-mutating-requests   Abort POST/PUT/PATCH/DELETE unless corresponding allow* is enabled.
   --allow-mutating-requests   Do not abort mutating requests; report successful writes as suspicious instead.
   --sme                       Small/mid-size business standard QA: keep core runtime/API/source checks and disable specialty security/performance/realtime/P2 modules unless explicitly re-enabled.
-  --json                      Print machine-readable JSON summary.
+  --json                      Print expanded JSON. For test-plan/test-report this is full-detail and may be large.
   --json-summary              Print compact low-token machine-readable QA summary.
   --full                      For issues command, print full Issue objects.
   --all                       For suggestions command, include raw suppressed product/style/deployment/needs-evidence suggestions.
@@ -149,6 +155,7 @@ Options:
   --fail-on <severity>        Exit non-zero if issues at severity or above exist. In professional mode, only actionable + defectProof proven/probable findings count, and report/sign-off contract blockers also fail.
   --min-score <number>        Exit non-zero if score is lower. In professional mode, uses adjustedScore.
   --fail-on-browser-failure   Matrix: exit non-zero when any browser run fails.
+  --fail-on-blocked           qa/test-report: exit non-zero when P0 is open or the planned-test result is blocked.
   --timeout-ms <ms>           Journey record maximum wait time. Default: 300000.
   --max-steps <n>             Journey record maximum generated steps. Default: 80.
   --allow-mutating-steps      Journey record: mark dangerous recorded steps allowMutating=true.
@@ -165,6 +172,9 @@ Examples:
   frontlens auth save --url https://example.com/login --output .frontlens/auth/admin.json
   frontlens journey record --url https://example.com/admin/users --output journeys/users-smoke.json --name "Users smoke"
   frontlens requirements synthesize --input docs/prd.md --output requirements.json
+  frontlens test-plan --input docs/prd.md --source-root ../app --output reports/test-plan
+  frontlens qa --url http://127.0.0.1:3000 --requirements reports/test-plan/test-plan.json --source-root ../app --source-run-scripts --output reports/qa
+  frontlens test-report --plan reports/test-plan/test-plan.json --report reports/qa/result.json --output reports/final
   frontlens matrix --url https://example.com --browsers chromium,firefox,webkit --output reports/compat
   frontlens role-matrix --url https://example.com/admin --role admin=.frontlens/auth/admin.json --role viewer=.frontlens/auth/viewer.json --output reports/roles
   frontlens env-compare --dev-url http://127.0.0.1:5173/users --preview-url http://127.0.0.1:4173/users --output reports/env-users
@@ -415,6 +425,8 @@ Stdio MCP command:
 Exposed tools:
   frontlens_qa
   frontlens_requirements_synthesize
+  frontlens_test_plan
+  frontlens_test_report
   frontlens_matrix
   frontlens_role_matrix
   frontlens_env_compare
@@ -1094,13 +1106,118 @@ async function main(): Promise<void> {
       prefix: parsed.values.prefix,
       inferFromPage: parsed.values['no-infer-from-page'] ? false : parsed.values['infer-from-page']
     });
-    if (parsed.values.json || !parsed.values.output) {
+    if (parsed.values.json) {
       console.log(JSON.stringify(result, null, 2));
+    } else if (!parsed.values.output) {
+      console.log(JSON.stringify(compactRequirementWizard(result), null, 2));
     } else {
       console.log(`Requirements synthesized: ${parsed.values.output}`);
       console.log(`Requirements: ${result.requirementCount}, executable signals: ${result.executableAssertionCount}, needs review: ${result.needsReviewCount}`);
       console.log(`Review notes: ${result.questions.length} question(s)`);
     }
+    return;
+  }
+
+  if (argv[0] === 'test-plan') {
+    const parsed = parseArgs({
+      args: argv.slice(1),
+      allowPositionals: true,
+      options: {
+        input: { type: 'string' },
+        text: { type: 'string' },
+        output: { type: 'string', short: 'o' },
+        'source-root': { type: 'string' },
+        prefix: { type: 'string' },
+        json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' }
+      }
+    });
+    if (parsed.values.help) {
+      printHelp();
+      return;
+    }
+    const inputPath = parsed.values.input ?? parsed.positionals[0];
+    if (!inputPath && !parsed.values.text) throw new Error('Missing test-plan --input <prd.md> or --text <requirements>.');
+    const result = await buildTestPlan({
+      inputPath,
+      text: parsed.values.text,
+      outputDir: parsed.values.output,
+      sourceRoot: parsed.values['source-root'],
+      prefix: parsed.values.prefix
+    });
+    if (parsed.values.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else if (!parsed.values.output) {
+      console.log(JSON.stringify(compactTestPlan(result), null, 2));
+    } else {
+      console.log(`Test plan generated: ${result.artifacts?.json}`);
+      console.log(`Status: ${result.status}; requirements/test-points/test-cases ${result.summary.requirementCount}/${result.summary.testPointCount}/${result.summary.testCaseCount}`);
+      console.log(`Developer P0 cases: ${result.summary.developerCaseCount}; QA full cases: ${result.summary.qaCaseCount}`);
+      console.log(`Blocker coverage: ${result.blockerCoverage.status}`);
+    }
+    return;
+  }
+
+  if (argv[0] === 'test-report') {
+    const parsed = parseArgs({
+      args: argv.slice(1),
+      allowPositionals: true,
+      options: {
+        plan: { type: 'string' },
+        report: { type: 'string' },
+        output: { type: 'string', short: 'o' },
+        json: { type: 'boolean' },
+        'fail-on-blocked': { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' }
+      }
+    });
+    if (parsed.values.help) {
+      printHelp();
+      return;
+    }
+    const planPath = parsed.values.plan ?? parsed.positionals[0];
+    const reportPath = parsed.values.report ?? parsed.positionals[1];
+    if (!planPath || !reportPath) throw new Error('Missing test-report --plan <test-plan.json> --report <result.json>.');
+    const plan = JSON.parse(await readFile(planPath, 'utf8')) as import('./types.js').TestPlanResult;
+    if (plan.schemaVersion !== '1.0' || !Array.isArray(plan.testCases) || !Array.isArray(plan.requirements)) {
+      throw new Error(`Invalid test plan: ${planPath}. Generate it with frontlens test-plan.`);
+    }
+    const qaResult = await readResult(reportPath);
+    const execution = buildTestPlanExecutionReport(plan, qaResult);
+    const markdown = formatCompactTestPlanExecutionReport(execution, plan, qaResult);
+    const detailsMarkdown = formatTestPlanExecutionReport(execution, plan, qaResult);
+    let executionArtifacts: Record<string, string> | undefined;
+    if (parsed.values.output) {
+      const outputDir = path.resolve(parsed.values.output);
+      await ensureDir(outputDir);
+      executionArtifacts = {
+        summary: path.join(outputDir, 'test-execution-summary.json'),
+        json: path.join(outputDir, 'test-execution-report.json'),
+        markdown: path.join(outputDir, 'test-report.md'),
+        details: path.join(outputDir, 'test-execution-details.md'),
+        manifest: path.join(outputDir, 'artifact-manifest.json')
+      };
+      await Promise.all([
+        writeJson(executionArtifacts.summary, compactTestPlanExecution(execution, plan, executionArtifacts)),
+        writeJson(executionArtifacts.json, execution),
+        writeText(executionArtifacts.markdown, markdown),
+        writeText(executionArtifacts.details, detailsMarkdown),
+        writeJson(executionArtifacts.manifest, {
+          generatedAt: execution.generatedAt,
+          recommendedReadOrder: [executionArtifacts.summary, executionArtifacts.markdown],
+          readOnDemand: [executionArtifacts.details],
+          avoidLoadingIntoLlmByDefault: [executionArtifacts.json, reportPath, planPath]
+        })
+      ]);
+    }
+    if (parsed.values.json) console.log(JSON.stringify(execution, null, 2));
+    else if (!parsed.values.output) console.log(JSON.stringify(compactTestPlanExecution(execution, plan), null, 2));
+    else {
+      console.log(`Requirement-driven test report: ${path.resolve(parsed.values.output, 'test-report.md')}`);
+      console.log(`Status: ${execution.status}; passed/failed/blocked/not-executed ${execution.summary.passedCount}/${execution.summary.failedCount}/${execution.summary.blockedCount}/${execution.summary.notExecutedCount}`);
+      console.log(`Release recommendation: ${execution.releaseRecommendation}`);
+    }
+    if (parsed.values['fail-on-blocked'] && (execution.status === 'blocked' || execution.status === 'failed')) process.exitCode = 2;
     return;
   }
 
@@ -1473,6 +1590,7 @@ async function main(): Promise<void> {
       'gate-mode': { type: 'string' },
       'fail-on': { type: 'string' },
       'min-score': { type: 'string' },
+      'fail-on-blocked': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' }
     }
   });
@@ -1527,8 +1645,43 @@ async function main(): Promise<void> {
   };
 
   const result = await runQa(input);
+  let plannedExecution: ReturnType<typeof buildTestPlanExecutionReport> | undefined;
+  let plannedReportPath: string | undefined;
+  if (parsed.values.requirements) {
+    const requirementsPath = path.resolve(parsed.values.requirements);
+    const candidate = JSON.parse(await readFile(requirementsPath, 'utf8')) as Partial<import('./types.js').TestPlanResult>;
+    if (candidate.schemaVersion === '1.0' && Array.isArray(candidate.testCases) && Array.isArray(candidate.requirements)) {
+      const plan = candidate as import('./types.js').TestPlanResult;
+      plannedExecution = buildTestPlanExecutionReport(plan, result);
+      const outputDir = result.artifacts.outputDir;
+      plannedReportPath = path.join(outputDir, 'planned-test-report.md');
+      const plannedArtifacts = {
+        summary: path.join(outputDir, 'planned-test-summary.json'),
+        json: path.join(outputDir, 'planned-test-execution.json'),
+        markdown: plannedReportPath,
+        details: path.join(outputDir, 'planned-test-details.md'),
+        manifest: path.join(outputDir, 'planned-test-manifest.json')
+      };
+      await Promise.all([
+        writeJson(plannedArtifacts.summary, compactTestPlanExecution(plannedExecution, plan, plannedArtifacts)),
+        writeJson(plannedArtifacts.json, plannedExecution),
+        writeText(plannedArtifacts.markdown, formatCompactTestPlanExecutionReport(plannedExecution, plan, result)),
+        writeText(plannedArtifacts.details, formatTestPlanExecutionReport(plannedExecution, plan, result)),
+        writeJson(plannedArtifacts.manifest, {
+          generatedAt: plannedExecution.generatedAt,
+          recommendedReadOrder: [plannedArtifacts.summary, plannedArtifacts.markdown],
+          readOnDemand: [plannedArtifacts.details],
+          avoidLoadingIntoLlmByDefault: [plannedArtifacts.json, result.artifacts.jsonReport]
+        })
+      ]);
+    }
+  }
   const ciGate = evaluateQaCiGate({ result, failOn, minScore, mode: gateMode });
-  const exitStatus = ciGate.status;
+  const plannedGateFailed = Boolean(plannedExecution && (
+    plannedExecution.summary.failedCount > 0
+    || (parsed.values['fail-on-blocked'] && plannedExecution.status === 'blocked')
+  ));
+  const exitStatus = plannedGateFailed ? 'failed' : ciGate.status;
   if (parsed.values['json-summary']) {
     console.log(JSON.stringify(compactQaSummary(result, ciGate, { exitStatus, gateMode, failOn, minScore }), null, 2));
   } else if (parsed.values.json) {
@@ -1670,6 +1823,7 @@ async function main(): Promise<void> {
     console.log(`Adjusted score: ${result.summary.adjustedScore}/100 (${result.summary.adjustedIssueCount} ${result.summary.scoreBasis} findings)`);
     console.log(`Raw score: ${result.summary.score}/100 (${result.summary.issueCount} raw findings)`);
     console.log(`CI Gate: ${ciGate.status} (${ciGate.mode}, score field ${ciGate.scoreField})`);
+    if (plannedExecution) console.log(`Planned cases: ${plannedExecution.status}, P0 open ${plannedExecution.summary.p0OpenCount}, report ${plannedReportPath}`);
     console.log(`Security: ${result.security.status}, ${result.security.score}/100 (${result.security.summary.failedCount} failed, ${result.security.summary.warningCount} warnings)`);
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);

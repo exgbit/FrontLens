@@ -387,3 +387,33 @@ test('source health turns failed selected package scripts into actionable source
   assert.equal(issues[0].id, 'SOURCE-HEALTH-SCRIPT');
   assert.equal(issues[0].category, 'frontend-source-health');
 });
+
+test('source health loads requirement-scoped test evidence manifest and derives status from executed scripts', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'frontlens-source-evidence-'));
+  await mkdir(path.join(dir, 'src'), { recursive: true });
+  await mkdir(path.join(dir, '.frontlens'), { recursive: true });
+  await writeFile(path.join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(0)"' } }), 'utf8');
+  await writeFile(path.join(dir, 'src/index.ts'), 'export const ok = true;\n', 'utf8');
+  await writeFile(path.join(dir, '.frontlens/test-evidence.json'), JSON.stringify({
+    bindings: [{
+      id: 'BACKEND-PERMISSION',
+      requirementIds: ['REQ-AUTH-001'],
+      layer: 'backend',
+      scenarios: ['permission', 'negative'],
+      scriptNames: ['test'],
+      evidenceRefs: ['test/auth.test.ts']
+    }]
+  }), 'utf8');
+
+  const config = createDefaultConfig('https://example.com/users');
+  config.source.root = dir;
+  config.source.runScripts = true;
+  config.source.scriptNames = ['test'];
+  const { result } = await analyzeSourceHealth(config);
+
+  assert.equal(result.testEvidence?.length, 1);
+  assert.equal(result.testEvidence?.[0].status, 'passed');
+  assert.deepEqual(result.testEvidence?.[0].requirementIds, ['REQ-AUTH-001']);
+  assert.equal(result.testEvidence?.[0].layer, 'backend');
+  assert.equal(result.testEvidence?.[0].evidenceRefs.includes('SRC-SCRIPT-001'), true);
+});

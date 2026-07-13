@@ -198,6 +198,7 @@ export async function analyzeApiContract(config: FrontLensConfig, networkRecords
       method,
       path: matched?.path ?? requestPath,
       requestCount: records.length,
+      networkRequestIds: records.map((record) => record.id),
       statusCodes: statuses,
       contentTypes,
       requestShape: shapeOf(firstJsonRequest),

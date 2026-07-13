@@ -1,0 +1,52 @@
+{
+  "bindings": [
+    {
+      "id": "DEMO-BACKEND-SEARCH",
+      "requirementIds": ["REQ-DRAFT-001", "REQ-DRAFT-002"],
+      "layer": "backend",
+      "scenarios": ["smoke", "positive"],
+      "scriptNames": ["test"],
+      "evidenceRefs": ["test/server.test.mjs#search-and-csv-export"]
+    },
+    {
+      "id": "DEMO-BACKEND-EXPORT",
+      "requirementIds": ["REQ-DRAFT-009"],
+      "layer": "backend",
+      "scenarios": ["smoke", "positive", "consistency"],
+      "scriptNames": ["test"],
+      "evidenceRefs": ["test/server.test.mjs#search-and-csv-export"]
+    },
+    {
+      "id": "DEMO-BACKEND-AUTHORIZATION",
+      "requirementIds": ["REQ-DRAFT-008"],
+      "layer": "backend",
+      "scenarios": ["smoke", "positive", "negative", "permission", "consistency", "idempotency"],
+      "scriptNames": ["test"],
+      "evidenceRefs": ["test/server.test.mjs#delete-requires-admin"]
+    },
+    {
+      "id": "DEMO-API-AUTHORIZATION",
+      "requirementIds": ["REQ-DRAFT-008"],
+      "layer": "api",
+      "scenarios": ["smoke", "positive", "negative", "permission", "consistency", "idempotency"],
+      "scriptNames": ["test"],
+      "evidenceRefs": ["test/server.test.mjs#delete-requires-admin", "test/frontend.test.mjs#viewer-delete"]
+    },
+    {
+      "id": "DEMO-FRONTEND-AUTHORIZATION",
+      "requirementIds": ["REQ-DRAFT-008"],
+      "layer": "frontend",
+      "scenarios": ["smoke", "positive", "permission", "consistency", "idempotency"],
+      "scriptNames": ["test"],
+      "evidenceRefs": ["test/frontend.test.mjs#viewer-delete"]
+    },
+    {
+      "id": "DEMO-BACKEND-UPLOAD",
+      "requirementIds": ["REQ-DRAFT-010"],
+      "layer": "backend",
+      "scenarios": ["smoke", "positive", "negative", "boundary"],
+      "scriptNames": ["test"],
+      "evidenceRefs": ["test/server.test.mjs#upload-validation"]
+    }
+  ]
+}

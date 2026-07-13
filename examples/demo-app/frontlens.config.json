@@ -1,0 +1,278 @@
+{
+  "report": {
+    "profile": "executive"
+  },
+  "safety": {
+    "allowUpload": true,
+    "allowDownload": true,
+    "blockMutatingRequests": true
+  },
+  "productContext": {
+    "enabled": true,
+    "productName": "FrontLens Requirement Demo",
+    "pageType": "admin-data-list",
+    "deviceScope": "desktop-first",
+    "accessibilityTarget": "basic",
+    "requiredFeatures": [
+      "search",
+      "reset",
+      "pagination",
+      "sort",
+      "detail",
+      "permission",
+      "export",
+      "upload"
+    ],
+    "optionalFeatures": [],
+    "outOfScopeFeatures": [],
+    "decisions": [],
+    "adrRefs": [
+      "../demo-prd.md"
+    ]
+  },
+  "testData": {
+    "enabled": true,
+    "environment": "local",
+    "allowProductionWrites": false,
+    "records": [
+      {
+        "id": "DEMO-USERS",
+        "title": "可重启恢复的内存用户数据",
+        "state": "seeded",
+        "requiredFor": [
+          "search",
+          "detail",
+          "permission",
+          "export"
+        ],
+        "expectedTexts": [
+          "Alice",
+          "FrontLens"
+        ],
+        "apiPatterns": [
+          "/api/users"
+        ],
+        "cleanupOperationId": "CLEAN-DEMO",
+        "sensitive": false,
+        "owner": "test"
+      }
+    ],
+    "setupSteps": [
+      {
+        "id": "SETUP-DEMO",
+        "title": "启动 demo server",
+        "type": "script",
+        "command": "node src/server.mjs",
+        "destructive": false
+      }
+    ],
+    "cleanupSteps": [
+      {
+        "id": "CLEAN-DEMO",
+        "title": "重启 demo server 恢复内存数据",
+        "type": "script",
+        "command": "restart demo server",
+        "destructive": false
+      }
+    ],
+    "notes": [
+      "仅用于本机独立 demo app"
+    ]
+  },
+  "journeys": {
+    "enabled": true,
+    "continueOnFailure": true,
+    "maxJourneys": 10,
+    "maxStepsPerJourney": 30,
+    "journeys": [
+      {
+        "name": "搜索 FrontLens 用户",
+        "source": "configured",
+        "requirementIds": [
+          "REQ-DRAFT-001",
+          "REQ-DRAFT-002",
+          "REQ-DRAFT-003"
+        ],
+        "steps": [
+          {
+            "action": "fill",
+            "target": "#keyword",
+            "value": "FrontLens"
+          },
+          {
+            "action": "click",
+            "target": "#search"
+          },
+          {
+            "action": "expectText",
+            "target": "#tbody",
+            "value": "FrontLens"
+          },
+          {
+            "action": "expectRequest",
+            "target": "/api/users"
+          },
+          {
+            "action": "expectText",
+            "target": "#page-text",
+            "value": "1 /"
+          }
+        ]
+      },
+      {
+        "name": "无匹配用户空态",
+        "source": "configured",
+        "requirementIds": [
+          "REQ-DRAFT-002"
+        ],
+        "steps": [
+          {
+            "action": "fill",
+            "target": "#keyword",
+            "value": "not-found-user"
+          },
+          {
+            "action": "click",
+            "target": "#search"
+          },
+          {
+            "action": "expectText",
+            "target": "body",
+            "value": "暂无数据"
+          }
+        ]
+      },
+      {
+        "name": "重置恢复第一页",
+        "source": "configured",
+        "requirementIds": [
+          "REQ-DRAFT-004"
+        ],
+        "steps": [
+          {
+            "action": "fill",
+            "target": "#keyword",
+            "value": "Alice"
+          },
+          {
+            "action": "click",
+            "target": "#search"
+          },
+          {
+            "action": "click",
+            "target": "#reset"
+          },
+          {
+            "action": "expectText",
+            "target": "#page-text",
+            "value": "1 /"
+          },
+          {
+            "action": "expectText",
+            "target": "#tbody",
+            "value": "Alice"
+          }
+        ]
+      },
+      {
+        "name": "分页往返保持有效页码",
+        "source": "configured",
+        "requirementIds": [
+          "REQ-DRAFT-005"
+        ],
+        "steps": [
+          {
+            "action": "expectText",
+            "target": "#page-text",
+            "value": "1 / 2"
+          },
+          {
+            "action": "click",
+            "target": "#next"
+          },
+          {
+            "action": "expectText",
+            "target": "#page-text",
+            "value": "2 / 2"
+          },
+          {
+            "action": "click",
+            "target": "#prev"
+          },
+          {
+            "action": "expectText",
+            "target": "#page-text",
+            "value": "1 / 2"
+          }
+        ]
+      },
+      {
+        "name": "用户名升降序",
+        "source": "configured",
+        "requirementIds": [
+          "REQ-DRAFT-006"
+        ],
+        "steps": [
+          {
+            "action": "click",
+            "target": "#sort-name"
+          },
+          {
+            "action": "expectText",
+            "target": "#tbody tr:first-child td:nth-child(2)",
+            "value": "Alice"
+          },
+          {
+            "action": "click",
+            "target": "#sort-name"
+          },
+          {
+            "action": "expectText",
+            "target": "#tbody tr:first-child td:nth-child(2)",
+            "value": "FrontLens"
+          }
+        ]
+      },
+      {
+        "name": "查看用户详情",
+        "source": "configured",
+        "requirementIds": [
+          "REQ-DRAFT-007"
+        ],
+        "steps": [
+          {
+            "action": "click",
+            "target": "#tbody .detail"
+          },
+          {
+            "action": "expectText",
+            "target": "#detail-content",
+            "value": "Alice / 管理员"
+          },
+          {
+            "action": "expectRequest",
+            "target": "/api/users/1"
+          }
+        ]
+      },
+      {
+        "name": "普通用户删除权限",
+        "source": "configured",
+        "requirementIds": [
+          "REQ-DRAFT-008"
+        ],
+        "steps": [
+          {
+            "action": "expectText",
+            "target": "#permission-hint",
+            "value": "普通用户无删除权限"
+          },
+          {
+            "action": "expectVisible",
+            "target": "#tbody"
+          }
+        ]
+      }
+    ]
+  }
+}

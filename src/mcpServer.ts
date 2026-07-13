@@ -4,7 +4,7 @@ import { stdin, stdout } from 'node:process';
 import { runQa } from './runner.js';
 import { runCompatibility } from './matrix.js';
 import { runEnvironmentComparison } from './compare/environmentComparison.js';
-import { synthesizeRequirements } from './requirements/requirementWizard.js';
+import { compactRequirementWizard, synthesizeRequirements } from './requirements/requirementWizard.js';
 import { runRoleMatrix } from './roles/roleMatrix.js';
 import type { BrowserName, QaResult, QaRunInput, ReportProfile, Severity } from './types.js';
 import { normalizeResult } from './resultNormalizer.js';
@@ -27,6 +27,11 @@ import { buildAutomationSpecs } from './automation/automationSpecs.js';
 import { buildEvidenceBundle } from './evidence/evidenceBundle.js';
 import { buildQaStrategy } from './strategy/qaStrategy.js';
 import { buildReviewCalibration } from './review/reviewCalibration.js';
+import { buildTestPlan } from './testDesign/testPlan.js';
+import { buildTestPlanExecutionReport, formatCompactTestPlanExecutionReport, formatTestPlanExecutionReport } from './testDesign/testExecutionReport.js';
+import type { TestPlanResult } from './types.js';
+import { ensureDir, writeJson, writeText } from './utils/fs.js';
+import { compactTestPlan, compactTestPlanExecution } from './testDesign/testPlanCompact.js';
 
 interface JsonRpcRequest {
   jsonrpc?: '2.0';
@@ -166,8 +171,28 @@ function listTools(): Record<string, unknown> {
           outputPath: { type: 'string', description: 'Optional output JSON path. A Markdown review file is written beside it.' },
           output: { type: 'string', description: 'Alias for outputPath.' },
           prefix: { type: 'string', description: 'Requirement id prefix, e.g. REQ-USER.' },
-          inferFromPage: { type: 'boolean', description: 'Keep page-inferred capability coverage enabled in generated requirements config.' }
+          inferFromPage: { type: 'boolean', description: 'Keep page-inferred capability coverage enabled in generated requirements config.' },
+          detail: { type: 'boolean', description: 'Return the expanded requirement draft. Defaults to a bounded low-token summary.' }
         })
+      },
+      {
+        name: 'frontlens_test_plan',
+        description: 'Convert a PRD into structured requirements, frontend/backend/API/source test points, complete prioritized cases, and a mandatory P0 developer subset.',
+        inputSchema: schema({
+          inputPath: { type: 'string', description: 'Markdown/text PRD path.' },
+          input: { type: 'string', description: 'Alias for inputPath.' },
+          text: { type: 'string', description: 'Inline PRD text.' },
+          outputDir: { type: 'string', description: 'Optional directory for test-plan.json and Markdown artifacts.' },
+          output: { type: 'string', description: 'Alias for outputDir.' },
+          sourceRoot: { type: 'string', description: 'Optional implementation repository root recorded in the plan.' },
+          prefix: { type: 'string', description: 'Requirement id prefix.' },
+          detail: { type: 'boolean', description: 'Return the full expanded plan. Defaults to a low-token summary.' }
+        })
+      },
+      {
+        name: 'frontlens_test_report',
+        description: 'Bind a generated plan to QA evidence. Defaults to a low-token decision summary; optionally write compact and full artifacts.',
+        inputSchema: schema({ plan: { type: 'string' }, report: { type: 'string' }, outputDir: { type: 'string' }, output: { type: 'string', description: 'Alias for outputDir.' }, detail: { type: 'boolean', description: 'Include every case execution.' }, includeMarkdown: { type: 'boolean', description: 'Inline compact Markdown in the MCP response. Prefer outputDir.' } }, ['plan', 'report'])
       },
       {
         name: 'frontlens_inspect',
@@ -453,7 +478,7 @@ function listTools(): Record<string, unknown> {
   };
 }
 
-function validateArgs(args: unknown, allowed: string[], required: string[] = []): Record<string, unknown> {
+export function validateArgs(args: unknown, allowed: string[], required: string[] = []): Record<string, unknown> {
   if (!isRecord(args)) {
     throw new RpcError(-32602, 'Tool arguments must be an object.');
   }
@@ -461,7 +486,13 @@ function validateArgs(args: unknown, allowed: string[], required: string[] = [])
   if (unknown.length > 0) {
     throw new RpcError(-32602, `Unknown argument(s): ${unknown.join(', ')}`, { allowed });
   }
-  const missing = required.filter((key) => typeof args[key] !== 'string' || String(args[key]).trim() === '');
+  const missing = required.filter((key) => {
+    const value = args[key];
+    if (value === undefined || value === null) return true;
+    if (typeof value === 'string') return value.trim() === '';
+    if (Array.isArray(value)) return value.length === 0;
+    return false;
+  });
   if (missing.length > 0) {
     throw new RpcError(-32602, `Missing required argument(s): ${missing.join(', ')}`);
   }
@@ -683,7 +714,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       });
     }
     case 'frontlens_requirements_synthesize': {
-      const args = validateArgs(params.arguments ?? {}, ['inputPath', 'input', 'text', 'outputPath', 'output', 'prefix', 'inferFromPage']);
+      const args = validateArgs(params.arguments ?? {}, ['inputPath', 'input', 'text', 'outputPath', 'output', 'prefix', 'inferFromPage', 'detail']);
       const inputPath = typeof args.inputPath === 'string' ? args.inputPath : typeof args.input === 'string' ? args.input : undefined;
       const text = typeof args.text === 'string' ? args.text : undefined;
       if ((!inputPath || inputPath.trim() === '') && (!text || text.trim() === '')) {
@@ -696,7 +727,59 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         prefix: typeof args.prefix === 'string' ? args.prefix : undefined,
         inferFromPage: typeof args.inferFromPage === 'boolean' ? args.inferFromPage : undefined
       });
-      return textContent(result);
+      return textContent(args.detail === true ? result : compactRequirementWizard(result));
+    }
+    case 'frontlens_test_plan': {
+      const args = validateArgs(params.arguments ?? {}, ['inputPath', 'input', 'text', 'outputDir', 'output', 'sourceRoot', 'prefix', 'detail']);
+      const inputPath = typeof args.inputPath === 'string' ? args.inputPath : typeof args.input === 'string' ? args.input : undefined;
+      const text = typeof args.text === 'string' ? args.text : undefined;
+      if ((!inputPath || !inputPath.trim()) && (!text || !text.trim())) throw new RpcError(-32602, 'Missing inputPath/input or text for frontlens_test_plan.');
+      const plan = await buildTestPlan({
+        inputPath,
+        text,
+        outputDir: typeof args.outputDir === 'string' ? args.outputDir : typeof args.output === 'string' ? args.output : undefined,
+        sourceRoot: typeof args.sourceRoot === 'string' ? args.sourceRoot : undefined,
+        prefix: typeof args.prefix === 'string' ? args.prefix : undefined
+      });
+      return textContent(args.detail === true ? plan : compactTestPlan(plan));
+    }
+    case 'frontlens_test_report': {
+      const args = validateArgs(params.arguments ?? {}, ['plan', 'report', 'outputDir', 'output', 'detail', 'includeMarkdown'], ['plan', 'report']);
+      const plan = JSON.parse(await readFile(requireString(args, 'plan'), 'utf8')) as TestPlanResult;
+      if (plan.schemaVersion !== '1.0' || !Array.isArray(plan.testCases)) throw new RpcError(-32602, 'Invalid test plan. Generate it with frontlens_test_plan.');
+      const qaResult = await readResult(requireString(args, 'report'));
+      const execution = buildTestPlanExecutionReport(plan, qaResult);
+      const markdown = formatCompactTestPlanExecutionReport(execution, plan, qaResult);
+      const detailsMarkdown = formatTestPlanExecutionReport(execution, plan, qaResult);
+      const outputDir = typeof args.outputDir === 'string' ? args.outputDir : typeof args.output === 'string' ? args.output : undefined;
+      const artifacts = outputDir ? {
+        summary: path.resolve(outputDir, 'test-execution-summary.json'),
+        json: path.resolve(outputDir, 'test-execution-report.json'),
+        markdown: path.resolve(outputDir, 'test-report.md'),
+        details: path.resolve(outputDir, 'test-execution-details.md'),
+        manifest: path.resolve(outputDir, 'artifact-manifest.json')
+      } : undefined;
+      if (artifacts) {
+        await ensureDir(path.resolve(outputDir!));
+        await Promise.all([
+          writeJson(artifacts.summary, compactTestPlanExecution(execution, plan, artifacts)),
+          writeJson(artifacts.json, execution),
+          writeText(artifacts.markdown, markdown),
+          writeText(artifacts.details, detailsMarkdown),
+          writeJson(artifacts.manifest, {
+            generatedAt: execution.generatedAt,
+            recommendedReadOrder: [artifacts.summary, artifacts.markdown],
+            readOnDemand: [artifacts.details],
+            avoidLoadingIntoLlmByDefault: [artifacts.json, requireString(args, 'report'), requireString(args, 'plan')]
+          })
+        ]);
+      }
+      const response: Record<string, unknown> = {
+        ...(compactTestPlanExecution(execution, plan, artifacts) as Record<string, unknown>),
+        ...(args.detail === true ? { execution } : {}),
+        ...(args.includeMarkdown === true ? { markdown } : {})
+      };
+      return textContent(response);
     }
     case 'frontlens_inspect': {
       const args = validateArgs(params.arguments ?? {}, ['report'], ['report']);

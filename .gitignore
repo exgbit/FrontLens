@@ -2,6 +2,8 @@ node_modules/
 dist/
 reports/
 .frontlens/
+!examples/demo-app/.frontlens/
+!examples/demo-app/.frontlens/test-evidence.json
 playwright-report/
 test-results/
 *.log

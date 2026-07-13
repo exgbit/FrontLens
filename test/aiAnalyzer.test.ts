@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { access, mkdtemp } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { runAiAnalyzer } from '../src/ai/aiAnalyzer.ts';
 import { createDefaultConfig } from '../src/defaultConfig.ts';
 import type { AnalyzerContext, Issue } from '../src/types.ts';
 
-test('heuristic AI writes advisory summary without creating raw issues', async () => {
+test('heuristic AI writes advisory summary without creating raw issues or unused large context', async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'frontlens-ai-'));
   const config = createDefaultConfig('https://example.com/credentials');
   config.analysis.ai = true;
@@ -68,6 +68,5 @@ test('heuristic AI writes advisory summary without creating raw issues', async (
   assert.match(result.summary ?? '', /AI Heuristic 综合分析/);
   assert.equal(result.suggestions.length > 0, true);
   assert.deepEqual(result.issues, []);
-  assert.equal(result.contextPath, path.join(outputDir, 'ai-context.json'));
-  await access(result.contextPath);
+  assert.equal(result.contextPath, undefined);
 });

@@ -238,10 +238,10 @@ function addSourceQuestions(result: QaIntakeInput, questions: DraftQuestion[]): 
       priority: 'P1',
       question: '是否可以提供 frontend sourceRoot，并允许源码索引/必要时运行 typecheck、lint？',
       why: '没有源码×运行时绑定时，不能把全局 Network 观察直接升级为“接口有数据但页面空”等前端缺陷。',
-      howToAnswer: '使用 --source-root <repo>，专业签核时加 --source-run-scripts --source-scripts "typecheck,lint"。',
+      howToAnswer: '使用 --source-root <repo>，专业签核时加 --source-run-scripts --source-scripts "typecheck,lint,test"。',
       evidenceRefs: ['sourceAnalysis', 'sourceRuntimeCorrelation', 'sourceHealth'],
       blocksClaims: ['frontend-defect', 'api-ui-data-binding', 'source-health'],
-      configHint: '--source-root /path/to/frontend --source-run-scripts --source-scripts "typecheck,lint"'
+      configHint: '--source-root /path/to/frontend --source-run-scripts --source-scripts "typecheck,lint,test"'
     });
   }
   for (const gap of result.sourceRuntimeCorrelation.gaps.slice(0, 3)) {

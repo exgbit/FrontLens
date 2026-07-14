@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backend QA"
+  short_description: "自动部署纯后端项目并完成需求驱动的 API 与代码测试"
+  default_prompt: "根据需求文档和源码自动部署这个后端项目，发现 API，执行需求、接口、代码和数据测试，生成 Markdown 报告并清理本轮资源。"

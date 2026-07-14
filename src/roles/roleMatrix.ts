@@ -17,6 +17,7 @@ export interface RoleMatrixRunInput {
   sourceScriptTimeoutMs?: number;
   browser?: BrowserName;
   headless?: boolean;
+  ignoreHTTPSErrors?: boolean;
   trace?: boolean;
   video?: boolean;
   screenshot?: boolean;
@@ -293,6 +294,7 @@ export async function runRoleMatrix(input: RoleMatrixRunInput): Promise<RoleMatr
         outputDir: roleOutput,
         browser: input.browser,
         headless: input.headless,
+        ignoreHTTPSErrors: input.ignoreHTTPSErrors,
         storageState: role.storageState,
         sessionStorageState: role.sessionStorageState,
         trace: input.trace ?? false,

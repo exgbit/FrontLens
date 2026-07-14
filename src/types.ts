@@ -184,6 +184,7 @@ export interface RequirementWizardResult {
 }
 
 export type TestLayer = 'frontend' | 'backend' | 'api' | 'source';
+export type TestProjectType = 'auto' | 'frontend' | 'backend' | 'fullstack';
 export type TestScenario =
   | 'smoke'
   | 'positive'
@@ -246,6 +247,10 @@ export interface TestPlanResult {
   source: {
     inputPath?: string;
     sourceRoot?: string;
+    /** Effective project shape used to avoid fabricating UI cases for API-only repositories. */
+    projectType?: Exclude<TestProjectType, 'auto'>;
+    /** Whether projectType was explicitly selected or inferred from source markers. */
+    projectTypeSource?: 'explicit' | 'detected' | 'default';
     requirementCount: number;
   };
   status: 'ready' | 'needs-review' | 'blocked';

@@ -186,6 +186,7 @@ function listTools(): Record<string, unknown> {
           outputDir: { type: 'string', description: 'Optional directory for test-plan.json and Markdown artifacts.' },
           output: { type: 'string', description: 'Alias for outputDir.' },
           sourceRoot: { type: 'string', description: 'Optional implementation repository root recorded in the plan.' },
+          projectType: { type: 'string', enum: ['auto', 'frontend', 'backend', 'fullstack'], description: 'Project shape. auto detects bounded source markers; backend prevents fabricated UI/browser cases.' },
           prefix: { type: 'string', description: 'Requirement id prefix.' },
           detail: { type: 'boolean', description: 'Return the full expanded plan. Defaults to a low-token summary.' }
         })
@@ -373,6 +374,7 @@ function listTools(): Record<string, unknown> {
             sourceScriptTimeoutMs: { type: 'number' },
             browser: { type: 'string', enum: ['chromium', 'firefox', 'webkit'] },
             headless: { type: 'boolean' },
+            ignoreHTTPSErrors: { type: 'boolean', description: 'Continue through invalid TLS while retaining the bypass risk in each report.' },
             storageState: { type: 'string' },
             sessionStorageState: { type: 'string' },
             trace: { type: 'boolean' },
@@ -425,6 +427,7 @@ function listTools(): Record<string, unknown> {
             sourceScriptTimeoutMs: { type: 'number' },
             browser: { type: 'string', enum: ['chromium', 'firefox', 'webkit'] },
             headless: { type: 'boolean' },
+            ignoreHTTPSErrors: { type: 'boolean', description: 'Continue through invalid TLS while retaining the bypass risk in each report.' },
             trace: { type: 'boolean' },
             video: { type: 'boolean' },
             screenshot: { type: 'boolean' },
@@ -456,6 +459,7 @@ function listTools(): Record<string, unknown> {
             requirements: { type: 'string' },
             browsers: { type: 'string', description: 'Comma-separated browser list.' },
             headless: { type: 'boolean' },
+            ignoreHTTPSErrors: { type: 'boolean', description: 'Continue through invalid TLS while retaining the bypass risk in each report.' },
             storageState: { type: 'string' },
             sessionStorageState: { type: 'string' },
             trace: { type: 'boolean' },
@@ -733,7 +737,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent(args.detail === true ? result : compactRequirementWizard(result));
     }
     case 'frontlens_test_plan': {
-      const args = validateArgs(params.arguments ?? {}, ['inputPath', 'input', 'text', 'outputDir', 'output', 'sourceRoot', 'prefix', 'detail']);
+      const args = validateArgs(params.arguments ?? {}, ['inputPath', 'input', 'text', 'outputDir', 'output', 'sourceRoot', 'projectType', 'prefix', 'detail']);
       const inputPath = typeof args.inputPath === 'string' ? args.inputPath : typeof args.input === 'string' ? args.input : undefined;
       const text = typeof args.text === 'string' ? args.text : undefined;
       if ((!inputPath || !inputPath.trim()) && (!text || !text.trim())) throw new RpcError(-32602, 'Missing inputPath/input or text for frontlens_test_plan.');
@@ -742,7 +746,8 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         text,
         outputDir: typeof args.outputDir === 'string' ? args.outputDir : typeof args.output === 'string' ? args.output : undefined,
         sourceRoot: typeof args.sourceRoot === 'string' ? args.sourceRoot : undefined,
-        prefix: typeof args.prefix === 'string' ? args.prefix : undefined
+        prefix: typeof args.prefix === 'string' ? args.prefix : undefined,
+        projectType: typeof args.projectType === 'string' ? args.projectType as 'auto' | 'frontend' | 'backend' | 'fullstack' : undefined
       });
       return textContent(args.detail === true ? plan : compactTestPlan(plan));
     }
@@ -1043,7 +1048,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent(buildProfessionalSuggestions(result, { includeAll: args.all === true }));
     }
     case 'frontlens_env_compare': {
-      const args = validateArgs(params.arguments ?? {}, ['devUrl', 'previewUrl', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['devUrl', 'previewUrl']);
+      const args = validateArgs(params.arguments ?? {}, ['devUrl', 'previewUrl', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'ignoreHTTPSErrors', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['devUrl', 'previewUrl']);
       const result = await runEnvironmentComparison({
         devUrl: requireString(args, 'devUrl'),
         previewUrl: requireString(args, 'previewUrl'),
@@ -1056,6 +1061,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         sourceScriptTimeoutMs: typeof args.sourceScriptTimeoutMs === 'number' && Number.isFinite(args.sourceScriptTimeoutMs) ? args.sourceScriptTimeoutMs : undefined,
         browser: normalizeBrowser(args.browser),
         headless: typeof args.headless === 'boolean' ? args.headless : undefined,
+        ignoreHTTPSErrors: typeof args.ignoreHTTPSErrors === 'boolean' ? args.ignoreHTTPSErrors : undefined,
         storageState: typeof args.storageState === 'string' ? args.storageState : undefined,
         sessionStorageState: typeof args.sessionStorageState === 'string' ? args.sessionStorageState : undefined,
         trace: typeof args.trace === 'boolean' ? args.trace : undefined,
@@ -1075,7 +1081,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent(result);
     }
     case 'frontlens_role_matrix': {
-      const args = validateArgs(params.arguments ?? {}, ['url', 'roles', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url', 'roles']);
+      const args = validateArgs(params.arguments ?? {}, ['url', 'roles', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'ignoreHTTPSErrors', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url', 'roles']);
       const result = await runRoleMatrix({
         url: requireString(args, 'url'),
         roles: normalizeRoleMatrixRoles(args.roles),
@@ -1088,6 +1094,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         sourceScriptTimeoutMs: typeof args.sourceScriptTimeoutMs === 'number' && Number.isFinite(args.sourceScriptTimeoutMs) ? args.sourceScriptTimeoutMs : undefined,
         browser: normalizeBrowser(args.browser),
         headless: typeof args.headless === 'boolean' ? args.headless : undefined,
+        ignoreHTTPSErrors: typeof args.ignoreHTTPSErrors === 'boolean' ? args.ignoreHTTPSErrors : undefined,
         trace: typeof args.trace === 'boolean' ? args.trace : undefined,
         video: typeof args.video === 'boolean' ? args.video : undefined,
         screenshot: typeof args.screenshot === 'boolean' ? args.screenshot : undefined,
@@ -1105,7 +1112,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent(result);
     }
     case 'frontlens_matrix': {
-      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'browsers', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
+      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'browsers', 'headless', 'ignoreHTTPSErrors', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
       const browsers = (typeof args.browsers === 'string' ? args.browsers : 'chromium,firefox,webkit')
         .split(',')
         .map((item) => normalizeBrowser(item.trim()))
@@ -1117,6 +1124,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         requirementsPath: typeof args.requirementsPath === 'string' ? args.requirementsPath : typeof args.requirements === 'string' ? args.requirements : undefined,
         browsers,
         headless: typeof args.headless === 'boolean' ? args.headless : undefined,
+        ignoreHTTPSErrors: typeof args.ignoreHTTPSErrors === 'boolean' ? args.ignoreHTTPSErrors : undefined,
         storageState: typeof args.storageState === 'string' ? args.storageState : undefined,
         sessionStorageState: typeof args.sessionStorageState === 'string' ? args.sessionStorageState : undefined,
         trace: typeof args.trace === 'boolean' ? args.trace : undefined,

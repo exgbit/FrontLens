@@ -88,6 +88,7 @@ Never open large raw artifacts by default:
 5. Use the `--json-summary` stdout first, then read `brief.md` if needed. If missing, use `qa-review.md` or helper output. Read only small targeted fields from `result.json` if needed.
 6. Combine runtime evidence, source evidence, product/requirement context, and review calibration. Do not promote style/product assumptions, dev-server artifacts, deployment headers, skipped modules, or weak API/UI mismatch into must-fix.
 7. Return the 7-section SME report. Keep selector-level/raw network detail out of the final answer unless requested.
+8. Keep every retained report/generated-data directory user-owned and removable. On Windows, never leave a sandbox-only ACL; FrontLens performs an automatic ACL-inheritance handoff, and `node dist/cli.js permissions repair --output <generated-directory>` may repair an older retained output. Apply it only to generated roots, never a drive, home directory, or source repository. Stop processes/containers and remove disposable test data created by the run.
 
 ## Triage rules
 

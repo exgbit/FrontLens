@@ -41,10 +41,10 @@ import { buildReviewCalibration, formatReviewCalibration } from './review/review
 import { buildTestPlan } from './testDesign/testPlan.js';
 import { buildTestPlanExecutionReport, formatCompactTestPlanExecutionReport, formatTestPlanExecutionReport } from './testDesign/testExecutionReport.js';
 import { compactTestPlan, compactTestPlanExecution } from './testDesign/testPlanCompact.js';
-import { ensureDir, writeJson, writeText } from './utils/fs.js';
+import { ensureDir, handoffEnsuredDirectoryPermissions, handoffOutputPermissions, writeJson, writeText } from './utils/fs.js';
 
 const CLI_VERSION = '0.1.0';
-const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'test-plan', 'test-report', 'mcp', 'brief', 'audit', 'product-context', 'review-calibration', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'traceability', 'automation-specs', 'evidence-bundle', 'test-strategy', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'business-journeys', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
+const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'test-plan', 'test-report', 'permissions', 'mcp', 'brief', 'audit', 'product-context', 'review-calibration', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'traceability', 'automation-specs', 'evidence-bundle', 'test-strategy', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'business-journeys', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
   console.log(`FrontLens - AI-oriented frontend QA analyzer
@@ -55,8 +55,9 @@ Usage:
   frontlens auth save --url <login-url> --output <storage-state-path>
   frontlens journey record --url <url> --output <journey-config.json>
   frontlens requirements synthesize --input <prd.md> --output <requirements.json>
-  frontlens test-plan --input <prd.md> --output <directory> [--source-root <path>]
+  frontlens test-plan --input <prd.md> --output <directory> [--source-root <path>] [--project-type auto|frontend|backend|fullstack]
   frontlens test-report --plan <test-plan.json> --report <result.json> --output <directory> [--fail-on-blocked]
+  frontlens permissions repair --output <generated-directory>
   frontlens matrix --url <url> --browsers chromium,firefox,webkit
   frontlens role-matrix --url <url> --role admin=.auth/admin.json --role viewer=.auth/viewer.json
   frontlens env-compare --dev-url <vite-dev-url> --preview-url <build-preview-url>
@@ -173,9 +174,10 @@ Examples:
   frontlens auth save --url https://example.com/login --output .frontlens/auth/admin.json
   frontlens journey record --url https://example.com/admin/users --output journeys/users-smoke.json --name "Users smoke"
   frontlens requirements synthesize --input docs/prd.md --output requirements.json
-  frontlens test-plan --input docs/prd.md --source-root ../app --output reports/test-plan
+  frontlens test-plan --input docs/prd.md --source-root ../app --project-type auto --output reports/test-plan
   frontlens qa --url http://127.0.0.1:3000 --requirements reports/test-plan/test-plan.json --source-root ../app --source-run-scripts --output reports/qa
   frontlens test-report --plan reports/test-plan/test-plan.json --report reports/qa/result.json --output reports/final
+  frontlens permissions repair --output reports/test-plan
   frontlens matrix --url https://example.com --browsers chromium,firefox,webkit --output reports/compat
   frontlens role-matrix --url https://example.com/admin --role admin=.frontlens/auth/admin.json --role viewer=.frontlens/auth/viewer.json --output reports/roles
   frontlens env-compare --dev-url http://127.0.0.1:5173/users --preview-url http://127.0.0.1:4173/users --output reports/env-users
@@ -920,6 +922,32 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (argv[0] === 'permissions') {
+    if (argv[1] !== 'repair') {
+      throw new Error(`Unsupported permissions command: ${argv[1] ?? '(missing)'}. Expected: frontlens permissions repair --output <generated-directory>.`);
+    }
+    const parsed = parseArgs({
+      args: argv.slice(2),
+      allowPositionals: true,
+      options: {
+        output: { type: 'string', short: 'o' },
+        json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' }
+      }
+    });
+    if (parsed.values.help) {
+      printHelp();
+      return;
+    }
+    const outputDir = parsed.values.output ?? parsed.positionals[0];
+    if (!outputDir) throw new Error('Missing permissions repair --output <generated-directory>.');
+    const result = await handoffOutputPermissions(outputDir, true);
+    if (parsed.values.json) console.log(JSON.stringify(result, null, 2));
+    else console.log(`${result.status}: ${result.directory} - ${result.message}`);
+    if (result.status === 'failed') process.exitCode = 2;
+    return;
+  }
+
   if (argv[0] === 'mcp') {
     if (argv.includes('--help') || argv.includes('-h')) {
       printMcpHelp();
@@ -1133,6 +1161,7 @@ async function main(): Promise<void> {
         text: { type: 'string' },
         output: { type: 'string', short: 'o' },
         'source-root': { type: 'string' },
+        'project-type': { type: 'string' },
         prefix: { type: 'string' },
         json: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' }
@@ -1144,12 +1173,17 @@ async function main(): Promise<void> {
     }
     const inputPath = parsed.values.input ?? parsed.positionals[0];
     if (!inputPath && !parsed.values.text) throw new Error('Missing test-plan --input <prd.md> or --text <requirements>.');
+    const projectType = parsed.values['project-type'];
+    if (projectType && !['auto', 'frontend', 'backend', 'fullstack'].includes(projectType)) {
+      throw new Error(`Invalid --project-type ${projectType}. Expected auto, frontend, backend, or fullstack.`);
+    }
     const result = await buildTestPlan({
       inputPath,
       text: parsed.values.text,
       outputDir: parsed.values.output,
       sourceRoot: parsed.values['source-root'],
-      prefix: parsed.values.prefix
+      prefix: parsed.values.prefix,
+      projectType: projectType as 'auto' | 'frontend' | 'backend' | 'fullstack' | undefined
     });
     if (parsed.values.json) {
       console.log(JSON.stringify(result, null, 2));
@@ -1245,6 +1279,7 @@ async function main(): Promise<void> {
         browser: { type: 'string' },
         headed: { type: 'boolean' },
         headless: { type: 'boolean' },
+        'ignore-https-errors': { type: 'boolean' },
         'storage-state': { type: 'string' },
         'session-storage-state': { type: 'string' },
         trace: { type: 'boolean' },
@@ -1298,6 +1333,7 @@ async function main(): Promise<void> {
       reportProfile: normalizeReportProfile(parsed.values['report-profile']),
       browser: normalizeBrowser(parsed.values.browser),
       headless: parsed.values.headed ? false : parsed.values.headless,
+      ignoreHTTPSErrors: parsed.values['ignore-https-errors'],
       storageState: parsed.values['storage-state'],
       sessionStorageState: parsed.values['session-storage-state'],
       trace: parsed.values['no-trace'] ? false : parsed.values.trace,
@@ -1342,6 +1378,7 @@ async function main(): Promise<void> {
         browser: { type: 'string' },
         headed: { type: 'boolean' },
         headless: { type: 'boolean' },
+        'ignore-https-errors': { type: 'boolean' },
         role: { type: 'string', multiple: true },
         roles: { type: 'string' },
         trace: { type: 'boolean' },
@@ -1397,6 +1434,7 @@ async function main(): Promise<void> {
       reportProfile: normalizeReportProfile(parsed.values['report-profile']),
       browser: normalizeBrowser(parsed.values.browser),
       headless: parsed.values.headed ? false : parsed.values.headless,
+      ignoreHTTPSErrors: parsed.values['ignore-https-errors'],
       roles,
       trace: parsed.values['no-trace'] ? false : parsed.values.trace,
       video: parsed.values.video,
@@ -1437,6 +1475,7 @@ async function main(): Promise<void> {
         browsers: { type: 'string' },
         headed: { type: 'boolean' },
         headless: { type: 'boolean' },
+        'ignore-https-errors': { type: 'boolean' },
         'storage-state': { type: 'string' },
         'session-storage-state': { type: 'string' },
         trace: { type: 'boolean' },
@@ -1503,6 +1542,7 @@ async function main(): Promise<void> {
       reportProfile: normalizeReportProfile(parsed.values['report-profile']),
       browsers: uniqueBrowsers,
       headless: parsed.values.headed ? false : parsed.values.headless,
+      ignoreHTTPSErrors: parsed.values['ignore-https-errors'],
       storageState: parsed.values['storage-state'],
       sessionStorageState: parsed.values['session-storage-state'],
       trace: parsed.values['no-trace'] ? false : parsed.values.trace,
@@ -1896,8 +1936,19 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  console.error(message);
-  process.exitCode = 1;
-});
+async function runCli(): Promise<void> {
+  try {
+    await main();
+  } catch (error) {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    console.error(message);
+    process.exitCode = 1;
+  } finally {
+    const handoffs = await handoffEnsuredDirectoryPermissions();
+    for (const handoff of handoffs.filter((item) => item.status === 'failed')) {
+      console.error(`Windows output permission handoff failed for ${handoff.directory}: ${handoff.message}`);
+    }
+  }
+}
+
+void runCli();

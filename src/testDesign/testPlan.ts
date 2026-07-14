@@ -1,10 +1,12 @@
 import path from 'node:path';
+import { access, readFile } from 'node:fs/promises';
 import type {
   BlockerCoverageItem,
   PlannedTestCase,
   RequirementPriority,
   RequirementWizardCandidate,
   TestLayer,
+  TestProjectType,
   TestPlanResult,
   TestPointItem,
   TestScenario
@@ -25,6 +27,55 @@ export interface BuildTestPlanInput {
   outputDir?: string;
   sourceRoot?: string;
   prefix?: string;
+  /** `auto` inspects source markers. Use `backend` to guarantee that no UI/browser cases are fabricated. */
+  projectType?: TestProjectType;
+}
+
+type EffectiveProjectType = Exclude<TestProjectType, 'auto'>;
+
+async function exists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Bounded, dependency-free source detection. It reads only package metadata and marker names. */
+export async function detectTestProjectType(sourceRoot?: string): Promise<{ type: EffectiveProjectType; source: 'detected' | 'default' }> {
+  if (!sourceRoot) return { type: 'frontend', source: 'default' };
+  const root = path.resolve(sourceRoot);
+  const frontendMarkers = ['index.html', 'vite.config.ts', 'vite.config.js', 'next.config.js', 'next.config.mjs', 'nuxt.config.ts', 'angular.json', 'svelte.config.js'];
+  const backendMarkers = ['go.mod', 'Cargo.toml', 'pom.xml', 'build.gradle', 'build.gradle.kts', 'manage.py'];
+  let frontend = (await Promise.all(frontendMarkers.map((name) => exists(path.join(root, name))))).some(Boolean);
+  let backend = (await Promise.all(backendMarkers.map((name) => exists(path.join(root, name))))).some(Boolean);
+  const packagePath = path.join(root, 'package.json');
+  if (await exists(packagePath)) {
+    try {
+      const pkg = JSON.parse(await readFile(packagePath, 'utf8')) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+      const names = new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]);
+      frontend ||= ['react', 'react-dom', 'vue', '@angular/core', 'svelte', 'next', 'nuxt'].some((name) => names.has(name));
+      backend ||= ['express', 'fastify', '@nestjs/core', 'koa', 'hapi', '@hapi/hapi', 'restify'].some((name) => names.has(name));
+    } catch {
+      // Invalid package metadata is handled by source health; keep detection conservative here.
+    }
+  }
+  const pythonMetadata = ['pyproject.toml', 'requirements.txt'];
+  for (const name of pythonMetadata) {
+    const file = path.join(root, name);
+    if (!await exists(file)) continue;
+    try {
+      const contents = (await readFile(file, 'utf8')).slice(0, 128_000);
+      backend ||= /fastapi|flask|django|starlette|litestar|sanic|aiohttp/i.test(contents);
+    } catch {
+      // Ignore unreadable optional metadata and fall back below.
+    }
+  }
+  if (frontend && backend) return { type: 'fullstack', source: 'detected' };
+  if (backend) return { type: 'backend', source: 'detected' };
+  if (frontend) return { type: 'frontend', source: 'detected' };
+  return { type: 'frontend', source: 'default' };
 }
 
 function uniq(items: Array<string | undefined>): string[] {
@@ -70,7 +121,7 @@ function scenariosFor(requirement: RequirementWizardCandidate, layer: TestLayer)
   return [...scenarios];
 }
 
-function layersFor(requirement: RequirementWizardCandidate): TestLayer[] {
+function layersFor(requirement: RequirementWizardCandidate, projectType: EffectiveProjectType): TestLayer[] {
   const text = `${requirement.title} ${requirement.description ?? ''}`;
   const layers = new Set<TestLayer>();
   const explicitCodeOnly = /typecheck|lint|单元测试|集成测试|代码检查|构建必须|tests?\s+必须|source\s+check/i.test(text)
@@ -80,12 +131,25 @@ function layersFor(requirement: RequirementWizardCandidate): TestLayer[] {
   if ((requirement.backendScope?.length ?? 0) > 0 || /数据|保存|创建|更新|删除|权限|事务|并发|后端|服务/i.test(text)) layers.add('backend');
   if ((requirement.apiScope?.length ?? 0) > 0 || (requirement.apiPatterns?.length ?? 0) > 0 || /接口|请求|响应|状态码|错误码|API/i.test(text)) layers.add('api');
   if (isPermissionSensitive(requirement, text)) {
+    if (projectType !== 'backend') layers.add('frontend');
+    layers.add('backend');
+    layers.add('api');
+  }
+  if (projectType === 'backend') {
+    layers.delete('frontend');
+    // In an API-only repository, ambiguous business behavior is verified at service/API level rather than fabricated as UI behavior.
+    if (layers.size === 0) {
+      layers.add('backend');
+      layers.add('api');
+    }
+  } else if (projectType === 'frontend') {
+    // Preserve the existing frontend-led fallback for UI repositories.
+    if (layers.size === 0) layers.add('frontend');
+  } else if (layers.size === 0) {
     layers.add('frontend');
     layers.add('backend');
     layers.add('api');
   }
-  // FrontLens is a frontend-led QA tool: a requirement without an explicit layer still needs observable UI verification.
-  if (layers.size === 0) layers.add('frontend');
   layers.add('source');
   return [...layers];
 }
@@ -104,11 +168,11 @@ function pointDescription(requirement: RequirementWizardCandidate, layer: TestLa
   return `检查「${requirement.title}」对应实现分支、错误处理、静态检查和自动化测试。`;
 }
 
-export function generateTestPoints(requirements: RequirementWizardCandidate[]): TestPointItem[] {
+export function generateTestPoints(requirements: RequirementWizardCandidate[], projectType: EffectiveProjectType = 'frontend'): TestPointItem[] {
   const points: TestPointItem[] = [];
   requirements.forEach((requirement, reqIndex) => {
     const reqId = requirementId(requirement, reqIndex);
-    for (const layer of layersFor(requirement)) {
+    for (const layer of layersFor(requirement, projectType)) {
       points.push({
         id: `TP-${String(points.length + 1).padStart(4, '0')}`,
         requirementId: reqId,
@@ -147,7 +211,7 @@ function scenarioTitle(value: TestScenario): string {
   }[value];
 }
 
-function testDataFor(requirement: RequirementWizardCandidate, scenario: TestScenario): string[] {
+function testDataFor(requirement: RequirementWizardCandidate, scenario: TestScenario, layer: TestLayer): string[] {
   const values: string[] = [];
   if (requirement.roles?.length) values.push(`角色账号：${requirement.roles.join('、')}`);
   if (scenario === 'positive' || scenario === 'smoke') values.push('一组满足业务规则的有效数据');
@@ -163,7 +227,7 @@ function testDataFor(requirement: RequirementWizardCandidate, scenario: TestScen
     if (/上传|文件|格式|扩展名|MIME/i.test(text) && extensions.length) values.push(`文件类型：${uniq(extensions).join('、')}、未允许扩展名、扩展名与 MIME 不一致`);
   }
   if (scenario === 'idempotency') values.push('可重复使用且可清理的唯一测试数据');
-  if (scenario === 'consistency') values.push('可在 UI、API 和持久化层交叉核对的数据');
+  if (scenario === 'consistency') values.push(layer === 'frontend' ? '可在 UI、API 和持久化层交叉核对的数据' : '可在 API、服务逻辑和持久化层交叉核对的数据');
   return uniq(values.length ? values : ['不需要专用测试数据']);
 }
 
@@ -175,11 +239,17 @@ function stepsFor(requirement: RequirementWizardCandidate, point: TestPointItem,
     positive: [`准备满足规则的有效数据。`, `在 ${layer} 层执行 ${req}。`, '读取并核对操作结果。'],
     negative: ['依次使用空值、非法格式和无效关联数据。', `执行 ${req}。`, '检查拒绝行为、错误码/错误提示和数据副作用。'],
     boundary: ['准备最小值、最大值、临界值及超界值。', `逐组执行 ${req}。`, '核对每个边界的接受或拒绝结果。'],
-    permission: [`使用需求涉及的每个角色分别执行 ${req}。`, '直接访问页面入口和 API，不能只检查按钮隐藏。', '核对授权结果及审计/错误反馈。'],
+    permission: layer === 'frontend'
+      ? [`使用需求涉及的每个角色分别执行 ${req}。`, '直接访问页面入口和 API，不能只检查按钮隐藏。', '核对授权结果及审计/错误反馈。']
+      : [`使用需求涉及的每种授权和未授权凭证分别执行 ${req}。`, '直接构造 API/服务调用，不能依赖客户端限制。', '核对授权结果、数据副作用及审计/错误反馈。'],
     'state-transition': ['准备每个允许的起始状态。', `执行触发 ${req} 的状态操作。`, '再次读取实体状态，并尝试非法状态跳转。'],
-    consistency: [`通过 ${layer} 层执行 ${req}。`, '重新加载页面并重新请求查询接口。', '交叉核对 UI、API 返回和持久化结果。'],
+    consistency: layer === 'frontend'
+      ? [`通过 ${layer} 层执行 ${req}。`, '重新加载页面并重新请求查询接口。', '交叉核对 UI、API 返回和持久化结果。']
+      : [`通过 ${layer} 层执行 ${req}。`, '重新请求查询接口或重新读取服务状态。', '交叉核对 API 返回、服务状态和持久化结果。'],
     idempotency: [`对同一业务数据连续或并发执行两次 ${req}。`, '等待所有响应完成。', '查询最终数据及重复记录。'],
-    recovery: ['模拟请求超时、断网、4xx 和 5xx。', `执行 ${req} 并观察失败反馈。`, '恢复依赖后重试，检查页面和数据能否恢复。'],
+    recovery: layer === 'frontend'
+      ? ['模拟请求超时、断网、4xx 和 5xx。', `执行 ${req} 并观察失败反馈。`, '恢复依赖后重试，检查页面和数据能否恢复。']
+      : ['模拟请求超时、连接失败、4xx 和 5xx。', `执行 ${req} 并观察错误契约。`, '恢复依赖后重试，检查服务状态和数据能否恢复。'],
     regression: [`定位 ${req} 对应源码和 Git 变更。`, '运行 typecheck、lint、单元测试和相关集成测试。', '检查相邻分支、错误处理及旧功能是否受影响。']
   };
   return uniq([...(requirement.preconditions?.map((item) => `确认前置条件：${item}`) ?? []), ...base[scenario]]);
@@ -190,7 +260,7 @@ function expectedFor(requirement: RequirementWizardCandidate, point: TestPointIt
   const common = scenario === 'negative' || scenario === 'boundary'
     ? ['系统对无效数据给出明确反馈；不得产生未预期的数据变更。']
     : scenario === 'permission'
-      ? ['仅授权角色可以执行；隐藏入口不能代替后端鉴权。']
+      ? [point.layer === 'frontend' ? '仅授权角色可以执行；隐藏入口不能代替后端鉴权。' : '仅授权调用方可以执行；服务端必须拒绝未授权调用且不产生数据副作用。']
       : scenario === 'idempotency'
         ? ['重复请求不会生成重复业务数据，最终状态确定且一致。']
         : scenario === 'recovery'
@@ -229,7 +299,7 @@ export function generatePlannedTestCases(requirements: RequirementWizardCandidat
         blocker: priority === 'P0',
         audiences: priority === 'P0' ? ['developer', 'qa'] : ['qa'],
         preconditions: uniq(requirement.preconditions?.length ? requirement.preconditions : ['目标环境可访问，测试账号和基础数据已准备。']),
-        testData: testDataFor(requirement, scenario),
+        testData: testDataFor(requirement, scenario, point.layer),
         steps: stepsFor(requirement, point, scenario),
         expected: expectedFor(requirement, point, scenario),
         executionMode: executionMode(requirement, point.layer, scenario),
@@ -264,10 +334,35 @@ const blockerRules: BlockerRule[] = [
   { category: 'compatibility', title: '代码和数据结构变更不阻断旧功能', applicable: (reqs) => reqs.some((item) => /升级|迁移|兼容|旧数据|版本|字段|schema|migration/i.test(`${item.title} ${item.description ?? ''}`)), matches: (item) => item.scenario === 'regression' && item.priority === 'P0', layer: 'source', steps: ['准备旧版本数据或旧调用方式。', '运行迁移和相关回归测试。', '检查新旧路径读取结果。'], expected: ['升级后旧数据和既有关键调用仍可用，迁移可重复执行。'] }
 ];
 
-function ensureBlockerCoverage(requirements: RequirementWizardCandidate[], cases: PlannedTestCase[]): { cases: PlannedTestCase[]; items: BlockerCoverageItem[] } {
+function ensureBlockerCoverage(requirements: RequirementWizardCandidate[], cases: PlannedTestCase[], projectType: EffectiveProjectType): { cases: PlannedTestCase[]; items: BlockerCoverageItem[] } {
   const result = [...cases];
   const items: BlockerCoverageItem[] = [];
-  for (const [index, rule] of blockerRules.entries()) {
+  for (const [index, originalRule] of blockerRules.entries()) {
+    const rule = projectType === 'backend' && ['availability', 'authentication', 'core-flow', 'authorization'].includes(originalRule.category)
+      ? {
+          ...originalRule,
+          layer: 'api' as TestLayer,
+          title: originalRule.category === 'availability'
+            ? '服务就绪且核心 API 可访问'
+            : originalRule.category === 'authentication'
+              ? '核心调用方可以完成认证或凭证刷新'
+              : originalRule.category === 'authorization'
+                ? '关键 API 具备服务端权限控制'
+                : '核心 API 业务流程闭环',
+          steps: originalRule.category === 'availability'
+            ? ['自动部署服务及必要依赖。', '从监听端口、日志、health/readiness 或 OpenAPI 发现 API 地址。', '调用核心只读接口并检查响应。']
+            : originalRule.category === 'authentication'
+              ? ['使用有效凭证调用核心 API。', '刷新或重建凭证后再次调用。', '验证失效凭证被明确拒绝。']
+              : originalRule.category === 'authorization'
+                ? ['分别使用授权和未授权凭证调用关键 API。', '尝试绕过客户端限制直接构造请求。', '检查响应、数据副作用和审计记录。']
+              : ['准备核心流程最小数据。', '通过 API 执行核心业务直至最终状态。', '重新查询数据及必要持久化副作用。'],
+          expected: originalRule.category === 'availability'
+            ? ['服务和必要依赖可自动启动，健康检查/核心 API 可访问，无阻塞启动错误。']
+            : originalRule.category === 'authorization'
+              ? ['授权调用方可完成操作；未授权调用方在服务端被拒绝且不产生数据副作用。']
+            : originalRule.expected
+        }
+      : originalRule;
     const applicableRequirementIds = new Set(requirements
       .map((requirement, requirementIndex) => ({ requirement, id: requirementId(requirement, requirementIndex) }))
       .filter(({ requirement }) => rule.applicable([requirement]))
@@ -302,7 +397,7 @@ function ensureBlockerCoverage(requirements: RequirementWizardCandidate[], cases
       result.push(synthetic);
       matched = [synthetic];
     }
-      items.push({ id: `BLOCK-${String(index + 1).padStart(2, '0')}`, category: rule.category, title: rule.title, status: 'drafted', testCaseIds: matched.map((item) => item.id), reason: '已生成至少一条 P0 草案；只有执行报告中的独立证据才能证明通过。' });
+    items.push({ id: `BLOCK-${String(index + 1).padStart(2, '0')}`, category: rule.category, title: rule.title, status: 'drafted', testCaseIds: matched.map((item) => item.id), reason: '已生成至少一条 P0 草案；只有执行报告中的独立证据才能证明通过。' });
   }
   return { cases: result, items };
 }
@@ -323,11 +418,18 @@ function buildSummary(requirements: RequirementWizardCandidate[], points: TestPo
 }
 
 export async function buildTestPlan(input: BuildTestPlanInput): Promise<TestPlanResult> {
+  const selectedProjectType = input.projectType ?? 'auto';
+  if (!['auto', 'frontend', 'backend', 'fullstack'].includes(selectedProjectType)) {
+    throw new Error(`Invalid projectType ${String(selectedProjectType)}. Expected auto, frontend, backend, or fullstack.`);
+  }
   const wizard = await synthesizeRequirements({ text: input.text, inputPath: input.inputPath, prefix: input.prefix, inferFromPage: false });
+  const detected = selectedProjectType === 'auto' ? await detectTestProjectType(input.sourceRoot) : undefined;
+  const projectType: EffectiveProjectType = selectedProjectType === 'auto' ? detected!.type : selectedProjectType;
+  const projectTypeSource: 'explicit' | 'detected' | 'default' = selectedProjectType === 'auto' ? detected!.source : 'explicit';
   const requirements = wizard.candidates;
-  const points = generateTestPoints(requirements);
+  const points = generateTestPoints(requirements, projectType);
   const generatedCases = generatePlannedTestCases(requirements, points);
-  const blocker = ensureBlockerCoverage(requirements, generatedCases);
+  const blocker = ensureBlockerCoverage(requirements, generatedCases, projectType);
   const coveredCount = blocker.items.filter((item) => item.status === 'drafted' || item.status === 'ready').length;
   const missingCount = blocker.items.filter((item) => item.status === 'missing').length;
   const notApplicableCount = blocker.items.filter((item) => item.status === 'not-applicable').length;
@@ -339,7 +441,7 @@ export async function buildTestPlan(input: BuildTestPlanInput): Promise<TestPlan
   const result: TestPlanResult = {
     schemaVersion: '1.0',
     generatedAt: new Date().toISOString(),
-    source: { inputPath: input.inputPath, sourceRoot: input.sourceRoot, requirementCount: requirements.length },
+    source: { inputPath: input.inputPath, sourceRoot: input.sourceRoot, projectType, projectTypeSource, requirementCount: requirements.length },
     status,
     requirements,
     testPoints: points,

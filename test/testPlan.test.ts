@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { buildTestPlan } from '../src/testDesign/testPlan.ts';
@@ -85,6 +85,49 @@ test('code-only acceptance criteria do not fabricate frontend test points', asyn
   const requirementId = plan.requirements[0].id!;
   const layers = plan.testPoints.filter((item) => item.requirementId === requirementId).map((item) => item.layer);
   assert.deepEqual(layers, ['source']);
+});
+
+test('backend project mode never fabricates frontend points and drafts service/API blockers', async () => {
+  const plan = await buildTestPlan({
+    text: '- P0 普通用户查询订单；未授权调用必须被拒绝。\n- P1 创建订单必须保持事务和幂等。',
+    projectType: 'backend'
+  });
+  assert.equal(plan.source.projectType, 'backend');
+  assert.equal(plan.source.projectTypeSource, 'explicit');
+  assert.equal(plan.summary.frontendCount, 0);
+  assert.ok(plan.testPoints.some((item) => item.layer === 'backend'));
+  assert.ok(plan.testPoints.some((item) => item.layer === 'api'));
+  assert.equal(plan.testPoints.some((item) => item.layer === 'frontend'), false);
+  assert.equal(plan.testCases.some((item) => item.layer === 'frontend'), false);
+  const availability = plan.blockerCoverage.items.find((item) => item.category === 'availability');
+  const availabilityCase = plan.testCases.find((item) => availability?.testCaseIds.includes(item.id));
+  assert.equal(availabilityCase?.layer, 'api');
+  assert.match(availabilityCase?.steps.join('\n') ?? '', /health|readiness|OpenAPI/);
+  const backendPlanText = plan.testCases
+    .map((item) => [item.title, ...item.preconditions, ...item.testData, ...item.steps, ...item.expected].join('\n'))
+    .join('\n');
+  assert.doesNotMatch(backendPlanText, /前端|页面|按钮隐藏|\bUI\b/);
+});
+
+test('auto project type detects a backend package from bounded source metadata', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'frontlens-backend-detect-'));
+  try {
+    await mkdir(path.join(dir, 'src'));
+    await writeFile(path.join(dir, 'package.json'), JSON.stringify({ dependencies: { fastify: '^5.0.0' } }), 'utf8');
+    const plan = await buildTestPlan({ text: '- P1 可以查询健康状态。', sourceRoot: dir });
+    assert.equal(plan.source.projectType, 'backend');
+    assert.equal(plan.source.projectTypeSource, 'detected');
+    assert.equal(plan.summary.frontendCount, 0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('library test-plan input rejects an invalid project type instead of silently treating it as fullstack', async () => {
+  await assert.rejects(
+    () => buildTestPlan({ text: '- P1 健康检查可用。', projectType: 'desktop' as never }),
+    /Invalid projectType desktop/
+  );
 });
 
 test('a role data column is not mistaken for authorization behavior', async () => {

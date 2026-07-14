@@ -18,6 +18,7 @@ export interface EnvironmentComparisonRunInput {
   sourceScriptTimeoutMs?: number;
   browser?: BrowserName;
   headless?: boolean;
+  ignoreHTTPSErrors?: boolean;
   storageState?: string;
   sessionStorageState?: string;
   trace?: boolean;
@@ -191,6 +192,7 @@ function qaInput(input: EnvironmentComparisonRunInput, url: string, outputDir: s
     outputDir,
     browser: input.browser,
     headless: input.headless,
+    ignoreHTTPSErrors: input.ignoreHTTPSErrors,
     storageState: input.storageState,
     sessionStorageState: input.sessionStorageState,
     trace: input.trace,

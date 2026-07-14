@@ -14,6 +14,7 @@ export interface CompatibilityRunInput {
   sourceRoot?: string;
   browsers: BrowserName[];
   headless?: boolean;
+  ignoreHTTPSErrors?: boolean;
   storageState?: string;
   sessionStorageState?: string;
   trace?: boolean;
@@ -141,6 +142,7 @@ export async function runCompatibility(input: CompatibilityRunInput): Promise<Co
         outputDir: browserOutput,
         browser,
         headless: input.headless,
+        ignoreHTTPSErrors: input.ignoreHTTPSErrors,
         storageState: input.storageState,
         sessionStorageState: input.sessionStorageState,
         trace: input.trace ?? false,

@@ -79,7 +79,9 @@ node dist/cli.js test-plan \
 用 backend-qa 测试纯后端项目：需求文档 /path/to/prd.md，源码 /path/to/service；自动部署、发现 API、执行并清理。
 ```
 
-Skill 会识别框架、锁文件、Testcontainers/Compose/Make/项目脚本、依赖服务、迁移、health/readiness、OpenAPI 和监听端口，启动隔离测试环境后执行原生代码测试与真实 HTTP 请求，最后只清理本轮创建的 PID、容器、网络、卷和测试数据。部署或发现失败时写入 blocked 证据，不虚构 URL。
+Skill 会识别框架、锁文件、Testcontainers/Compose/Make/项目脚本、依赖服务、迁移、health/readiness、OpenAPI 和监听端口：先复用已授权且健康的测试环境，没有可用环境时才启动隔离环境；随后执行原生代码测试与真实 HTTP 请求，最后只清理本轮创建的资源和唯一标记数据。部署或发现失败时写入 blocked 证据，不虚构 URL。
+
+如果用户明确说明测试环境已经部署且允许直接连接，`backend-qa` 会优先复用并做 readiness 检查，而不是机械地启动一套重复环境。环境名、精确 SSH 别名、远程部署目录和远程 `.env` 路径都属于发现线索；Skill 会通过已有授权连接，只读取 API 发现所需的白名单配置键、精确 Compose 映射、代理配置、有限日志、health/OpenAPI 和路由源码，再用真实请求验证候选地址。它不会输出整份 `.env`、扫描未声明主机或把容器内地址直接当作客户端地址。只有现有环境不可用时才进入隔离自动部署兜底；除非用户明确要求或部署目标具备独立命名空间，否则不会重部署共享远程环境。复用共享测试环境时只清理本轮确切 ID 的测试数据，不停止服务、容器或依赖；清理失败会保留为风险。
 
 单独生成后端计划时使用：
 

@@ -8,6 +8,7 @@ export function createDefaultConfig(url = 'about:blank'): FrontLensConfig {
     browser: {
       name: 'chromium',
       headless: true,
+      ignoreHTTPSErrors: false,
       viewport: {
         width: 1440,
         height: 900

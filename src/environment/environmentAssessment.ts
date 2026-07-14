@@ -97,6 +97,7 @@ export function createEmptyEnvironmentAssessment(targetUrl = ''): EnvironmentAss
     confidence: 'low',
     isLocalOrPrivate: false,
     isHttps: false,
+    tlsVerificationBypassed: false,
     isViteDevServer: false,
     hasHmr: false,
     sameOriginRequestCount: 0,
@@ -129,6 +130,7 @@ export function buildEnvironmentAssessment(input: {
   const hashedAssetCount = sameOriginRecords.filter((record) => isHashedBuildAsset(record.url, finalUrl)).length;
   const isLocalOrPrivate = isLocalOrPrivateTarget(finalUrl) || isLocalOrPrivateTarget(targetUrl);
   const isHttps = /^https:/i.test(finalUrl);
+  const tlsVerificationBypassed = isHttps && input.config.browser.ignoreHTTPSErrors;
   const isFile = /^file:/i.test(finalUrl) || /^file:/i.test(targetUrl);
   const evidence: string[] = [];
   const warnings: string[] = [];
@@ -162,13 +164,18 @@ export function buildEnvironmentAssessment(input: {
   if (!isHttps && !isFile) {
     warnings.push('Target is not HTTPS; transport-security conclusions are deployment/environment dependent.');
   }
+  if (tlsVerificationBypassed) {
+    evidence.push('tlsVerificationBypassed:true');
+    warnings.push('TLS certificate verification was bypassed for this run; functional evidence is usable, but certificate validity and hostname trust were not verified.');
+    recommendations.push('Install a trusted internal CA certificate and issue a certificate whose SAN matches the accessed hostname/IP; rerun without ignoreHTTPSErrors before deployment/security sign-off.');
+  }
   if (devModuleRequests.length > 0) evidence.push(`devModules:${devModuleRequests.slice(0, 5).map((record) => redactUrl(record.url)).join(',')}`);
   if (hashedAssetCount > 0) evidence.push(`hashedAssets:${hashedAssetCount}`);
   if (hasHmr) evidence.push('hmr:true');
   if (origin) evidence.push(`origin:${redactUrl(origin)}`);
 
   const performanceTrust: EnvironmentAssessment['trust']['performance'] = kind === 'production-like' ? 'high' : kind === 'local-preview' || kind === 'staging-or-private' ? 'medium' : 'low';
-  const securityTrust: EnvironmentAssessment['trust']['security'] = kind === 'production-like' ? 'high' : kind === 'local-dev' || kind === 'file' ? 'low' : 'medium';
+  const securityTrust: EnvironmentAssessment['trust']['security'] = tlsVerificationBypassed ? 'low' : kind === 'production-like' ? 'high' : kind === 'local-dev' || kind === 'file' ? 'low' : 'medium';
   return {
     checkedAt: new Date().toISOString(),
     targetUrl: redactUrl(targetUrl),
@@ -178,6 +185,7 @@ export function buildEnvironmentAssessment(input: {
     confidence: confidenceFor(kind, finalUrl),
     isLocalOrPrivate,
     isHttps,
+    tlsVerificationBypassed,
     isViteDevServer,
     hasHmr,
     sameOriginRequestCount: sameOriginRecords.length,

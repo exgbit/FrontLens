@@ -142,6 +142,7 @@ function listTools(): Record<string, unknown> {
             sourceScriptTimeoutMs: { type: 'number', description: 'Timeout per source script in milliseconds.' },
             browser: { type: 'string', enum: ['chromium', 'firefox', 'webkit'] },
             headless: { type: 'boolean' },
+            ignoreHTTPSErrors: { type: 'boolean', description: 'Continue through invalid/untrusted TLS certificates in an explicitly configured internal test environment; the report retains a TLS bypass risk.' },
             storageState: { type: 'string' },
             sessionStorageState: { type: 'string' },
             trace: { type: 'boolean' },
@@ -539,7 +540,7 @@ function normalizeRoleMatrixRoles(value: unknown) {
 async function callTool(params: ToolCallParams): Promise<Record<string, unknown>> {
   switch (params.name) {
     case 'frontlens_qa': {
-      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
+      const args = validateArgs(params.arguments ?? {}, ['url', 'outputDir', 'output', 'configPath', 'config', 'requirementsPath', 'requirements', 'sourceRoot', 'sourceRunScripts', 'sourceScripts', 'sourceScriptTimeoutMs', 'browser', 'headless', 'ignoreHTTPSErrors', 'storageState', 'sessionStorageState', 'trace', 'video', 'screenshot', 'reportProfile', 'simulateExceptions', 'ai', 'coverage', 'security', 'journeys', 'contract', 'realtime', 'p2', 'blockMutatingRequests'], ['url']);
       const url = requireString(args, 'url');
       const input: QaRunInput = {
         url,
@@ -552,6 +553,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         sourceScriptTimeoutMs: typeof args.sourceScriptTimeoutMs === 'number' && Number.isFinite(args.sourceScriptTimeoutMs) ? args.sourceScriptTimeoutMs : undefined,
         browser: normalizeBrowser(args.browser),
         headless: typeof args.headless === 'boolean' ? args.headless : undefined,
+        ignoreHTTPSErrors: typeof args.ignoreHTTPSErrors === 'boolean' ? args.ignoreHTTPSErrors : undefined,
         storageState: typeof args.storageState === 'string' ? args.storageState : undefined,
         sessionStorageState: typeof args.sessionStorageState === 'string' ? args.sessionStorageState : undefined,
         trace: typeof args.trace === 'boolean' ? args.trace : undefined,
@@ -592,6 +594,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           kind: result.environment.kind,
           confidence: result.environment.confidence,
           trust: result.environment.trust,
+          tlsVerificationBypassed: result.environment.tlsVerificationBypassed,
           isViteDevServer: result.environment.isViteDevServer,
           isLocalOrPrivate: result.environment.isLocalOrPrivate
         },

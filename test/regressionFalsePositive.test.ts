@@ -314,6 +314,37 @@ test('environment assessment identifies Vite dev server and lowers production tr
   assert.equal(env.warnings.some((item) => /dev-source/.test(item)), true);
 });
 
+test('environment assessment preserves an explicit invalid TLS bypass as a security risk', () => {
+  const config = createDefaultConfig('https://qa-app.local:8443/login');
+  config.browser.ignoreHTTPSErrors = true;
+  const pageModel: PageModel = {
+    url: 'https://qa-app.local:8443/login',
+    title: 'Login',
+    meta: { h1: [], openGraph: {} },
+    breadcrumbs: [],
+    headings: [],
+    structureTree: '',
+    components: [],
+    forms: [],
+    tables: [],
+    buttons: [],
+    inputs: [],
+    images: [],
+    links: [],
+    stats: { domNodes: 10, visibleTextLength: 100, bodyTextSample: 'login' }
+  };
+
+  const env = buildEnvironmentAssessment({ config, pageModel, networkRecords: [] });
+
+  assert.equal(env.kind, 'staging-or-private');
+  assert.equal(env.tlsVerificationBypassed, true);
+  assert.equal(env.trust.functional, 'high');
+  assert.equal(env.trust.security, 'low');
+  assert.equal(env.evidence.includes('tlsVerificationBypassed:true'), true);
+  assert.equal(env.warnings.some((item) => /certificate verification was bypassed/.test(item)), true);
+  assert.equal(env.recommendations.some((item) => /trusted internal CA/.test(item)), true);
+});
+
 test('page profile infers scope prompts without confirming product decisions', () => {
   const config = createDefaultConfig('http://example.test/credentials');
   const pageModel: PageModel = {
@@ -1161,6 +1192,36 @@ test('security scanner uses final page URL for HTTPS transport and ignores safe 
 
   assert.equal(output.result.checks.find((check) => check.rule === 'https-transport')?.status, 'passed');
   assert.equal(output.result.checks.find((check) => check.rule === 'sensitive-data-exposure')?.status, 'passed');
+});
+
+test('security scanner does not report HTTPS transport passed when certificate verification is bypassed', async () => {
+  const config = createDefaultConfig('https://qa-app.local:8443/login');
+  config.browser.ignoreHTTPSErrors = true;
+  const output = await runSecurityScanner({
+    page: {
+      url: () => 'https://qa-app.local:8443/login',
+      evaluate: async () => ({
+        inlineScriptCount: 0,
+        inlineEventHandlers: [],
+        javascriptLinks: [],
+        srcdocFrames: [],
+        storageFindings: [],
+        thirdPartyWithoutSri: []
+      })
+    } as unknown as Parameters<typeof runSecurityScanner>[0]['page'],
+    config,
+    artifacts: {},
+    pageModel: context().pageModel,
+    networkRecords: [],
+    consoleRecords: [],
+    pageErrors: [],
+    resourceRecords: []
+  });
+
+  const transport = output.result.checks.find((check) => check.rule === 'https-transport');
+  assert.equal(transport?.status, 'warning');
+  assert.equal(transport?.title, 'HTTPS 证书校验已绕过');
+  assert.equal(transport?.suggestion.priority, 'P1');
 });
 
 test('security scanner ignores third-party server fingerprint as target service fingerprint', async () => {

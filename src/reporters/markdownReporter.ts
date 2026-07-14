@@ -318,7 +318,7 @@ function formatEnvironmentAssessment(result: QaResult): string {
 - Kind：${env.kind}
 - Confidence：${env.confidence}
 - Target / Final：${markdownEscape(env.targetUrl)} / ${markdownEscape(env.finalUrl ?? '-')}
-- HTTPS / Local-private / Vite-dev / HMR：${env.isHttps} / ${env.isLocalOrPrivate} / ${env.isViteDevServer} / ${env.hasHmr}
+- HTTPS / TLS verification bypassed / Local-private / Vite-dev / HMR：${env.isHttps} / ${env.tlsVerificationBypassed} / ${env.isLocalOrPrivate} / ${env.isViteDevServer} / ${env.hasHmr}
 - Same-origin requests / Dev modules / Hashed assets：${env.sameOriginRequestCount} / ${env.devModuleRequestCount} / ${env.hashedAssetCount}
 - Trust（functional / performance / security / business）：${env.trust.functional} / ${env.trust.performance} / ${env.trust.security} / ${env.trust.businessSignoff}
 - Evidence：${env.evidence.length ? markdownEscape(env.evidence.join('；')) : '-'}

@@ -11,6 +11,7 @@ export interface JourneyRecordInput {
   name?: string;
   browser?: BrowserName;
   headless?: boolean;
+  ignoreHTTPSErrors?: boolean;
   timeoutMs?: number;
   maxSteps?: number;
   storageState?: string;
@@ -476,7 +477,8 @@ export async function recordJourney(inputArgs: JourneyRecordInput): Promise<Jour
   await ensureDir(path.dirname(outputPath));
 
   const contextOptions: BrowserContextOptions = {
-    storageState: input.storageState
+    storageState: input.storageState,
+    ignoreHTTPSErrors: input.ignoreHTTPSErrors
   };
   const browser = await launcherFor(input.browser).launch({ headless: input.headless });
   const events: RecordedDomEvent[] = [];

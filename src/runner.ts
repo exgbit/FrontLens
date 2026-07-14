@@ -198,6 +198,7 @@ async function createContext(browser: Browser, config: FrontLensConfig, artifact
     viewport: config.browser.viewport,
     locale: config.browser.locale,
     timezoneId: config.browser.timezoneId,
+    ignoreHTTPSErrors: config.browser.ignoreHTTPSErrors,
     storageState: config.auth.storageState,
     acceptDownloads: config.safety.allowDownload,
     recordVideo: config.report.video ? { dir: artifacts.videoDir ?? path.join(artifacts.outputDir, 'videos') } : undefined

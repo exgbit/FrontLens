@@ -46,6 +46,7 @@ function defaultEnvironment(url: string): Record<string, unknown> {
     confidence: isLocal ? 'high' : 'high',
     isLocalOrPrivate: isLocal,
     isHttps: /^https:/i.test(url),
+    tlsVerificationBypassed: false,
     isViteDevServer: isLocal,
     hasHmr: isLocal,
     sameOriginRequestCount: 1,

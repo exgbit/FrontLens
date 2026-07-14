@@ -84,6 +84,7 @@ function environment(overrides: Partial<EnvironmentAssessment> = {}): Environmen
     confidence: 'high',
     isLocalOrPrivate: true,
     isHttps: false,
+    tlsVerificationBypassed: false,
     isViteDevServer: true,
     hasHmr: true,
     sameOriginRequestCount: 3,

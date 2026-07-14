@@ -113,6 +113,7 @@ Options:
   --browser <name>            chromium | firefox | webkit. Default: chromium.
   --headed                    Run headed browser.
   --headless                  Run headless browser.
+  --ignore-https-errors       Continue in explicitly configured test environments with invalid/untrusted TLS certificates; report the bypass as a security risk.
   --storage-state <path>      Playwright storageState file.
   --session-storage-state <path>
                               FrontLens sessionStorage sidecar file.
@@ -330,6 +331,7 @@ function compactQaSummary(result: QaResult, ciGate: CiGateEvaluation, options: {
       kind: result.environment.kind,
       isViteDevServer: result.environment.isViteDevServer,
       isLocalOrPrivate: result.environment.isLocalOrPrivate,
+      tlsVerificationBypassed: result.environment.tlsVerificationBypassed,
       trust: result.environment.trust
     },
     qa: {
@@ -967,6 +969,7 @@ async function main(): Promise<void> {
         url: { type: 'string' },
         output: { type: 'string', short: 'o' },
         browser: { type: 'string' },
+        'ignore-https-errors': { type: 'boolean' },
         'wait-ms': { type: 'string' },
         json: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' }
@@ -994,7 +997,8 @@ async function main(): Promise<void> {
       url,
       outputPath,
       browser: normalizeBrowser(parsed.values.browser) ?? 'chromium',
-      waitMs
+      waitMs,
+      ignoreHTTPSErrors: parsed.values['ignore-https-errors']
     });
     if (parsed.values.json) {
       console.log(JSON.stringify({ storageState: savedPath, sessionStorageState: `${savedPath}.session-storage.json` }, null, 2));
@@ -1024,6 +1028,7 @@ async function main(): Promise<void> {
         browser: { type: 'string' },
         headed: { type: 'boolean' },
         headless: { type: 'boolean' },
+        'ignore-https-errors': { type: 'boolean' },
         'storage-state': { type: 'string' },
         'session-storage-state': { type: 'string' },
         'timeout-ms': { type: 'string' },
@@ -1052,6 +1057,7 @@ async function main(): Promise<void> {
       name: parsed.values.name,
       browser: normalizeBrowser(parsed.values.browser) ?? 'chromium',
       headless: parsed.values.headless ? true : parsed.values.headed ? false : undefined,
+      ignoreHTTPSErrors: parsed.values['ignore-https-errors'],
       storageState: parsed.values['storage-state'],
       sessionStorageState: parsed.values['session-storage-state'],
       timeoutMs: normalizePositiveNumber(parsed.values['timeout-ms'], '--timeout-ms'),
@@ -1560,6 +1566,7 @@ async function main(): Promise<void> {
       browser: { type: 'string' },
       headed: { type: 'boolean' },
       headless: { type: 'boolean' },
+      'ignore-https-errors': { type: 'boolean' },
       'storage-state': { type: 'string' },
       'session-storage-state': { type: 'string' },
       trace: { type: 'boolean' },
@@ -1628,6 +1635,7 @@ async function main(): Promise<void> {
     reportProfile: normalizeReportProfile(parsed.values['report-profile']),
     browser: normalizeBrowser(parsed.values.browser),
     headless: parsed.values.headed ? false : parsed.values.headless,
+    ignoreHTTPSErrors: parsed.values['ignore-https-errors'],
     storageState: parsed.values['storage-state'],
     sessionStorageState: parsed.values['session-storage-state'],
     trace: parsed.values['no-trace'] ? false : parsed.values.trace ? true : parsed.values.sme ? false : undefined,
@@ -1703,7 +1711,8 @@ async function main(): Promise<void> {
             confidence: result.environment.confidence,
             trust: result.environment.trust,
             isViteDevServer: result.environment.isViteDevServer,
-            isLocalOrPrivate: result.environment.isLocalOrPrivate
+            isLocalOrPrivate: result.environment.isLocalOrPrivate,
+            tlsVerificationBypassed: result.environment.tlsVerificationBypassed
           },
           pageProfile: {
             status: result.pageProfile.status,

@@ -11,6 +11,7 @@ export interface SaveAuthStateInput {
   outputPath: string;
   browser: BrowserName;
   waitMs: number;
+  ignoreHTTPSErrors?: boolean;
 }
 
 function launcherFor(browserName: BrowserName) {
@@ -37,7 +38,7 @@ export async function saveAuthState(inputArgs: SaveAuthStateInput): Promise<stri
   });
 
   try {
-    const context = await browser.newContext();
+    const context = await browser.newContext({ ignoreHTTPSErrors: inputArgs.ignoreHTTPSErrors });
     const page = await context.newPage();
     await page.goto(inputArgs.url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
 

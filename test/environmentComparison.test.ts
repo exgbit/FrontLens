@@ -38,6 +38,7 @@ function result(input: {
       confidence: 'high',
       isLocalOrPrivate: input.environmentKind !== 'production-like',
       isHttps: input.environmentKind === 'production-like',
+      tlsVerificationBypassed: false,
       isViteDevServer: Boolean(input.isViteDevServer),
       hasHmr: Boolean(input.isViteDevServer),
       sameOriginRequestCount: 2,

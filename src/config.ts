@@ -147,6 +147,7 @@ function validateConfig(config: FrontLensConfig): FrontLensConfig {
   assert(typeof config.target.url === 'string' && config.target.url.length > 0, 'target.url is required.');
   assert(isBrowserName(config.browser.name), 'browser.name must be chromium, firefox, or webkit.');
   assertBoolean(config.browser.headless, 'browser.headless');
+  assertBoolean(config.browser.ignoreHTTPSErrors, 'browser.ignoreHTTPSErrors');
   assertFiniteNumber(config.browser.viewport.width, 'browser.viewport.width', 1);
   assertFiniteNumber(config.browser.viewport.height, 'browser.viewport.height', 1);
   assertFiniteNumber(config.browser.timeoutMs, 'browser.timeoutMs', 1);
@@ -367,6 +368,9 @@ export async function loadConfig(input: QaRunInput): Promise<FrontLensConfig> {
   }
   if (input.headless !== undefined) {
     config.browser.headless = input.headless;
+  }
+  if (input.ignoreHTTPSErrors !== undefined) {
+    config.browser.ignoreHTTPSErrors = input.ignoreHTTPSErrors;
   }
   if (input.storageState) {
     config.auth.storageState = input.storageState;

@@ -39,6 +39,12 @@ export type IssueCategory = KnownIssueCategory | (string & {});
 export interface BrowserConfig {
   name: BrowserName;
   headless: boolean;
+  /**
+   * Allow Playwright to continue when the target uses an untrusted, expired, or
+   * hostname-mismatched TLS certificate. Intended for explicitly configured
+   * internal test environments; the report still records the TLS bypass risk.
+   */
+  ignoreHTTPSErrors: boolean;
   viewport: {
     width: number;
     height: number;
@@ -592,6 +598,7 @@ export interface QaRunInput {
   outputDir?: string;
   browser?: BrowserName;
   headless?: boolean;
+  ignoreHTTPSErrors?: boolean;
   storageState?: string;
   sessionStorageState?: string;
   trace?: boolean;
@@ -1385,6 +1392,8 @@ export interface EnvironmentAssessment {
   confidence: 'high' | 'medium' | 'low';
   isLocalOrPrivate: boolean;
   isHttps: boolean;
+  /** True when Playwright certificate verification was explicitly bypassed. */
+  tlsVerificationBypassed: boolean;
   isViteDevServer: boolean;
   hasHmr: boolean;
   sameOriginRequestCount: number;

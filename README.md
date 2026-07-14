@@ -201,6 +201,44 @@ done
 用 frontend-qa 分析 https://example.com/admin/users，前端代码 /path/to/repo
 ```
 
+### 内网测试环境证书错误
+
+内网环境使用自签名证书、未受信任的内部 CA，或直接用 IP 访问但证书 SAN 未包含该 IP 时，Playwright 会报 `ERR_CERT_AUTHORITY_INVALID` / `ERR_CERT_COMMON_NAME_INVALID`。FrontLens 默认不绕过证书校验；仅在明确的测试环境中可显式开启：
+
+```bash
+TARGET_URL="https://your-project.internal/login"
+node dist/cli.js qa \
+  --url "$TARGET_URL" \
+  --ignore-https-errors \
+  --output reports/frontlens/intranet \
+  --sme --json-summary
+```
+
+也可以写入测试专用配置：
+
+```json
+{
+  "browser": {
+    "ignoreHTTPSErrors": true
+  }
+}
+```
+
+然后运行：
+
+```bash
+node dist/cli.js qa --url "$TARGET_URL" --config frontlens.internal.json
+```
+
+如需先保存登录态，`auth save` 同样支持该参数：
+
+```bash
+node dist/cli.js auth save --url "$TARGET_URL" \
+  --output .frontlens/auth/admin.json --ignore-https-errors
+```
+
+该能力不绑定任何 IP、域名、端口或被测项目；每次运行都以 `--url` 传入的目标为准，配置文件也不保存目标地址。该开关只让功能测试继续执行，不会把证书判为通过。报告会记录 `tlsVerificationBypassed: true`、将安全可信度降为 `low`，并生成 P1 部署整改项。正式解决方案是：使用客户端信任的内部 CA 签发证书，并让证书 SAN 匹配实际访问的域名；若必须用 IP 访问，则 SAN 需包含对应 IP。修复后关闭该开关复测。
+
 ## 推荐使用方式
 
 ### 1. 全选分析页面

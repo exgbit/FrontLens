@@ -84,7 +84,7 @@ Never open large raw artifacts by default:
    node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>" --report-profile executive --sme --json-summary
    ```
 
-   Add `--source-root <path>` when provided. Add `--source-run-scripts --source-scripts "typecheck,lint"` only when dependencies exist and the user allowed local checks. If the installed CLI does not support `--sme` or `--json-summary`, use the fallback flags: `--no-trace --no-security --no-coverage --no-realtime --no-p2 --json`.
+   Add `--source-root <path>` when provided. Add `--source-run-scripts --source-scripts "typecheck,lint"` only when dependencies exist and the user allowed local checks. If an explicitly identified local/private test target fails with `ERR_CERT_AUTHORITY_INVALID`, `ERR_CERT_COMMON_NAME_INVALID`, or an equivalent certificate error, rerun with `--ignore-https-errors`; never use this flag silently for a public/production target. The resulting TLS-bypass warning remains a deployment risk rather than a passed security check. If the installed CLI does not support `--sme` or `--json-summary`, use the fallback flags: `--no-trace --no-security --no-coverage --no-realtime --no-p2 --json`.
 5. Use the `--json-summary` stdout first, then read `brief.md` if needed. If missing, use `qa-review.md` or helper output. Read only small targeted fields from `result.json` if needed.
 6. Combine runtime evidence, source evidence, product/requirement context, and review calibration. Do not promote style/product assumptions, dev-server artifacts, deployment headers, skipped modules, or weak API/UI mismatch into must-fix.
 7. Return the 7-section SME report. Keep selector-level/raw network detail out of the final answer unless requested.
@@ -95,7 +95,7 @@ Never open large raw artifacts by default:
 - With basic requirements: test only explicit or strongly implied requirements; vague text becomes needs-input.
 - API/UI data mismatch requires four-part proof before becoming a defect: explicit requirement, exact list response/path/count, visible empty target UI, and source API/state/render binding.
 - Dev server metrics, Vite HMR/WebSocket, `/src/*`, and `/@vite/client` are environment noise for production performance/security.
-- Security headers/TLS/server fingerprint are deployment checklist items unless this repo owns deployment config.
+- Security headers/TLS/server fingerprint are deployment checklist items unless this repo owns deployment config. An invalid-certificate bypass may unblock functional QA, but it must remain visible in the report with low security trust; recommend a trusted internal CA and SAN matching the accessed hostname/IP.
 - Login is not a standalone default section; treat auth as setup and permissions matrix evidence.
 - Count work by proof-ready root cause, not raw issue IDs.
 

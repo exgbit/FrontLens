@@ -607,7 +607,8 @@ function addSensitiveDataChecks(checks: SecurityCheckResult[], input: SecuritySc
 function addTransportAndMixedChecks(checks: SecurityCheckResult[], input: SecurityScannerInput, targetUrl: string): void {
   const secureTransport = isHttpsUrl(targetUrl);
   const localOrFileTransport = isLocalOrPrivateTarget(targetUrl);
-  const transportPassed = secureTransport || localOrFileTransport;
+  const tlsVerificationBypassed = secureTransport && input.config.browser.ignoreHTTPSErrors;
+  const transportPassed = (secureTransport || localOrFileTransport) && !tlsVerificationBypassed;
   const mixed = isHttpsUrl(targetUrl)
     ? input.networkRecords.filter((record) => isHttpUrl(record.url)).map((record) => ({ networkRequestId: record.id, url: redactUrl(record.url) }))
     : [];
@@ -617,14 +618,16 @@ function addTransportAndMixedChecks(checks: SecurityCheckResult[], input: Securi
     rule: 'https-transport',
     status: transportPassed ? 'passed' : 'warning',
     severity: transportPassed ? 'info' : 'medium',
-    title: secureTransport ? '页面使用 HTTPS' : localOrFileTransport ? '本地/文件测试地址允许非 HTTPS' : '页面未使用 HTTPS',
-    description: secureTransport
+    title: tlsVerificationBypassed ? 'HTTPS 证书校验已绕过' : secureTransport ? '页面使用 HTTPS' : localOrFileTransport ? '本地/文件测试地址允许非 HTTPS' : '页面未使用 HTTPS',
+    description: tlsVerificationBypassed
+      ? '本轮为进入内网测试环境显式忽略了证书错误；只证明页面可通过加密连接访问，不证明证书链、有效期或主机名可信。'
+      : secureTransport
       ? '目标页面通过 HTTPS 加载。'
       : localOrFileTransport
         ? '目标是 localhost/127.0.0.1/file 测试地址，非 HTTPS 不计为生产风险。'
         : '目标页面不是 HTTPS，生产环境下可能导致凭证或业务数据被窃听/篡改。',
     evidence: [{ url: redactUrl(targetUrl) }],
-    suggestion: { backend: '生产环境启用 HTTPS，并配合 HSTS。', priority: transportPassed ? 'P3' : 'P2' }
+    suggestion: { backend: tlsVerificationBypassed ? '为测试入口部署受客户端信任的内部 CA 证书，并确保 SAN 匹配实际访问域名/IP；修复后关闭 ignoreHTTPSErrors 复测。' : '生产环境启用 HTTPS，并配合 HSTS。', priority: tlsVerificationBypassed ? 'P1' : transportPassed ? 'P3' : 'P2' }
   });
   checks.push({
     id: '',

@@ -12,6 +12,7 @@ import { deepMerge } from '../src/utils/deepMerge.ts';
 test('default config enables complete non-destructive QA capabilities', () => {
   const config = createDefaultConfig('https://example.com/credentials');
 
+  assert.equal(config.browser.ignoreHTTPSErrors, false);
   assert.equal(config.journeys.enabled, true);
   assert.ok(config.journeys.journeys.length >= 1);
   assert.equal(config.journeys.journeys[0].steps.some((step) => step.action === 'expectVisible'), true);
@@ -90,8 +91,9 @@ test('config file relative paths resolve from config directory and invalid neste
   const configPath = path.join(dir, 'frontlens.json');
   await writeFile(schemaPath, '{"openapi":"3.0.0","paths":{}}', 'utf8');
   await writeFile(adrPath, '# ADR', 'utf8');
-  await writeFile(configPath, JSON.stringify({ contract: { schemaPath: 'openapi.json' }, report: { profile: 'executive' }, productContext: { deviceScope: 'desktop-first', optionalFeatures: ['mobile-touch-target'], adrRefs: ['adr-0001.md'] } }), 'utf8');
+  await writeFile(configPath, JSON.stringify({ browser: { ignoreHTTPSErrors: true }, contract: { schemaPath: 'openapi.json' }, report: { profile: 'executive' }, productContext: { deviceScope: 'desktop-first', optionalFeatures: ['mobile-touch-target'], adrRefs: ['adr-0001.md'] } }), 'utf8');
   const config = await loadConfig({ url: 'https://example.com', configPath });
+  assert.equal(config.browser.ignoreHTTPSErrors, true);
   assert.equal(config.contract.schemaPath, schemaPath);
   assert.equal(config.report.profile, 'executive');
   assert.equal(config.productContext.deviceScope, 'desktop-first');

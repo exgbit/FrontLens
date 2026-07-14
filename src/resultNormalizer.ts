@@ -736,6 +736,7 @@ function normalizeEnvironment(raw: unknown, fallbackUrl = ''): EnvironmentAssess
     confidence: trustValue(raw.confidence),
     isLocalOrPrivate: Boolean(raw.isLocalOrPrivate),
     isHttps: Boolean(raw.isHttps),
+    tlsVerificationBypassed: Boolean(raw.tlsVerificationBypassed),
     isViteDevServer: Boolean(raw.isViteDevServer),
     hasHmr: Boolean(raw.hasHmr),
     sameOriginRequestCount: asNumber(raw.sameOriginRequestCount),

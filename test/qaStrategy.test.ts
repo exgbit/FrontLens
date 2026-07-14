@@ -44,6 +44,7 @@ function localCredentialResult(overrides: Record<string, unknown> = {}) {
       confidence: 'high',
       isLocalOrPrivate: true,
       isHttps: false,
+      tlsVerificationBypassed: false,
       isViteDevServer: true,
       hasHmr: true,
       sameOriginRequestCount: 10,

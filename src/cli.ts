@@ -47,7 +47,7 @@ const CLI_VERSION = '0.1.0';
 const COMMANDS = new Set(['qa', 'auth', 'journey', 'matrix', 'role-matrix', 'env-compare', 'requirements', 'test-plan', 'test-report', 'permissions', 'mcp', 'brief', 'audit', 'product-context', 'review-calibration', 'claim-guard', 'qa-intake', 'defect-proof', 'defect-tickets', 'traceability', 'automation-specs', 'evidence-bundle', 'test-strategy', 'report-content-audit', 'journey-assertion-audit', 'qa-plan', 'qa-coverage', 'assertion-suggestions', 'business-journeys', 'test-cases', 'risk-register', 'risk-acceptance', 'artifact-integrity', 'inspect', 'issues', 'root-causes', 'disposition', 'network', 'coverage', 'security', 'fix-tasks', 'diff', 'suggestions', 'help', '--help', '-h', '--version', '-v']);
 
 function printHelp(): void {
-  console.log(`FrontLens - AI-oriented frontend QA analyzer
+  console.log(`FrontLens - requirement-driven QA and Git change-impact analyzer
 
 Usage:
   frontlens qa --url <url> [options]
@@ -55,7 +55,7 @@ Usage:
   frontlens auth save --url <login-url> --output <storage-state-path>
   frontlens journey record --url <url> --output <journey-config.json>
   frontlens requirements synthesize --input <prd.md> --output <requirements.json>
-  frontlens test-plan --input <prd.md> --output <directory> [--source-root <path>] [--project-type auto|frontend|backend|fullstack]
+  frontlens test-plan --input <prd.md> --output <directory> [--source-root <path>] [--project-type auto|frontend|backend|fullstack] [--base-ref <ref>]
   frontlens test-report --plan <test-plan.json> --report <result.json> --output <directory> [--fail-on-blocked]
   frontlens permissions repair --output <generated-directory>
   frontlens matrix --url <url> --browsers chromium,firefox,webkit
@@ -103,7 +103,12 @@ Options:
   --text <text>               Inline PRD/acceptance text for requirements synthesize.
   --config <path>             Optional config file (.json/.js/.mjs).
   --requirements <path>       Optional requirements/acceptance criteria JSON file.
-  --source-root <path>        Optional frontend source repository root for static source correlation.
+  --source-root <path>        Optional implementation repository root for source correlation and change-impact analysis.
+  --base-ref <ref>            test-plan: Git baseline ref. Default: remote HEAD, main, master, then develop.
+  --head-ref <ref>            test-plan: Git target ref. Default: HEAD.
+  --include-working-tree      test-plan: include staged, unstaged, and untracked changes. Default: enabled.
+  --no-working-tree           test-plan: compare committed refs only.
+  --no-change-impact          test-plan: disable Git impact analysis and legacy-business regression generation.
   --source-run-scripts        Run selected non-destructive source scripts during source health.
   --source-scripts <list>     Comma-separated package.json scripts to run when --source-run-scripts is enabled. Default: typecheck,lint,test.
   --source-script-timeout-ms <ms>
@@ -174,7 +179,7 @@ Examples:
   frontlens auth save --url https://example.com/login --output .frontlens/auth/admin.json
   frontlens journey record --url https://example.com/admin/users --output journeys/users-smoke.json --name "Users smoke"
   frontlens requirements synthesize --input docs/prd.md --output requirements.json
-  frontlens test-plan --input docs/prd.md --source-root ../app --project-type auto --output reports/test-plan
+  frontlens test-plan --input docs/prd.md --source-root ../app --project-type auto --base-ref origin/main --output reports/test-plan
   frontlens qa --url http://127.0.0.1:3000 --requirements reports/test-plan/test-plan.json --source-root ../app --source-run-scripts --output reports/qa
   frontlens test-report --plan reports/test-plan/test-plan.json --report reports/qa/result.json --output reports/final
   frontlens permissions repair --output reports/test-plan
@@ -1162,6 +1167,12 @@ async function main(): Promise<void> {
         output: { type: 'string', short: 'o' },
         'source-root': { type: 'string' },
         'project-type': { type: 'string' },
+        'base-ref': { type: 'string' },
+        'head-ref': { type: 'string' },
+        'include-working-tree': { type: 'boolean' },
+        'no-working-tree': { type: 'boolean' },
+        'change-impact': { type: 'boolean' },
+        'no-change-impact': { type: 'boolean' },
         prefix: { type: 'string' },
         json: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' }
@@ -1183,7 +1194,11 @@ async function main(): Promise<void> {
       outputDir: parsed.values.output,
       sourceRoot: parsed.values['source-root'],
       prefix: parsed.values.prefix,
-      projectType: projectType as 'auto' | 'frontend' | 'backend' | 'fullstack' | undefined
+      projectType: projectType as 'auto' | 'frontend' | 'backend' | 'fullstack' | undefined,
+      baseRef: parsed.values['base-ref'],
+      headRef: parsed.values['head-ref'],
+      includeWorkingTree: parsed.values['no-working-tree'] ? false : parsed.values['include-working-tree'],
+      changeImpact: parsed.values['no-change-impact'] ? false : parsed.values['change-impact']
     });
     if (parsed.values.json) {
       console.log(JSON.stringify(result, null, 2));
@@ -1194,6 +1209,7 @@ async function main(): Promise<void> {
       console.log(`Status: ${result.status}; requirements/test-points/test-cases ${result.summary.requirementCount}/${result.summary.testPointCount}/${result.summary.testCaseCount}`);
       console.log(`Developer P0 cases: ${result.summary.developerCaseCount}; QA full cases: ${result.summary.qaCaseCount}`);
       console.log(`Blocker coverage: ${result.blockerCoverage.status}`);
+      console.log(`Change impact: ${result.changeImpact?.status}; files/modules/regression ${result.summary.changeFileCount}/${result.summary.impactedModuleCount}/${result.summary.changeRegressionCaseCount}`);
     }
     return;
   }
@@ -1245,7 +1261,7 @@ async function main(): Promise<void> {
         writeJson(executionArtifacts.manifest, {
           generatedAt: execution.generatedAt,
           recommendedReadOrder: [executionArtifacts.summary, executionArtifacts.markdown],
-          readOnDemand: [executionArtifacts.details],
+          readOnDemand: [executionArtifacts.details, plan.artifacts?.changeImpact, plan.artifacts?.changeImpactJson].filter(Boolean),
           avoidLoadingIntoLlmByDefault: [executionArtifacts.json, reportPath, planPath]
         })
       ]);
@@ -1255,6 +1271,7 @@ async function main(): Promise<void> {
     else {
       console.log(`Requirement-driven test report: ${path.resolve(parsed.values.output, 'test-report.md')}`);
       console.log(`Status: ${execution.status}; passed/failed/blocked/not-executed ${execution.summary.passedCount}/${execution.summary.failedCount}/${execution.summary.blockedCount}/${execution.summary.notExecutedCount}`);
+      console.log(`Original-business regression: ${execution.changeRegression.status}; passed/total ${execution.changeRegression.passedCount}/${execution.changeRegression.totalCount}`);
       console.log(`Release recommendation: ${execution.releaseRecommendation}`);
     }
     if (parsed.values['fail-on-blocked'] && (execution.status === 'blocked' || execution.status === 'failed')) process.exitCode = 2;
@@ -1718,7 +1735,7 @@ async function main(): Promise<void> {
         writeJson(plannedArtifacts.manifest, {
           generatedAt: plannedExecution.generatedAt,
           recommendedReadOrder: [plannedArtifacts.summary, plannedArtifacts.markdown],
-          readOnDemand: [plannedArtifacts.details],
+          readOnDemand: [plannedArtifacts.details, plan.artifacts?.changeImpact, plan.artifacts?.changeImpactJson].filter(Boolean),
           avoidLoadingIntoLlmByDefault: [plannedArtifacts.json, result.artifacts.jsonReport]
         })
       ]);
@@ -1872,7 +1889,10 @@ async function main(): Promise<void> {
     console.log(`Adjusted score: ${result.summary.adjustedScore}/100 (${result.summary.adjustedIssueCount} ${result.summary.scoreBasis} findings)`);
     console.log(`Raw score: ${result.summary.score}/100 (${result.summary.issueCount} raw findings)`);
     console.log(`CI Gate: ${ciGate.status} (${ciGate.mode}, score field ${ciGate.scoreField})`);
-    if (plannedExecution) console.log(`Planned cases: ${plannedExecution.status}, P0 open ${plannedExecution.summary.p0OpenCount}, report ${plannedReportPath}`);
+    if (plannedExecution) {
+      console.log(`Planned cases: ${plannedExecution.status}, P0 open ${plannedExecution.summary.p0OpenCount}, report ${plannedReportPath}`);
+      console.log(`Original-business regression: ${plannedExecution.changeRegression.status}, passed/total ${plannedExecution.changeRegression.passedCount}/${plannedExecution.changeRegression.totalCount}`);
+    }
     console.log(`Security: ${result.security.status}, ${result.security.score}/100 (${result.security.summary.failedCount} failed, ${result.security.summary.warningCount} warnings)`);
     console.log(`API Contract: ${result.apiContract.summary.endpointCount} endpoints, ${result.apiContract.summary.schemaMismatchCount + result.apiContract.summary.statusMismatchCount + result.apiContract.summary.undocumentedCount} findings`);
     console.log(`Realtime: ${result.realtime.summary.graphqlOperationCount} GraphQL, ${result.realtime.summary.webSocketCount} WS, ${result.realtime.summary.sseCount} SSE`);

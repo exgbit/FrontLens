@@ -20,6 +20,7 @@ import {
   formatTestPlanTraceability
 } from './testPlanReporter.js';
 import { compactTestPlan } from './testPlanCompact.js';
+import { analyzeGitChangeImpact, formatChangeImpactMarkdown } from '../changeImpact/gitChangeImpact.js';
 
 export interface BuildTestPlanInput {
   text?: string;
@@ -29,6 +30,14 @@ export interface BuildTestPlanInput {
   prefix?: string;
   /** `auto` inspects source markers. Use `backend` to guarantee that no UI/browser cases are fabricated. */
   projectType?: TestProjectType;
+  /** Git ref compared with the current change. Defaults to remote HEAD, main, master, then develop. */
+  baseRef?: string;
+  /** Commit/ref under test. Defaults to HEAD. */
+  headRef?: string;
+  /** Include staged, unstaged, and untracked files when headRef resolves to current HEAD. Default: true. */
+  includeWorkingTree?: boolean;
+  /** Disable Git change-impact and legacy-business regression generation. Default: false. */
+  changeImpact?: boolean;
 }
 
 type EffectiveProjectType = Exclude<TestProjectType, 'auto'>;
@@ -413,8 +422,34 @@ function buildSummary(requirements: RequirementWizardCandidate[], points: TestPo
     qaCaseCount: cases.filter((item) => item.audiences.includes('qa')).length,
     p0Count: countPriority('P0'), p1Count: countPriority('P1'), p2Count: countPriority('P2'), p3Count: countPriority('P3'),
     frontendCount: countLayer('frontend'), backendCount: countLayer('backend'), apiCount: countLayer('api'), sourceCount: countLayer('source'),
-    needsReviewRequirementCount: requirements.filter((item) => item.needsReview).length
+    needsReviewRequirementCount: requirements.filter((item) => item.needsReview).length,
+    changeFileCount: 0,
+    impactedModuleCount: 0,
+    changeRegressionCaseCount: cases.filter((item) => item.tags.includes('change-impact')).length
   };
+}
+
+function changeRegressionCases(targets: NonNullable<TestPlanResult['changeImpact']>['regressionTargets'], startIndex: number): PlannedTestCase[] {
+  return targets.map((target, index) => ({
+    id: `TC-PLAN-${String(startIndex + index + 1).padStart(4, '0')}`,
+    requirementIds: [],
+    changeImpactIds: [target.id],
+    testPointIds: [],
+    layer: target.layer,
+    scenario: 'regression',
+    title: target.title,
+    priority: target.priority,
+    blocker: target.priority === 'P0',
+    audiences: target.priority === 'P0' ? ['developer', 'qa'] : ['qa'],
+    preconditions: ['基础分支与当前变更的 merge-base 已确认。', '原有测试账号、测试数据和受影响业务入口可用。'],
+    testData: ['修改前已支持的有效、无效、边界、角色和状态数据；使用本轮唯一标记并精确清理。'],
+    steps: target.steps,
+    expected: target.expected,
+    executionMode: 'hybrid',
+    automationBinding: target.apiPatterns[0] ?? (target.relatedTests.join(', ') || undefined),
+    sourceRefs: target.changedFiles,
+    tags: uniq(['change-impact', 'legacy-regression', target.layer, target.priority, `module:${target.module}`, target.priority === 'P0' ? 'blocker' : undefined])
+  }));
 }
 
 export async function buildTestPlan(input: BuildTestPlanInput): Promise<TestPlanResult> {
@@ -430,6 +465,34 @@ export async function buildTestPlan(input: BuildTestPlanInput): Promise<TestPlan
   const points = generateTestPoints(requirements, projectType);
   const generatedCases = generatePlannedTestCases(requirements, points);
   const blocker = ensureBlockerCoverage(requirements, generatedCases, projectType);
+  const analyzedChangeImpact = await analyzeGitChangeImpact({
+    sourceRoot: input.sourceRoot,
+    enabled: input.changeImpact !== false,
+    baseRef: input.baseRef,
+    headRef: input.headRef,
+    includeWorkingTree: input.includeWorkingTree
+  });
+  const excludedFrontendTargets = projectType === 'backend'
+    ? analyzedChangeImpact.regressionTargets.filter((target) => target.layer === 'frontend')
+    : [];
+  const changeImpact = excludedFrontendTargets.length
+    ? {
+        ...analyzedChangeImpact,
+        regressionTargets: analyzedChangeImpact.regressionTargets.filter((target) => target.layer !== 'frontend'),
+        warnings: [...analyzedChangeImpact.warnings, `纯后端计划已排除 ${excludedFrontendTargets.length} 个前端回归目标；如需测试这些目标请改用 fullstack/frontend。`]
+      }
+    : analyzedChangeImpact;
+  const impactCases = changeRegressionCases(changeImpact.regressionTargets, blocker.cases.length);
+  blocker.cases.push(...impactCases);
+  const p0ImpactCases = impactCases.filter((item) => item.priority === 'P0');
+  if (p0ImpactCases.length) {
+    const compatibility = blocker.items.find((item) => item.category === 'compatibility');
+    if (compatibility) {
+      compatibility.status = 'drafted';
+      compatibility.testCaseIds = uniq([...compatibility.testCaseIds, ...p0ImpactCases.map((item) => item.id)]);
+      compatibility.reason = 'Git 变更影响分析发现 P0 原业务回归目标；只有实际执行的独立证据才能证明兼容性。';
+    }
+  }
   const coveredCount = blocker.items.filter((item) => item.status === 'drafted' || item.status === 'ready').length;
   const missingCount = blocker.items.filter((item) => item.status === 'missing').length;
   const notApplicableCount = blocker.items.filter((item) => item.status === 'not-applicable').length;
@@ -446,9 +509,19 @@ export async function buildTestPlan(input: BuildTestPlanInput): Promise<TestPlan
     requirements,
     testPoints: points,
     testCases: blocker.cases,
+    changeImpact,
     blockerCoverage: { status: missingCount ? 'incomplete' : blocker.items.some((item) => item.status === 'drafted') ? 'drafted' : 'ready', coveredCount, missingCount, notApplicableCount, items: blocker.items },
-    summary: buildSummary(requirements, points, blocker.cases),
-    reviewQuestions: uniq([...wizard.questions, ...requirements.flatMap((item) => item.reviewNotes)])
+    summary: {
+      ...buildSummary(requirements, points, blocker.cases),
+      changeFileCount: changeImpact.changedFileCount,
+      impactedModuleCount: changeImpact.modules.length,
+      changeRegressionCaseCount: impactCases.length
+    },
+    reviewQuestions: uniq([
+      ...wizard.questions,
+      ...requirements.flatMap((item) => item.reviewNotes),
+      ...(changeImpact.status === 'unavailable' ? changeImpact.warnings : [])
+    ])
   };
   if (input.outputDir) {
     const outputDir = path.resolve(input.outputDir);
@@ -460,7 +533,9 @@ export async function buildTestPlan(input: BuildTestPlanInput): Promise<TestPlan
       requirements: path.join(outputDir, 'requirements.md'),
       developerCases: path.join(outputDir, 'developer-test-cases.md'),
       qaCases: path.join(outputDir, 'qa-full-test-cases.md'),
-      traceability: path.join(outputDir, 'test-design-traceability.md')
+      traceability: path.join(outputDir, 'test-design-traceability.md'),
+      changeImpact: path.join(outputDir, 'change-impact.md'),
+      changeImpactJson: path.join(outputDir, 'change-impact.json')
     };
     result.artifacts = artifacts;
     await writeJson(artifacts.json, result);
@@ -468,15 +543,17 @@ export async function buildTestPlan(input: BuildTestPlanInput): Promise<TestPlan
       writeJson(artifacts.summary, compactTestPlan(result)),
       writeJson(artifacts.manifest, {
         generatedAt: result.generatedAt,
-        recommendedReadOrder: [artifacts.summary, artifacts.requirements, artifacts.developerCases],
-        readOnDemand: [artifacts.traceability, artifacts.qaCases],
-        avoidLoadingIntoLlmByDefault: [artifacts.json],
+        recommendedReadOrder: [artifacts.summary, artifacts.changeImpact, artifacts.requirements, artifacts.developerCases],
+        readOnDemand: [artifacts.traceability, artifacts.qaCases, artifacts.changeImpactJson],
+        avoidLoadingIntoLlmByDefault: [artifacts.json, artifacts.changeImpactJson],
         note: 'The full JSON and QA case document are machine/full-detail artifacts. Start with test-plan-summary.json.'
       }),
       writeText(artifacts.requirements, formatRequirementDesign(result)),
       writeText(artifacts.developerCases, formatDeveloperTestCases(result)),
       writeText(artifacts.qaCases, formatQaTestCases(result)),
-      writeText(artifacts.traceability, formatTestPlanTraceability(result))
+      writeText(artifacts.traceability, formatTestPlanTraceability(result)),
+      writeText(artifacts.changeImpact, formatChangeImpactMarkdown(changeImpact)),
+      writeJson(artifacts.changeImpactJson, changeImpact)
     ]);
   }
   return result;

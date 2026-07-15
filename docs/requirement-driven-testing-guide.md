@@ -1,6 +1,6 @@
 # FrontLens 需求驱动测试操作指南
 
-本指南覆盖完整流程：需求文档 → 前端/后端/API/代码测点 → 分级测试用例 → 开发阻塞自测 → FrontLens 执行 → 缺陷复现 → Markdown 报告。
+本指南覆盖完整流程：需求文档 → Git 变更与影响模块 → 前端/后端/API/代码测点 → 新需求及原业务回归用例 → 开发阻塞自测 → FrontLens 执行 → 缺陷复现 → Markdown 报告。
 
 ## 1. 安装与构建
 
@@ -47,6 +47,7 @@ node dist/cli.js test-plan \
   --input examples/demo-prd.md \
   --source-root examples/demo-app \
   --project-type auto \
+  --base-ref origin/main \
   --output reports/demo-plan
 ```
 
@@ -55,6 +56,8 @@ node dist/cli.js test-plan \
 | 文件 | 用途 |
 | --- | --- |
 | `test-plan.json` | 后续执行和报告使用的唯一机器可读测试计划 |
+| `change-impact.md` | Git 基线、变更文件、影响模块、传播引用和原业务回归目标 |
+| `change-impact.json` | 完整有界影响数据及 `CHANGE-REG-*` 目标 |
 | `requirements.md` | 结构化需求及前端、后端、API、代码测点 |
 | `developer-test-cases.md` | 仅 P0，开发提测前必须执行 |
 | `qa-full-test-cases.md` | P0～P3 全部适用测试用例 |
@@ -68,10 +71,19 @@ node dist/cli.js test-plan \
 - 根据需求信号生成正常、异常、边界、权限、状态、数据一致性、幂等、恢复和回归场景；
 - 系统启动、核心页面、核心流程、鉴权、数据完整性、依赖失败和兼容性通过阻塞覆盖矩阵检查；
 - 不适用项明确标记 `not-applicable`，不会假装已覆盖。
+- 当 `sourceRoot` 是 Git 仓库时，默认比较基础分支与当前变更，并把受影响原业务回归加入 QA 全量用例；高风险 P0 同时加入开发阻塞用例。
 
 计划为 `needs-review` 时，先处理 `requirements.md` 中的待确认项。待确认不影响生成草案，但不能直接作为最终发布依据。
 
-### 3.1 纯后端/API 仓库
+### 3.1 Git 基线与影响传播
+
+`--base-ref` 未提供时，FrontLens 依次检测远端默认分支、`main`、`master`、`develop`，不会把 `main` 写死。比较使用 merge-base。目标为当前 `HEAD` 时默认纳入 staged、unstaged 和 untracked 文件；使用 `--no-working-tree` 可只比较提交，使用 `--no-change-impact` 可显式关闭该流程。
+
+分析是有界的：先读取 name-status/numstat，再读取有限 diff hunk，随后索引有限源码文件的相对 import、相关测试和一至二跳反向引用。结果区分直接变更、传播影响和置信度；达到文件或字节上限时状态为 `partial` 并保留警告。
+
+`change-impact.md` 只定义需要回归的范围，不是通过证据。生成的 `CHANGE-REG-*` 目标必须在后续运行中实际执行；否则最终报告标记 `not-run`/`needs-input`，不能声明原有业务正常。
+
+### 3.2 纯后端/API 仓库
 
 自然语言入口使用 `backend-qa`，只提供 PRD 和源码，不需要预先提供 API URL：
 
@@ -81,7 +93,9 @@ node dist/cli.js test-plan \
 
 Skill 会识别框架、锁文件、Testcontainers/Compose/Make/项目脚本、依赖服务、迁移、health/readiness、OpenAPI 和监听端口：先复用已授权且健康的测试环境，没有可用环境时才启动隔离环境；随后执行原生代码测试与真实 HTTP 请求，最后只清理本轮创建的资源和唯一标记数据。部署或发现失败时写入 blocked 证据，不虚构 URL。
 
-如果用户明确说明测试环境已经部署且允许直接连接，`backend-qa` 会优先复用并做 readiness 检查，而不是机械地启动一套重复环境。环境名、精确 SSH 别名、远程部署目录和远程 `.env` 路径都属于发现线索；Skill 会通过已有授权连接，只读取 API 发现所需的白名单配置键、精确 Compose 映射、代理配置、有限日志、health/OpenAPI 和路由源码，再用真实请求验证候选地址。它不会输出整份 `.env`、扫描未声明主机或把容器内地址直接当作客户端地址。只有现有环境不可用时才进入隔离自动部署兜底；除非用户明确要求或部署目标具备独立命名空间，否则不会重部署共享远程环境。复用共享测试环境时只清理本轮确切 ID 的测试数据，不停止服务、容器或依赖；清理失败会保留为风险。
+如果用户明确说明测试环境已经部署且允许直接连接，`backend-qa` 会优先复用并做 readiness 检查，而不是机械地启动一套重复环境。环境名、精确 SSH 别名、远程部署目录和远程 `.env` 路径都属于发现线索；Skill 会通过已有授权连接，只读取 API 发现所需的白名单配置键、精确 Compose 映射、代理配置、有限日志、health/OpenAPI 和路由源码，再用真实请求验证候选地址。它不会输出整份 `.env`、扫描未声明主机或把容器内地址直接当作客户端地址。只有现有环境不可用时才进入隔离自动部署兜底；除非用户明确要求或部署目标具备独立命名空间，否则不会重部署共享远程环境。
+
+用户提供或开放明确标记为 test/staging 的数据库时，即视为已经授权本轮进行受控业务数据读写，不需要再次确认是否允许创建测试数据。Skill 优先通过 API、Service 或已有 Seed/Fixture 创建数据，必要时才直接使用 SQL；所有写入先分配 run ID、记录精确主键并登记清理操作。默认授权不包含迁移、`DROP`、`TRUNCATE`、宽泛更新/删除或修改原有记录。复用共享测试环境时只清理本轮确切 ID 的测试数据，不停止服务、容器或依赖；清理失败会保留为风险。
 
 单独生成后端计划时使用：
 
@@ -139,12 +153,13 @@ node dist/cli.js qa \
 说明：
 
 - `--requirements test-plan.json` 会读取结构化需求，并在 QA 结束后自动消费完整计划，生成 `planned-test-execution.json` 和 `planned-test-report.md`；
+- `test-plan.json` 中的 `CHANGE-REG-*` 目标会作为推导出的回归要求参与运行时匹配，但仍需独立证据才能通过；
 - 浏览器采集页面、交互、请求、控制台和运行证据；
 - API contract 检查请求状态和响应结构；
 - source analyzer 将运行问题和源码位置关联；
 - `--source-run-scripts` 执行目标项目明确指定的静态检查与测试脚本；
 - 全局 `typecheck/lint/test` 通过只证明仓库健康，不会自动证明每条需求已实现；要关闭后端/API/source 的具体场景，需在目标项目提供 `.frontlens/test-evidence.json`；
-- 写操作默认不会自动执行。需要真实创建、编辑、删除、上传时，在测试环境配置对应 journey 和允许项，然后重跑；
+- 未明确为 test/staging 的环境不会自动执行写操作。用户已提供或开放明确的测试数据库时，本轮自有记录的有界 CRUD 无需再次确认；前端通过 journey/UI/API 执行并登记精确 ID 清理，仅给需要写入的步骤设置 `allowMutating=true`，临时配置只开启所需的 `safety.allowCreate/allowEdit/allowDelete/allowSubmit`，并保持 `blockMutatingRequests=true`，不使用宽泛的 `--allow-mutating-requests`；该授权仍不包含迁移、`DROP`、`TRUNCATE`、宽泛更新/删除或修改原有记录；
 - 未独立执行的场景保持 `needs-input`，不会因为正常路径通过而被批量判定为通过。
 - `automated` 只用于已有 journey/interaction/API/source binding 的用例；后端持久化、角色态等没有专属证据时保持 `hybrid/needs-input`。
 - API 与异常模拟证据严格按 HTTP method、模板路径和 PRD 明确状态码匹配；预期的 401/403/404 等非 2xx 是验收结果，不会被当成正常路径失败，其他 method 的同路径流量也不能关闭该用例。
@@ -169,6 +184,25 @@ node dist/cli.js qa \
 ```
 
 规则：关联脚本失败则仅失败对应需求/层级/场景；无需求专属绑定的全局代码检查失败记为系统级阻塞，不会把所有业务需求误判为 `implementation-mismatch`。
+
+原业务回归使用同一绑定协议。例如：
+
+```json
+{
+  "bindings": [
+    {
+      "id": "ORDERS-LEGACY-REGRESSION",
+      "requirementIds": ["CHANGE-REG-001"],
+      "layer": "backend",
+      "scenarios": ["regression"],
+      "scriptNames": ["test"],
+      "evidenceRefs": ["test/orders.regression.test.ts"]
+    }
+  ]
+}
+```
+
+全局测试通过不会自动关闭所有 `CHANGE-REG-*`。每个影响目标必须绑定覆盖对应原有业务、层级和场景的测试，或者由明确的运行时需求证据关闭。
 
 ## 6. 生成最终 Markdown 报告
 
@@ -195,6 +229,7 @@ reports/demo-final/artifact-manifest.json
 - 用例通过、失败、阻塞、部分、未执行统计；
 - P0 未关闭数量；
 - 需求 → 用例 → 状态 → 问题追踪；
+- Git 基线、影响模块和受影响原业务回归状态；
 - proof-ready 缺陷；
 - 复现步骤；
 - 初步代码位置；
@@ -297,7 +332,7 @@ CI 应以以下任一条件失败：
 默认先读取摘要，不要把完整机器归档直接放入模型上下文：
 
 ```text
-测试计划：test-plan-summary.json -> requirements.md -> developer-test-cases.md
+测试计划：test-plan-summary.json -> change-impact.md -> requirements.md -> developer-test-cases.md
 QA：brief.md -> qa-review.md -> 按需查询单个问题
 最终报告：test-execution-summary.json -> test-report.md
 ```
@@ -307,6 +342,7 @@ QA：brief.md -> qa-review.md -> 按需查询单个问题
 ```text
 qa-full-test-cases.md
 test-execution-details.md
+change-impact.json（只查询具体模块/目标）
 ```
 
 默认不要整体读取：

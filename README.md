@@ -7,9 +7,11 @@ FrontLens 是一套面向 Codex / LLM Agent 的**需求驱动测试工具与 Ski
         ↓
 结构化需求与验收标准
         ↓
+Git 基线差异与影响模块
+        ↓
 frontend / backend / api / source 测点
         ↓
-P0～P3 测试用例
+新需求 + 受影响原业务的 P0～P3 测试用例
         ↓
 开发 P0 阻塞自测 + QA 全量测试
         ↓
@@ -26,6 +28,7 @@ Markdown 报告与发布建议
 - 测试前端页面、接口、后端服务和相关源码，而不只检查页面是否能打开。
 - 只有实际执行且正确绑定到需求、层级和场景的证据才能判定通过。
 - 缺陷报告包含优先级、复现步骤、预期/实际结果、证据和可支持时的源码 `file:line`。
+- 自动比较当前变更与 Git 基础分支，分析直接/传播影响模块，并生成受影响原业务的定向回归用例。
 - 默认返回低 Token 摘要，完整证据保留在本地产物中。
 
 ## 组成
@@ -134,7 +137,35 @@ node dist/cli.js qa \
 - 因发现失败就重启、迁移、清库或重部署共享测试环境；
 - 要求所有项目使用固定 IP、端口或部署命令。
 
-服务只监听远端回环地址时，可以建立本轮临时 SSH tunnel；结束时只关闭该 tunnel。共享环境写测试必须先获得授权、生成 run ID、登记精确清理操作，并只删除本轮实际创建的记录 ID。
+服务只监听远端回环地址时，可以建立本轮临时 SSH tunnel；结束时只关闭该 tunnel。**用户提供或开放明确标记为 test/staging 的数据库，即视为已经授权本轮进行受控的业务数据读写，不再二次询问。** Skill 会先生成 run ID、登记精确清理操作，并只删除本轮实际创建的记录 ID。该默认授权不包含迁移、`DROP`、`TRUNCATE`、批量更新/删除或修改原有数据。
+
+创建业务数据时优先调用业务 API、Service 命令或项目已有 Seed/Fixture，以覆盖校验、状态流转和副作用；只有缺少业务入口时才直接写数据库。连接权限、必填业务前置或账号能力确实不足时，报告必须给出具体失败命令和缺失条件，不能再笼统询问“是否允许写测试数据”。
+
+## Git 变更影响与原业务回归
+
+提供 `sourceRoot` 时，`test-plan` 默认启用变更影响分析：
+
+1. 基础分支优先使用用户传入的 `--base-ref`；否则依次检测远端默认分支、`main`、`master`、`develop`。
+2. 使用 merge-base 比较提交差异，不把分支分叉后的无关提交误算为本次变更。
+3. 目标为当前 `HEAD` 时，默认同时包含 staged、unstaged 和 untracked 文件。
+4. 从变更文件、符号、路由、相对 import、相关测试和一至二跳引用中生成影响模块与业务流程。
+5. 生成带 `CHANGE-REG-*` 标识的原业务回归目标和 P0～P3 用例；高风险 P0 同时进入开发阻塞自测。
+6. 最终报告将“新需求验证”与“受影响原业务回归”分开显示。
+
+```bash
+node dist/cli.js test-plan \
+  --input docs/prd.md \
+  --source-root /path/to/project \
+  --base-ref origin/main \
+  --include-working-tree \
+  --output reports/test-plan
+```
+
+`--base-ref` 可以省略；项目不会写死 `main`。`--head-ref` 默认为 `HEAD`，可以用于检查指定提交或分支。只比较已经提交的两个 ref 时使用 `--no-working-tree`；确实不需要变更影响分析时使用 `--no-change-impact`。
+
+当 `sourceRoot` 指向 monorepo 子目录时，变更文件和计数只覆盖该子目录；工具会规范化 macOS `/tmp`、符号链接等真实路径差异，并在文件重命名移入/移出范围时同时检查旧路径。为避免报告占用过多 Token，`change-impact.md` 按风险优先最多展示 50 个文件、30 个模块和 30 个回归目标，完整有界结果保留在 `change-impact.json`。
+
+静态影响分析只负责选择回归范围，不能证明旧业务正常。`CHANGE-REG-*` 目标必须通过运行时证据或 `.frontlens/test-evidence.json` 中对应目标 ID 的自动化绑定实际执行；未执行时保持 `not-run`/`needs-input`，不会写成通过。
 
 单独生成纯后端测试计划：
 
@@ -161,12 +192,15 @@ node dist/cli.js test-plan \
   --input docs/prd.md \
   --source-root /path/to/project \
   --project-type auto \
+  --base-ref origin/main \
   --output reports/test-plan
 ```
 
 | 产物 | 内容 |
 | --- | --- |
 | `test-plan-summary.json` | 低 Token 计划摘要 |
+| `change-impact.md` | Git 基线、变更文件、影响模块和原业务回归摘要 |
+| `change-impact.json` | 完整机器可读影响图和 `CHANGE-REG-*` 目标 |
 | `requirements.md` | 结构化需求与分层测点 |
 | `developer-test-cases.md` | 开发提测前执行的 P0 阻塞用例 |
 | `qa-full-test-cases.md` | 测试工程师执行的 P0～P3 全量用例 |
@@ -204,6 +238,7 @@ node dist/cli.js qa \
 ```
 
 仓库全局测试通过只代表代码健康，不能批量替代每条需求的验收证据。
+原业务回归使用相同机制：把 `requirementIds` 设置为计划生成的 `CHANGE-REG-*` 目标 ID，并使用 `scenario: regression`；只有该目标对应的测试实际通过后，报告才会声明受影响原业务正常。
 
 ### 3. 生成最终报告
 
@@ -292,16 +327,19 @@ node dist/cli.js permissions repair `
 推荐按以下顺序读取产物：
 
 1. `test-plan-summary.json`
-2. `brief.md`
-3. `qa-review.md` 或 `test-report.md`
-4. 只针对失败/阻塞需求读取对应明细
+2. `change-impact.md`
+3. `brief.md`
+4. `qa-review.md` 或 `test-report.md`
+5. 只针对失败/阻塞需求和原业务回归目标读取对应明细
 
 默认不要把 `result.json`、`network.json`、`page-model.json`、`evidence-report.md`、`test-plan.json` 或 `test-execution-report.json` 整体放入模型上下文。CLI 的 `--json`、MCP 的 `detail=true` / `includeMarkdown=true` 仅在确实需要完整明细时使用。
 
 ## 安全与清理边界
 
-- 默认阻止未经授权的 `POST/PUT/PATCH/DELETE`。
+- 未明确为 test/staging 的环境默认阻止未经授权的 `POST/PUT/PATCH/DELETE`；用户提供或开放明确的测试数据库后，默认允许本轮自有记录的有界 CRUD，无需二次确认。
 - 不连接、测试或修改生产环境及生产数据库。
+- 测试数据库默认授权不包含迁移、`DROP`、`TRUNCATE`、宽泛更新/删除或修改原有记录；优先通过 UI/API/Service 执行业务写入。
+- 前端测试数据库写入使用步骤级 `allowMutating=true` 和最小 `safety.allowCreate/allowEdit/allowDelete/allowSubmit` 临时配置，同时保持 `blockMutatingRequests=true`；不因测试库授权而全局放开所有写请求。
 - 自动部署不能修改业务源码来制造测试通过。
 - 不停止已有进程，不执行宽泛 Docker/system 清理。
 - 共享测试环境只清理由本轮 run ID 登记并记录精确 ID 的数据。

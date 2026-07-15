@@ -1,7 +1,7 @@
 {
   "name": "frontlens",
   "version": "0.1.0",
-  "description": "AI-oriented frontend QA analyzer powered by Playwright.",
+  "description": "Requirement-driven QA planner, Git change-impact analyzer, and frontend/backend evidence reporter.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

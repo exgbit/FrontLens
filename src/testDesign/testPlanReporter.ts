@@ -12,6 +12,7 @@ function summary(result: TestPlanResult, audience: 'developer' | 'qa'): string {
 - 测点：${result.summary.testPointCount}
 - 本文用例：${cases.length}
 - P0/P1/P2/P3：${cases.filter((item) => item.priority === 'P0').length}/${cases.filter((item) => item.priority === 'P1').length}/${cases.filter((item) => item.priority === 'P2').length}/${cases.filter((item) => item.priority === 'P3').length}
+- Git 变更文件/影响模块/原业务回归用例：${result.summary.changeFileCount}/${result.summary.impactedModuleCount}/${result.summary.changeRegressionCaseCount}
 - 阻塞用例准备度：**${result.blockerCoverage.status}**（已生成/就绪 ${result.blockerCoverage.coveredCount}，不适用 ${result.blockerCoverage.notApplicableCount}，缺失 ${result.blockerCoverage.missingCount}）`;
 }
 
@@ -66,6 +67,13 @@ ${summary(result, audience)}
 | --- | --- | --- | --- | --- |
 ${result.blockerCoverage.items.map((item) => `| ${item.id} | ${item.category} | ${item.status} | ${markdownEscape(item.title)} | ${item.testCaseIds.join(', ') || '-'} |`).join('\n')}
 
+## Git 变更影响与原业务回归
+
+- 分析状态：**${result.changeImpact?.status ?? 'unavailable'}**
+- 基础分支/目标：${markdownEscape(result.changeImpact?.baseRef ?? '-')} → ${markdownEscape(result.changeImpact?.headRef ?? 'HEAD')}
+- 变更文件/影响模块/回归目标：${result.changeImpact?.changedFileCount ?? 0}/${result.changeImpact?.modules.length ?? 0}/${result.changeImpact?.regressionTargets.length ?? 0}
+- 静态影响范围只用于选择用例；是否正常必须以本文件中 change-impact 用例的实际执行证据为准。
+
 ## 测试用例
 
 ${cases.map(caseDetails).join('\n---\n\n') || '没有适用用例。'}
@@ -115,6 +123,12 @@ ${result.testPoints.map((item) => `| ${item.id} | ${item.requirementId} | ${item
 ## 待确认项
 
 ${result.reviewQuestions.map((item) => `- ${markdownEscape(item)}`).join('\n') || '- 无'}
+
+## Git 变更影响摘要
+
+| 模块 | 类型 | 直接文件 | 传播文件 | 原有业务回归目标 | 置信度 |
+| --- | --- | ---: | ---: | --- | --- |
+${result.changeImpact?.modules.map((item) => `| ${markdownEscape(item.name)} | ${item.kinds.join(', ')} | ${item.directFiles.length} | ${item.dependentFiles.length} | ${markdownEscape(item.businessFlows.join('；'))} | ${item.confidence} |`).join('\n') || '| - | - | 0 | 0 | 未生成 | - |'}
 `;
 }
 
@@ -136,5 +150,14 @@ export function formatTestPlanTraceability(result: TestPlanResult): string {
 | 需求 | 优先级 | 标题 | 覆盖层级 | 测点 | 测试用例 | 场景缺口 |
 | --- | --- | --- | --- | --- | --- | --- |
 ${rows.join('\n') || '| - | - | 未解析到需求 | - | - | - | 阻塞 |'}
+
+## Git 变更 → 影响模块 → 原业务回归用例
+
+| 影响目标 | 模块 | 优先级 | 直接变更 | 传播文件 | 业务流程 | 测试用例 |
+| --- | --- | --- | --- | --- | --- | --- |
+${result.changeImpact?.regressionTargets.map((target) => {
+    const cases = result.testCases.filter((item) => item.changeImpactIds?.includes(target.id));
+    return `| ${target.id} | ${markdownEscape(target.module)} | ${target.priority} | ${target.changedFiles.map(markdownEscape).join(', ')} | ${target.dependentFiles.map(markdownEscape).join(', ') || '-'} | ${markdownEscape(target.businessFlows.join('；'))} | ${cases.map((item) => item.id).join(', ') || '-'} |`;
+  }).join('\n') || '| - | - | - | - | - | 未生成 | - |'}
 `;
 }

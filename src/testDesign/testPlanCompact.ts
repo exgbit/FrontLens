@@ -12,6 +12,27 @@ export function compactTestPlan(plan: TestPlanResult): unknown {
     status: plan.status,
     source: plan.source,
     summary: plan.summary,
+    changeImpact: plan.changeImpact ? {
+      status: plan.changeImpact.status,
+      baseRef: plan.changeImpact.baseRef,
+      baseRefSource: plan.changeImpact.baseRefSource,
+      headRef: plan.changeImpact.headRef,
+      mergeBase: plan.changeImpact.mergeBase,
+      workingTreeIncluded: plan.changeImpact.workingTreeIncluded,
+      changedFileCount: plan.changeImpact.changedFileCount,
+      impactedModuleCount: plan.changeImpact.modules.length,
+      regressionTargetCount: plan.changeImpact.regressionTargets.length,
+      impactedModulesSample: plan.changeImpact.modules.slice(0, SAMPLE_LIMIT).map((item) => ({
+        name: item.name,
+        kinds: item.kinds,
+        directFileCount: item.directFiles.length,
+        dependentFileCount: item.dependentFiles.length,
+        confidence: item.confidence,
+        businessFlows: item.businessFlows.slice(0, 5)
+      })),
+      impactedModulesSampleTruncated: plan.changeImpact.modules.length > SAMPLE_LIMIT,
+      warnings: plan.changeImpact.warnings.slice(0, 5)
+    } : undefined,
     blockerCoverage: {
       status: plan.blockerCoverage.status,
       coveredCount: plan.blockerCoverage.coveredCount,
@@ -57,6 +78,23 @@ export function compactTestPlanExecution(report: TestPlanExecutionReport, plan: 
     status: report.status,
     planStatus: report.planStatus,
     summary: report.summary,
+    changeRegression: {
+      status: report.changeRegression.status,
+      totalCount: report.changeRegression.totalCount,
+      passedCount: report.changeRegression.passedCount,
+      failedCount: report.changeRegression.failedCount,
+      blockedCount: report.changeRegression.blockedCount,
+      partialCount: report.changeRegression.partialCount,
+      notExecutedCount: report.changeRegression.notExecutedCount,
+      itemsSample: report.changeRegression.items.slice(0, SAMPLE_LIMIT).map((item) => ({
+        targetId: item.targetId,
+        module: item.module,
+        priority: item.priority,
+        status: item.status,
+        testCaseId: item.testCaseId
+      })),
+      itemsSampleTruncated: report.changeRegression.items.length > SAMPLE_LIMIT
+    },
     releaseRecommendation: report.releaseRecommendation,
     requirementCount: report.requirementTraceability.length,
     requirementsSample: report.requirementTraceability.slice(0, REQUIREMENT_SAMPLE_LIMIT).map((item) => ({

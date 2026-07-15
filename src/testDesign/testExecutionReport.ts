@@ -69,10 +69,11 @@ function endpointEvidenceRefs(endpoints: ApiEndpointContract[]): string[] {
 }
 
 function scopedTestEvidence(planCase: PlannedTestCase, result: QaResult): ExecutionEvidence | undefined {
+  const scopedIds = [...planCase.requirementIds, ...(planCase.changeImpactIds ?? [])];
   const bindings = (result.sourceHealth.testEvidence ?? []).filter((binding) =>
     binding.layer === planCase.layer
     && binding.scenarios.includes(planCase.scenario)
-    && binding.requirementIds.some((id) => planCase.requirementIds.includes(id)));
+    && binding.requirementIds.some((id) => scopedIds.includes(id)));
   if (!bindings.length) return undefined;
   const evidenceRefs = uniq(bindings.flatMap((binding) => [binding.id, ...binding.evidenceRefs]));
   const summary = bindings.map((binding) => `${binding.id}:${binding.status}`).join(', ');
@@ -129,11 +130,12 @@ function sourceExecution(planCase: PlannedTestCase, requirement: RequirementWiza
 }
 
 function executionByLayer(planCase: PlannedTestCase, requirement: RequirementWizardCandidate | undefined, result: QaResult): ExecutionEvidence | undefined {
-  const coverage = result.requirementCoverage.items.filter((item) => planCase.requirementIds.includes(item.id));
+  const scopedIds = [...planCase.requirementIds, ...(planCase.changeImpactIds ?? [])];
+  const coverage = result.requirementCoverage.items.filter((item) => scopedIds.includes(item.id));
   const interactionIds = new Set(coverage.flatMap((item) => item.evidence.interactionTestIds));
   const journeyIds = new Set(coverage.flatMap((item) => item.evidence.journeyIds));
   const interactions = result.interactionTests.filter((item) => interactionIds.has(item.id));
-  const journeys = result.journeyTests.filter((item) => journeyIds.has(item.id) || item.requirementIds?.some((id) => planCase.requirementIds.includes(id)));
+  const journeys = result.journeyTests.filter((item) => journeyIds.has(item.id) || item.requirementIds?.some((id) => scopedIds.includes(id)));
   const endpoints = matchingEndpoints(planCase, requirement, result);
   const exceptionPatterns = uniq([...(requirement?.apiPatterns ?? []), planCase.automationBinding ?? ''])
     .map(parseApiPattern)
@@ -209,7 +211,8 @@ function issueIdsForEvidence(result: QaResult, evidenceRefs: string[]): string[]
 }
 
 function statusForRequirement(planCase: PlannedTestCase, requirement: RequirementWizardCandidate | undefined, result: QaResult): PlannedCaseExecution {
-  const requirements = result.requirementCoverage.items.filter((item) => planCase.requirementIds.includes(item.id));
+  const scopedIds = [...planCase.requirementIds, ...(planCase.changeImpactIds ?? [])];
+  const requirements = result.requirementCoverage.items.filter((item) => scopedIds.includes(item.id));
   let evidence = executionByLayer(planCase, requirement, result);
   if (!evidence && requirements.some((item) => item.status === 'not-covered')) {
     evidence = { status: planCase.priority === 'P0' ? 'blocked' : 'needs-input', actual: '需求未覆盖，缺少可执行断言、角色态、测试数据或环境。', evidenceRefs: requirements.map((item) => item.id) };
@@ -256,7 +259,28 @@ function systemCaseExecution(planCase: PlannedTestCase, result: QaResult): Plann
 
 export function buildTestPlanExecutionReport(plan: TestPlanResult, result: QaResult): TestPlanExecutionReport {
   const requirementById = new Map(plan.requirements.map((item, index) => [item.id ?? `REQ-${index + 1}`, item]));
-  const executions = plan.testCases.map((item) => item.requirementIds.length ? statusForRequirement(item, requirementById.get(item.requirementIds[0]), result) : systemCaseExecution(item, result));
+  for (const target of plan.changeImpact?.regressionTargets ?? []) {
+    requirementById.set(target.id, {
+      id: target.id,
+      title: target.title,
+      description: target.reason,
+      priority: target.priority,
+      source: 'inferred',
+      apiPatterns: target.apiPatterns,
+      preconditions: ['基础分支、原有业务入口和测试数据已准备。'],
+      businessRules: [target.reason],
+      acceptanceCriteria: target.expected,
+      sourceScope: [...target.changedFiles, ...target.dependentFiles],
+      confidence: target.confidence,
+      sourceText: target.reason,
+      rationale: ['由 Git 变更和静态依赖传播生成。'],
+      needsReview: false,
+      reviewNotes: []
+    });
+  }
+  const executions = plan.testCases.map((item) => item.requirementIds.length || item.changeImpactIds?.length
+    ? statusForRequirement(item, requirementById.get(item.requirementIds[0] ?? item.changeImpactIds?.[0] ?? ''), result)
+    : systemCaseExecution(item, result));
   const count = (status: TestCaseStatus) => executions.filter((item) => item.status === status).length;
   const p0Ids = new Set(plan.testCases.filter((item) => item.priority === 'P0').map((item) => item.id));
   const p0OpenCount = executions.filter((item) => p0Ids.has(item.testCaseId) && item.status !== 'passed').length;
@@ -298,6 +322,33 @@ export function buildTestPlanExecutionReport(plan: TestPlanResult, result: QaRes
   const notExecutedCount = count('needs-input') + count('skipped');
   const globalSourceBlocked = result.sourceHealth.status === 'failed';
   const status: TestPlanExecutionReport['status'] = plan.status === 'blocked' || p0OpenCount || blockedCount || globalSourceBlocked ? 'blocked' : failedCount ? 'failed' : plan.status !== 'ready' || partialCount || notExecutedCount ? 'partial' : 'passed';
+  const changeRegressionItems = plan.testCases.flatMap((testCase) => (testCase.changeImpactIds ?? []).map((targetId) => {
+    const target = plan.changeImpact?.regressionTargets.find((item) => item.id === targetId);
+    const execution = executions.find((item) => item.testCaseId === testCase.id)!;
+    return {
+      targetId,
+      module: target?.module ?? testCase.tags.find((item) => item.startsWith('module:'))?.slice('module:'.length) ?? 'unknown',
+      title: target?.title ?? testCase.title,
+      priority: testCase.priority,
+      testCaseId: testCase.id,
+      status: execution.status,
+      actual: execution.actual,
+      evidenceRefs: execution.evidenceRefs
+    };
+  }));
+  const changeCount = (value: TestCaseStatus) => changeRegressionItems.filter((item) => item.status === value).length;
+  const changeNotExecutedCount = changeCount('needs-input') + changeCount('skipped');
+  const changeRegressionStatus: TestPlanExecutionReport['changeRegression']['status'] = changeRegressionItems.length === 0
+    ? 'not-applicable'
+    : changeCount('failed') > 0
+      ? 'failed'
+      : changeCount('blocked') > 0
+        ? 'blocked'
+        : changeNotExecutedCount === changeRegressionItems.length
+          ? 'not-run'
+          : changeCount('partial') > 0 || changeNotExecutedCount > 0
+            ? 'partial'
+            : 'passed';
   return {
     generatedAt: new Date().toISOString(),
     status,
@@ -316,11 +367,23 @@ export function buildTestPlanExecutionReport(plan: TestPlanResult, result: QaRes
     },
     executions,
     requirementTraceability,
+    changeRegression: {
+      status: changeRegressionStatus,
+      totalCount: changeRegressionItems.length,
+      passedCount: changeCount('passed'),
+      failedCount: changeCount('failed'),
+      blockedCount: changeCount('blocked'),
+      partialCount: changeCount('partial'),
+      notExecutedCount: changeNotExecutedCount,
+      items: changeRegressionItems
+    },
     defectIds: result.defectTickets.items.map((item) => item.id),
     releaseRecommendation: status === 'passed'
       ? '测试计划范围内用例已通过，可以进入发布流程。'
       : p0OpenCount > 0
         ? `不建议提测或发布：仍有 ${p0OpenCount} 条 P0 用例未通过。`
+        : changeRegressionStatus !== 'passed' && changeRegressionStatus !== 'not-applicable'
+          ? `受影响原业务回归状态为 ${changeRegressionStatus}；完成定向回归并保留独立证据后再发布。`
         : globalSourceBlocked
           ? '不建议提测或发布：存在未归因到单条需求的全局代码健康阻塞。'
           : failedCount > 0
@@ -339,6 +402,10 @@ export function formatTestPlanExecutionReport(report: TestPlanExecutionReport, p
   const issueCell = (values: string[]): string => markdownEscape(truncateMiddle(values.join(', ').replace(/\s+/g, ' ') || '-', 180));
   const executionRows = report.executions.map((item) => `| ${item.testCaseId} | ${priorityById.get(item.testCaseId) ?? '-'} | ${item.status} | ${markdownEscape(titleById.get(item.testCaseId) ?? '-')} | ${markdownEscape(item.actual)} | ${issueCell(item.issueIds)} |`);
   const traceRows = report.requirementTraceability.map((item) => `| ${item.requirementId} | ${markdownEscape(item.title)} | ${item.implementationVerdict} | ${item.verificationVerdict} | ${item.testCaseIds.join(', ')} | ${[...new Set(item.statuses)].join(', ')} | ${issueCell(item.issueIds)} |`);
+  const changeRows = report.changeRegression.items.map((item) => {
+    const target = plan.changeImpact?.regressionTargets.find((entry) => entry.id === item.targetId);
+    return `| ${item.targetId} | ${markdownEscape(item.module)} | ${item.priority} | ${item.status} | ${markdownEscape(item.title)} | ${markdownEscape(target?.businessFlows.join('；') ?? '-')} | ${markdownEscape(item.actual)} |`;
+  });
   const defects = result.defectTickets.items.map((item) => `### ${item.id} ${markdownEscape(item.title)}
 
 - 严重程度/优先级：${item.severity}/${item.priority}
@@ -383,6 +450,7 @@ ${item.reproduceSteps.map((step, index) => `${index + 1}. ${markdownEscape(step)
 - 通过/失败/阻塞/部分/未执行：${report.summary.passedCount}/${report.summary.failedCount}/${report.summary.blockedCount}/${report.summary.partialCount}/${report.summary.notExecutedCount}
 - P0 未关闭：${report.summary.p0OpenCount}
 - 需求完整覆盖/存在缺口：${report.summary.requirementCoveredCount}/${report.summary.requirementGapCount}
+- 受影响原业务回归：**${report.changeRegression.status}**（通过 ${report.changeRegression.passedCount}/${report.changeRegression.totalCount}，未执行 ${report.changeRegression.notExecutedCount}）
 - 缺陷：${report.summary.defectCount}
 
 ## 2. 用例执行结果
@@ -397,15 +465,28 @@ ${executionRows.join('\n')}
 | --- | --- | --- | --- | --- | --- | --- |
 ${traceRows.join('\n')}
 
-## 4. 缺陷与复现步骤
+## 4. Git 变更影响与原业务回归
+
+- 基础分支/目标：${markdownEscape(plan.changeImpact?.baseRef ?? '-')} → ${markdownEscape(plan.changeImpact?.headRef ?? 'HEAD')}
+- 变更文件/影响模块：${plan.changeImpact?.changedFileCount ?? 0}/${plan.changeImpact?.modules.length ?? 0}
+- 回归状态：**${report.changeRegression.status}**
+- 直接/传播文件明细：${markdownEscape(plan.artifacts?.changeImpact ?? '见测试计划中的 changeImpact')}
+
+| 影响目标 | 模块 | 优先级 | 状态 | 回归项 | 原有业务 | 实际结果 |
+| --- | --- | --- | --- | --- | --- | --- |
+${changeRows.join('\n') || '| - | - | - | not-applicable | 没有识别到代码变更回归目标 | - | - |'}
+
+> 静态影响分析不是通过证据。只有状态为 passed 且存在独立运行证据的目标，才能声明对应原业务正常。
+
+## 5. 缺陷与复现步骤
 
 ${defects || '没有生成 proof-ready 缺陷工单。'}
 
-## 5. 失败与待确认问题
+## 6. 失败与待确认问题
 
 ${pendingIssues || '没有与失败/部分用例直接绑定的待确认 raw issue。'}
 
-## 6. 风险和未覆盖项
+## 7. 风险和未覆盖项
 
 ${report.executions.filter((item) => item.status !== 'passed').map((item) => `- ${item.testCaseId} [${item.status}] ${markdownEscape(item.actual)}`).join('\n') || '- 无'}
 `;
@@ -423,6 +504,10 @@ export function formatCompactTestPlanExecutionReport(report: TestPlanExecutionRe
   const p0Rows = openP0.map((item) => {
     const planned = caseById.get(item.testCaseId);
     return `| ${item.testCaseId} | ${planned?.layer ?? '-'} | ${planned?.scenario ?? '-'} | ${item.status} | ${markdownEscape(truncateMiddle(item.actual, 180))} |`;
+  });
+  const changeRows = report.changeRegression.items.slice(0, 20).map((item) => {
+    const target = plan.changeImpact?.regressionTargets.find((entry) => entry.id === item.targetId);
+    return `| ${item.targetId} | ${markdownEscape(item.module)} | ${item.priority} | ${item.status} | ${target?.changedFiles.length ?? 0}/${target?.dependentFiles.length ?? 0} | ${markdownEscape(truncateMiddle(target?.businessFlows.slice(0, 3).join('；') ?? '-', 180))} | ${markdownEscape(truncateMiddle(item.actual, 160))} |`;
   });
   const defects = result.defectTickets.items.slice(0, 10).map((item) => `### ${item.id} ${markdownEscape(item.title)}
 
@@ -445,6 +530,7 @@ export function formatCompactTestPlanExecutionReport(report: TestPlanExecutionRe
 - 用例：${report.summary.totalCount}；通过 ${report.summary.passedCount}；失败 ${report.summary.failedCount}；阻塞 ${report.summary.blockedCount}；部分 ${report.summary.partialCount}；未执行 ${report.summary.notExecutedCount}
 - P0 未关闭：${report.summary.p0OpenCount}
 - 需求完整覆盖/缺口：${report.summary.requirementCoveredCount}/${report.summary.requirementGapCount}
+- 受影响原业务回归：**${report.changeRegression.status}**（${report.changeRegression.passedCount}/${report.changeRegression.totalCount} 通过）
 - 已确认缺陷：${report.summary.defectCount}
 
 ## 2. 需求实现结论
@@ -463,11 +549,23 @@ ${p0Rows.join('\n') || '| - | - | - | - | 无 |'}
 
 ${report.summary.p0OpenCount > openP0.length ? `其余 ${report.summary.p0OpenCount - openP0.length} 条请查看完整明细。` : ''}
 
-## 4. 已确认缺陷
+## 4. 受影响原业务回归
+
+- 基础分支/目标：${markdownEscape(plan.changeImpact?.baseRef ?? '-')} → ${markdownEscape(plan.changeImpact?.headRef ?? 'HEAD')}
+- 变更文件/影响模块：${plan.changeImpact?.changedFileCount ?? 0}/${plan.changeImpact?.modules.length ?? 0}
+- 直接/传播文件明细：${markdownEscape(plan.artifacts?.changeImpact ?? '见测试计划中的 changeImpact')}
+
+| 影响目标 | 模块 | 优先级 | 状态 | 直接/传播文件 | 需要回归的原有业务 | 实际结果 |
+| --- | --- | --- | --- | ---: | --- | --- |
+${changeRows.join('\n') || '| - | - | - | not-applicable | 0/0 | 没有识别到代码变更回归目标 | - |'}
+
+${report.changeRegression.items.length > changeRows.length ? `其余 ${report.changeRegression.items.length - changeRows.length} 条请查看完整明细。` : ''}
+
+## 5. 已确认缺陷
 
 ${defects || '无 proof-ready 缺陷。'}
 
-## 5. 待确认问题
+## 6. 待确认问题
 
 ${pending.join('\n') || '- 无与失败/部分用例直接绑定的待确认问题。'}
 `;

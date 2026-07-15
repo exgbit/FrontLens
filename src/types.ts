@@ -229,6 +229,82 @@ export interface PlannedTestCase {
   automationBinding?: string;
   sourceRefs: string[];
   tags: string[];
+  /** Change-impact regression targets covered by this case. Kept separate from PRD requirement ids. */
+  changeImpactIds?: string[];
+}
+
+export type ChangeImpactStatus = 'analyzed' | 'partial' | 'no-changes' | 'unavailable' | 'disabled';
+export type ChangeImpactConfidence = 'high' | 'medium' | 'low';
+export type ChangeFileStatus = 'added' | 'modified' | 'deleted' | 'renamed' | 'copied' | 'untracked';
+export type ChangeFileKind = 'frontend' | 'api' | 'service' | 'data' | 'auth' | 'state' | 'shared' | 'config' | 'test' | 'docs' | 'other';
+
+export interface ChangeImpactFile {
+  path: string;
+  previousPath?: string;
+  status: ChangeFileStatus;
+  additions?: number;
+  deletions?: number;
+  kind: ChangeFileKind;
+  module: string;
+  changedSymbols: string[];
+  apiPatterns: string[];
+  directRisk: RequirementPriority;
+  source: 'committed' | 'staged' | 'unstaged' | 'untracked';
+}
+
+export interface ChangeImpactModule {
+  name: string;
+  kinds: ChangeFileKind[];
+  directFiles: string[];
+  dependentFiles: string[];
+  relatedTests: string[];
+  apiPatterns: string[];
+  businessFlows: string[];
+  risks: string[];
+  confidence: ChangeImpactConfidence;
+}
+
+export interface ChangeRegressionTarget {
+  id: string;
+  module: string;
+  title: string;
+  priority: RequirementPriority;
+  layer: TestLayer;
+  reason: string;
+  changedFiles: string[];
+  dependentFiles: string[];
+  relatedTests: string[];
+  apiPatterns: string[];
+  businessFlows: string[];
+  steps: string[];
+  expected: string[];
+  confidence: ChangeImpactConfidence;
+}
+
+export interface ChangeImpactResult {
+  enabled: boolean;
+  status: ChangeImpactStatus;
+  generatedAt: string;
+  repositoryRoot?: string;
+  baseRef?: string;
+  baseRefSource?: 'explicit' | 'remote-default' | 'fallback';
+  headRef: string;
+  mergeBase?: string;
+  includeWorkingTree: boolean;
+  workingTreeIncluded: boolean;
+  changedFileCount: number;
+  committedFileCount: number;
+  workingTreeFileCount: number;
+  files: ChangeImpactFile[];
+  modules: ChangeImpactModule[];
+  regressionTargets: ChangeRegressionTarget[];
+  warnings: string[];
+  limits: {
+    maxChangedFiles: number;
+    maxSourceFiles: number;
+    maxDiffBytes: number;
+    truncated: boolean;
+  };
 }
 
 export interface BlockerCoverageItem {
@@ -257,6 +333,8 @@ export interface TestPlanResult {
   requirements: RequirementWizardCandidate[];
   testPoints: TestPointItem[];
   testCases: PlannedTestCase[];
+  /** Git baseline delta, propagated module impact, and legacy-business regression scope. */
+  changeImpact?: ChangeImpactResult;
   blockerCoverage: {
     status: 'drafted' | 'ready' | 'incomplete';
     coveredCount: number;
@@ -279,6 +357,9 @@ export interface TestPlanResult {
     apiCount: number;
     sourceCount: number;
     needsReviewRequirementCount: number;
+    changeFileCount: number;
+    impactedModuleCount: number;
+    changeRegressionCaseCount: number;
   };
   reviewQuestions: string[];
   artifacts?: {
@@ -289,6 +370,8 @@ export interface TestPlanResult {
     developerCases: string;
     qaCases: string;
     traceability: string;
+    changeImpact?: string;
+    changeImpactJson?: string;
   };
 }
 
@@ -327,6 +410,25 @@ export interface TestPlanExecutionReport {
     implementationVerdict: 'implemented' | 'implementation-mismatch' | 'unable-to-verify' | 'requirement-needs-review';
     verificationVerdict: 'verified' | 'partially-verified' | 'not-verified' | 'blocked' | 'requirement-needs-review';
   }>;
+  changeRegression: {
+    status: 'passed' | 'failed' | 'blocked' | 'partial' | 'not-run' | 'not-applicable';
+    totalCount: number;
+    passedCount: number;
+    failedCount: number;
+    blockedCount: number;
+    partialCount: number;
+    notExecutedCount: number;
+    items: Array<{
+      targetId: string;
+      module: string;
+      title: string;
+      priority: RequirementPriority;
+      testCaseId: string;
+      status: TestCaseStatus;
+      actual: string;
+      evidenceRefs: string[];
+    }>;
+  };
   defectIds: string[];
   releaseRecommendation: string;
 }

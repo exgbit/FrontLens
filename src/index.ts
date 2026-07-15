@@ -27,6 +27,8 @@ export { formatDeveloperTestCases, formatQaTestCases, formatRequirementDesign, f
 export { buildTestPlanExecutionReport, formatTestPlanExecutionReport } from './testDesign/testExecutionReport.js';
 export { compactTestPlan, compactTestPlanExecution } from './testDesign/testPlanCompact.js';
 export { formatCompactTestPlanExecutionReport } from './testDesign/testExecutionReport.js';
+export { analyzeGitChangeImpact, formatChangeImpactMarkdown } from './changeImpact/gitChangeImpact.js';
+export type { AnalyzeGitChangeImpactInput, GitCommandRunner } from './changeImpact/gitChangeImpact.js';
 export { buildProfessionalSummary } from './summary/professionalSummary.js';
 export { buildScopeReview, createEmptyScopeReview } from './product/scopeReview.js';
 export { buildProductContextSuggestion, formatProductContextSuggestion } from './product/productContextSuggestion.js';

@@ -178,15 +178,19 @@ function listTools(): Record<string, unknown> {
       },
       {
         name: 'frontlens_test_plan',
-        description: 'Convert a PRD into structured requirements, frontend/backend/API/source test points, complete prioritized cases, and a mandatory P0 developer subset.',
+        description: 'Convert a PRD plus Git baseline delta into structured requirements, impacted modules/business flows, complete prioritized cases, legacy-business regression targets, and a mandatory P0 developer subset.',
         inputSchema: schema({
           inputPath: { type: 'string', description: 'Markdown/text PRD path.' },
           input: { type: 'string', description: 'Alias for inputPath.' },
           text: { type: 'string', description: 'Inline PRD text.' },
           outputDir: { type: 'string', description: 'Optional directory for test-plan.json and Markdown artifacts.' },
           output: { type: 'string', description: 'Alias for outputDir.' },
-          sourceRoot: { type: 'string', description: 'Optional implementation repository root recorded in the plan.' },
+          sourceRoot: { type: 'string', description: 'Optional implementation repository root used for project detection and Git change-impact analysis.' },
           projectType: { type: 'string', enum: ['auto', 'frontend', 'backend', 'fullstack'], description: 'Project shape. auto detects bounded source markers; backend prevents fabricated UI/browser cases.' },
+          baseRef: { type: 'string', description: 'Optional Git baseline ref. Defaults to remote HEAD, main, master, then develop.' },
+          headRef: { type: 'string', description: 'Optional Git target ref. Defaults to HEAD.' },
+          includeWorkingTree: { type: 'boolean', description: 'Include staged, unstaged, and untracked changes when headRef is current HEAD. Default: true.' },
+          changeImpact: { type: 'boolean', description: 'Enable Git change-impact and legacy-business regression generation. Default: true.' },
           prefix: { type: 'string', description: 'Requirement id prefix.' },
           detail: { type: 'boolean', description: 'Return the full expanded plan. Defaults to a low-token summary.' }
         })
@@ -737,7 +741,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
       return textContent(args.detail === true ? result : compactRequirementWizard(result));
     }
     case 'frontlens_test_plan': {
-      const args = validateArgs(params.arguments ?? {}, ['inputPath', 'input', 'text', 'outputDir', 'output', 'sourceRoot', 'projectType', 'prefix', 'detail']);
+      const args = validateArgs(params.arguments ?? {}, ['inputPath', 'input', 'text', 'outputDir', 'output', 'sourceRoot', 'projectType', 'baseRef', 'headRef', 'includeWorkingTree', 'changeImpact', 'prefix', 'detail']);
       const inputPath = typeof args.inputPath === 'string' ? args.inputPath : typeof args.input === 'string' ? args.input : undefined;
       const text = typeof args.text === 'string' ? args.text : undefined;
       if ((!inputPath || !inputPath.trim()) && (!text || !text.trim())) throw new RpcError(-32602, 'Missing inputPath/input or text for frontlens_test_plan.');
@@ -747,14 +751,20 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
         outputDir: typeof args.outputDir === 'string' ? args.outputDir : typeof args.output === 'string' ? args.output : undefined,
         sourceRoot: typeof args.sourceRoot === 'string' ? args.sourceRoot : undefined,
         prefix: typeof args.prefix === 'string' ? args.prefix : undefined,
-        projectType: typeof args.projectType === 'string' ? args.projectType as 'auto' | 'frontend' | 'backend' | 'fullstack' : undefined
+        projectType: typeof args.projectType === 'string' ? args.projectType as 'auto' | 'frontend' | 'backend' | 'fullstack' : undefined,
+        baseRef: typeof args.baseRef === 'string' ? args.baseRef : undefined,
+        headRef: typeof args.headRef === 'string' ? args.headRef : undefined,
+        includeWorkingTree: typeof args.includeWorkingTree === 'boolean' ? args.includeWorkingTree : undefined,
+        changeImpact: typeof args.changeImpact === 'boolean' ? args.changeImpact : undefined
       });
       return textContent(args.detail === true ? plan : compactTestPlan(plan));
     }
     case 'frontlens_test_report': {
       const args = validateArgs(params.arguments ?? {}, ['plan', 'report', 'outputDir', 'output', 'detail', 'includeMarkdown'], ['plan', 'report']);
       const plan = JSON.parse(await readFile(requireString(args, 'plan'), 'utf8')) as TestPlanResult;
-      if (plan.schemaVersion !== '1.0' || !Array.isArray(plan.testCases)) throw new RpcError(-32602, 'Invalid test plan. Generate it with frontlens_test_plan.');
+      if (plan.schemaVersion !== '1.0' || !Array.isArray(plan.testCases) || !Array.isArray(plan.requirements)) {
+        throw new RpcError(-32602, 'Invalid test plan. Generate it with frontlens_test_plan.');
+      }
       const qaResult = await readResult(requireString(args, 'report'));
       const execution = buildTestPlanExecutionReport(plan, qaResult);
       const markdown = formatCompactTestPlanExecutionReport(execution, plan, qaResult);
@@ -777,7 +787,7 @@ async function callTool(params: ToolCallParams): Promise<Record<string, unknown>
           writeJson(artifacts.manifest, {
             generatedAt: execution.generatedAt,
             recommendedReadOrder: [artifacts.summary, artifacts.markdown],
-            readOnDemand: [artifacts.details],
+            readOnDemand: [artifacts.details, plan.artifacts?.changeImpact, plan.artifacts?.changeImpactJson].filter(Boolean),
             avoidLoadingIntoLlmByDefault: [artifacts.json, requireString(args, 'report'), requireString(args, 'plan')]
           })
         ]);

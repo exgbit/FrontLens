@@ -1,4 +1,4 @@
 interface:
   display_name: "Frontend QA"
   short_description: "SME-standard frontend QA"
-  default_prompt: "Use $frontend-qa to run low-token SME-standard frontend QA for a page, with core regression, release risks, permission matrix, defect priorities, non-fix decisions, and release acceptability; route performance/security/visual/mobile/automation/forensic needs to dedicated specialty skills."
+  default_prompt: "Use $frontend-qa to run low-token SME-standard frontend QA for a page; when PRD and source are available, compare the Git change with the detected base branch, map impacted modules, execute original-business regression targets, then report core regression, release risks, permissions, defect priorities, non-fix decisions, and release acceptability."

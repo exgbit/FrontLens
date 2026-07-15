@@ -1,6 +1,6 @@
 ---
 name: frontend-qa
-description: "Run low-token FrontLens SME-standard frontend QA for a live page with source-aware triage. Use when the user asks to test, QA, audit, inspect, or review a frontend URL/page and wants practical small/mid-size-business output: core regression checklist, release risks, historical-bug regression needs, permission matrix, defect priorities, non-fix decisions, and release acceptability. Default scope excludes deep performance, full security, visual diff, mobile matrix, SEO, realtime, automation, and forensic evidence unless explicitly requested; route those to the dedicated frontend-qa-* specialty skills."
+description: "Run low-token FrontLens SME-standard frontend QA for a live page with source-aware triage and, when PRD/source are provided, Git base-branch change impact plus regression of affected existing business. Use when the user asks to test, QA, audit, inspect, or review a frontend URL/page and wants practical small/mid-size-business output: core regression checklist, release risks, historical/impact regression needs, permission matrix, defect priorities, non-fix decisions, and release acceptability. Default scope excludes deep performance, full security, visual diff, mobile matrix, SEO, realtime, automation, and forensic evidence unless explicitly requested; route those to the dedicated frontend-qa-* specialty skills."
 ---
 
 # Frontend QA
@@ -46,6 +46,8 @@ Run only what affects practical release decisions:
 - Basic a11y only: missing accessible names/labels/focus blockers that are cheap and clear
 - Build/typecheck/lint when project scripts exist and user allowed local code checks
 - Product/requirement gaps: mark as needs-input, not as defects
+- Git change impact when PRD + sourceRoot are available: compare with the detected/default base branch, map changed files to directly and transitively affected modules, and include the generated original-business regression targets in the core regression checklist
+- Bounded business-data CRUD when the user supplies or grants access to a database explicitly identified as test/staging: create only run-owned records with unique IDs, exercise them through the UI/API where possible, assert persistence, and clean those exact IDs without asking for a second write confirmation
 
 ## Default exclusions
 
@@ -75,20 +77,30 @@ Never open large raw artifacts by default:
 
 ## Workflow
 
-1. Resolve URL, source path, output directory, and whether requirements or historical bugs were provided.
+1. Resolve URL, source path, output directory, requirements/historical bugs, and any declared Git base ref.
 2. Ask module selection with SME standard preselected unless modules were specified.
 3. If target is local/private and source path is provided, build/start/refresh the local dev or preview server only when needed; do not modify business code.
-4. Run FrontLens from the repo root with the safest compact SME profile:
+4. When PRD and sourceRoot are available, generate the requirement and change-impact plan first. Do not hardcode `main`; pass `--base-ref` only when declared, otherwise use automatic remote-default/main/master/develop detection. Current HEAD includes staged, unstaged, and untracked files by default:
+
+   ```bash
+   node dist/cli.js test-plan --input "<PRD>" --source-root "<SOURCE>" --project-type auto --output "<REPORT>/plan"
+   ```
+
+   Read `test-plan-summary.json` then `change-impact.md`. Put generated `CHANGE-REG-*` cases into the existing **Core regression checklist** rather than adding a noisy report section. Static changed/dependent-file analysis selects scope but never proves that existing business behavior passed.
+5. Run FrontLens from the repo root with the safest compact SME profile:
 
    ```bash
    node dist/cli.js qa --url "<URL>" --output "reports/frontlens/<name>" --report-profile executive --sme --json-summary
    ```
 
-   Add `--source-root <path>` when provided. Add `--source-run-scripts --source-scripts "typecheck,lint"` only when dependencies exist and the user allowed local checks. If an explicitly identified local/private test target fails with `ERR_CERT_AUTHORITY_INVALID`, `ERR_CERT_COMMON_NAME_INVALID`, or an equivalent certificate error, rerun with `--ignore-https-errors`; never use this flag silently for a public/production target. The resulting TLS-bypass warning remains a deployment risk rather than a passed security check. If the installed CLI does not support `--sme` or `--json-summary`, use the fallback flags: `--no-trace --no-security --no-coverage --no-realtime --no-p2 --json`.
-5. Use the `--json-summary` stdout first, then read `brief.md` if needed. If missing, use `qa-review.md` or helper output. Read only small targeted fields from `result.json` if needed.
-6. Combine runtime evidence, source evidence, product/requirement context, and review calibration. Do not promote style/product assumptions, dev-server artifacts, deployment headers, skipped modules, or weak API/UI mismatch into must-fix.
-7. Return the 7-section SME report. Keep selector-level/raw network detail out of the final answer unless requested.
-8. Keep every retained report/generated-data directory user-owned and removable. On Windows, never leave a sandbox-only ACL; FrontLens performs an automatic ACL-inheritance handoff, and `node dist/cli.js permissions repair --output <generated-directory>` may repair an older retained output. Apply it only to generated roots, never a drive, home directory, or source repository. Stop processes/containers and remove disposable test data created by the run.
+   Add `--source-root <path>` when provided. When step 4 produced a plan, also add `--requirements "<REPORT>/plan/test-plan.json"` so FrontLens can bind PRD requirements and `CHANGE-REG-*` targets to runtime evidence and emit the planned-test report. Add `--source-run-scripts --source-scripts "typecheck,lint"` only when dependencies exist and the user allowed local checks. If an explicitly identified local/private test target fails with `ERR_CERT_AUTHORITY_INVALID`, `ERR_CERT_COMMON_NAME_INVALID`, or an equivalent certificate error, rerun with `--ignore-https-errors`; never use this flag silently for a public/production target. The resulting TLS-bypass warning remains a deployment risk rather than a passed security check. If the installed CLI does not support `--sme` or `--json-summary`, use the fallback flags: `--no-trace --no-security --no-coverage --no-realtime --no-p2 --json`.
+6. Use the `--json-summary` stdout first, then read `brief.md` if needed. If missing, use `qa-review.md` or helper output. Read only small targeted fields from `result.json` if needed.
+7. Execute new-requirement flows plus impact-selected original business flows and related existing tests. Bind target-specific automation evidence with its generated `CHANGE-REG-*` id; a full build or global green test alone is not proof for every affected module.
+   When an explicitly identified test/staging database or its access details are provided, that is authorization for bounded create/query/update/delete of records owned by this run. Prefer UI/API/service entry points; use direct SQL only for setup, assertions, exact cleanup, or when no business entry point exists. This does not authorize migrations, `DROP`, `TRUNCATE`, broad updates/deletes, or changes to pre-existing records.
+   For FrontLens UI journeys, convert that authorization into executable but bounded safety config without another permission prompt: mark only the required journey steps `allowMutating=true`, enable only the required `safety.allowCreate` / `allowEdit` / `allowDelete` / `allowSubmit` flags in a temporary report-side config, and keep `blockMutatingRequests=true`. Do not use the broad `--allow-mutating-requests` switch when narrower method/category flags suffice. Register the exact run-owned IDs and cleanup action before enabling the journey; otherwise the case remains `needs-input`, never `passed`.
+8. Combine runtime evidence, source evidence, product/requirement context, and review calibration. Do not promote style/product assumptions, dev-server artifacts, deployment headers, skipped modules, or weak API/UI mismatch into must-fix.
+9. Return the 7-section SME report. In Core regression checklist distinguish passed/failed/not-run impact targets and state the base/head used. Keep selector-level/raw network detail out of the final answer unless requested.
+10. Keep every retained report/generated-data directory user-owned and removable. On Windows, never leave a sandbox-only ACL; FrontLens performs an automatic ACL-inheritance handoff, and `node dist/cli.js permissions repair --output <generated-directory>` may repair an older retained output. Apply it only to generated roots, never a drive, home directory, or source repository. Stop only processes/containers created by this run and remove only disposable test data whose exact IDs were registered by this run; never restart or clean a reused shared environment broadly.
 
 ## Triage rules
 

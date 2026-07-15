@@ -26,7 +26,32 @@ async function loadRequirementsFile(requirementsPath: string): Promise<unknown> 
 function extractRequirementsConfig(value: unknown): unknown {
   if (Array.isArray(value)) return { enabled: true, inferFromPage: false, items: value };
   if (!isRecord(value)) return value;
-  if (isRecord(value.requirements) || Array.isArray(value.requirements)) return extractRequirementsConfig(value.requirements);
+  if (isRecord(value.requirements) || Array.isArray(value.requirements)) {
+    const base = extractRequirementsConfig(value.requirements);
+    if (!isRecord(base) || !Array.isArray(base.items)) return base;
+    const changeImpact = isRecord(value.changeImpact) ? value.changeImpact : undefined;
+    const targets = changeImpact && Array.isArray(changeImpact.regressionTargets) ? changeImpact.regressionTargets : [];
+    const changeItems = targets.flatMap((raw): Record<string, unknown>[] => {
+      if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.title !== 'string') return [];
+      return [{
+        id: raw.id,
+        title: raw.title,
+        description: typeof raw.reason === 'string' ? raw.reason : 'Git 变更影响分析生成的原业务回归目标。',
+        priority: raw.priority,
+        source: 'inferred',
+        preconditions: Array.isArray(raw.steps) ? raw.steps.slice(0, 1) : [],
+        businessRules: typeof raw.reason === 'string' ? [raw.reason] : [],
+        acceptanceCriteria: Array.isArray(raw.expected) ? raw.expected : [],
+        apiPatterns: Array.isArray(raw.apiPatterns) ? raw.apiPatterns : [],
+        sourceScope: [
+          ...(Array.isArray(raw.changedFiles) ? raw.changedFiles : []),
+          ...(Array.isArray(raw.dependentFiles) ? raw.dependentFiles : [])
+        ],
+        ambiguities: ['静态影响分析只定义回归范围；必须执行并保留独立证据。']
+      }];
+    });
+    return { ...base, items: [...base.items, ...changeItems] };
+  }
   if (Array.isArray(value.items)) return { enabled: true, inferFromPage: Boolean(value.inferFromPage), items: value.items };
   return value;
 }
